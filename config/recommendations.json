@@ -1,0 +1,53 @@
+{
+  "_comment": "Recommendation templates (FR-23). Each states only the expected DIRECTION of impact on the indicator that triggered it. Phase 1 has no validated model for quantified temperature reductions, so no magnitude is claimed.",
+  "templates": {
+    "add_vegetation": {
+      "title": "Add or preserve vegetation and tree canopy",
+      "intervention": "Increase planted area and tree canopy in exposed open spaces, streets and parking; preserve existing vegetation.",
+      "expected_direction": "Likely to increase the green-space proportion and vegetation indicator, and likely to lower surface temperatures of the treated surfaces. Magnitude is not quantified in Phase 1.",
+      "required_inputs": ["Planting locations and areas", "Species and mature canopy size", "Irrigation/water availability"],
+      "tradeoffs": ["Water demand and maintenance cost", "Canopy takes years to mature", "May conflict with circulation or parking space"],
+      "evaluation_method": "Create an alternative scenario with the proposed green areas/trees (with canopy sizes) and compare green-space proportion and shade indicators against the baseline; after implementation, re-check NDVI and LST on new satellite scenes."
+    },
+    "reduce_hard_surface": {
+      "title": "Reduce unnecessary hard-surface coverage",
+      "intervention": "Replace surplus asphalt/paving (e.g. oversized parking or carriageways) with planted or permeable surfaces, or higher-albedo paving where hard surfaces are required.",
+      "expected_direction": "Likely to reduce the hard-surface proportion. Effect on surface temperature depends on the replacement material and is not quantified in Phase 1.",
+      "required_inputs": ["Areas of paving that can be changed", "Replacement material specification"],
+      "tradeoffs": ["Parking/circulation capacity", "Drainage and maintenance requirements"],
+      "evaluation_method": "Compare hard-surface and green-space proportions between the baseline and an alternative scenario with reduced paving."
+    },
+    "shade_public_space": {
+      "title": "Introduce shade in exposed public and open spaces",
+      "intervention": "Add shade structures, colonnades or trees along main pedestrian routes and in plazas/playgrounds exposed during hot afternoons.",
+      "expected_direction": "Likely to increase the shaded share of open space at the analysed times. Effect on thermal comfort is not modelled in Phase 1.",
+      "required_inputs": ["Shade structure footprints and heights", "Tree positions, heights and canopy sizes"],
+      "tradeoffs": ["Capital and maintenance cost", "Reduced winter sun where winters are cold"],
+      "evaluation_method": "Add the shade elements (with heights) to an alternative scenario and compare open-space sun exposure and shade-duration metrics against the baseline."
+    },
+    "review_orientation": {
+      "title": "Review building arrangement and spacing around open spaces",
+      "intervention": "Consider arranging buildings so that key open spaces fall within building shade in the afternoon (e.g. east/west of taller blocks, depending on latitude).",
+      "expected_direction": "May increase geometric shade on selected open spaces; may reduce solar access elsewhere.",
+      "required_inputs": ["Building heights for all buildings", "Alternative layout geometry"],
+      "tradeoffs": ["Daylight and solar access to buildings", "Ventilation, views and planning constraints"],
+      "evaluation_method": "Model an alternative layout as a scenario and compare shade metrics at 09:00/12:00/15:00 solar time."
+    },
+    "review_compliance": {
+      "title": "Review the design against the verified planning requirement",
+      "intervention": "Adjust the design (or confirm a permitted exception with the authority) so that the verified planning requirement is met.",
+      "expected_direction": "Brings the checked indicator within the verified limit.",
+      "required_inputs": ["Confirmed applicability of the rule", "Confirmed measurement basis (gross/net area)"],
+      "tradeoffs": ["May reduce built area or change the programme"],
+      "evaluation_method": "Create an alternative scenario and re-run the planning check."
+    },
+    "resolve_data_gap": {
+      "title": "Provide the missing input",
+      "intervention": "Supply the missing or unverified information listed in the finding.",
+      "expected_direction": "Enables a more complete and reliable assessment.",
+      "required_inputs": [],
+      "tradeoffs": [],
+      "evaluation_method": "Re-run the readiness check and analysis."
+    }
+  }
+}

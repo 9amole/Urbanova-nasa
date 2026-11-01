@@ -1,0 +1,406 @@
+{
+ "type": "FeatureCollection",
+ "name": "SYNTHETIC baseline design \u2014 demonstration only",
+ "features": [
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       31.8491136,
+       30.1203532
+      ],
+      [
+       31.8496326,
+       30.1203577
+      ],
+      [
+       31.8496289,
+       30.1206735
+      ],
+      [
+       31.84911,
+       30.120669
+      ],
+      [
+       31.8491136,
+       30.1203532
+      ]
+     ]
+    ]
+   },
+   "properties": {
+    "feature_type": "building",
+    "height_m": 15,
+    "floors": 5,
+    "name": "Block A"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       31.8497882,
+       30.1203591
+      ],
+      [
+       31.8503072,
+       30.1203636
+      ],
+      [
+       31.8503035,
+       30.1206794
+      ],
+      [
+       31.8497846,
+       30.1206749
+      ],
+      [
+       31.8497882,
+       30.1203591
+      ]
+     ]
+    ]
+   },
+   "properties": {
+    "feature_type": "building",
+    "height_m": 15,
+    "floors": 5,
+    "name": "Block B"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       31.8504629,
+       30.120365
+      ],
+      [
+       31.850878,
+       30.1203686
+      ],
+      [
+       31.8508744,
+       30.1206844
+      ],
+      [
+       31.8504592,
+       30.1206808
+      ],
+      [
+       31.8504629,
+       30.120365
+      ]
+     ]
+    ]
+   },
+   "properties": {
+    "feature_type": "building",
+    "height_m": 18,
+    "floors": 6,
+    "name": "Block C"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       31.8491241,
+       30.1194509
+      ],
+      [
+       31.8495911,
+       30.119455
+      ],
+      [
+       31.849588,
+       30.1197257
+      ],
+      [
+       31.8491209,
+       30.1197216
+      ],
+      [
+       31.8491241,
+       30.1194509
+      ]
+     ]
+    ]
+   },
+   "properties": {
+    "feature_type": "building",
+    "height_m": 12,
+    "floors": 4,
+    "name": "Block D"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       31.8497468,
+       30.1194564
+      ],
+      [
+       31.8502138,
+       30.1194605
+      ],
+      [
+       31.8502107,
+       30.1197311
+      ],
+      [
+       31.8497437,
+       30.119727
+      ],
+      [
+       31.8497468,
+       30.1194564
+      ]
+     ]
+    ]
+   },
+   "properties": {
+    "feature_type": "building",
+    "height_m": 12,
+    "floors": 4,
+    "name": "Block E"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       31.8489611,
+       30.1200811
+      ],
+      [
+       31.8510368,
+       30.1200993
+      ],
+      [
+       31.8510354,
+       30.1202256
+      ],
+      [
+       31.8489596,
+       30.1202074
+      ],
+      [
+       31.8489611,
+       30.1200811
+      ]
+     ]
+    ]
+   },
+   "properties": {
+    "feature_type": "road",
+    "name": "Internal street"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       31.8499482,
+       30.1190972
+      ],
+      [
+       31.8500727,
+       30.1190983
+      ],
+      [
+       31.8500612,
+       30.1200908
+      ],
+      [
+       31.8499367,
+       30.1200897
+      ],
+      [
+       31.8499482,
+       30.1190972
+      ]
+     ]
+    ]
+   },
+   "properties": {
+    "feature_type": "road",
+    "name": "Access road"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       31.8503727,
+       30.1191911
+      ],
+      [
+       31.8509954,
+       30.1191966
+      ],
+      [
+       31.8509896,
+       30.1196928
+      ],
+      [
+       31.8503669,
+       30.1196874
+      ],
+      [
+       31.8503727,
+       30.1191911
+      ]
+     ]
+    ]
+   },
+   "properties": {
+    "feature_type": "parking",
+    "name": "Surface car park"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       31.8491204,
+       30.1197667
+      ],
+      [
+       31.8498988,
+       30.1197735
+      ],
+      [
+       31.8498959,
+       30.1200262
+      ],
+      [
+       31.8491175,
+       30.1200193
+      ],
+      [
+       31.8491204,
+       30.1197667
+      ]
+     ]
+    ]
+   },
+   "properties": {
+    "feature_type": "open_space",
+    "name": "Paved plaza"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       31.849024,
+       30.1191342
+      ],
+      [
+       31.8499061,
+       30.1191419
+      ],
+      [
+       31.8499035,
+       30.1193675
+      ],
+      [
+       31.8490213,
+       30.1193598
+      ],
+      [
+       31.849024,
+       30.1191342
+      ]
+     ]
+    ]
+   },
+   "properties": {
+    "feature_type": "green_space",
+    "name": "Pocket park"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       31.8503135,
+       30.1198223
+      ],
+      [
+       31.8509362,
+       30.1198277
+      ],
+      [
+       31.8509336,
+       30.1200533
+      ],
+      [
+       31.8503108,
+       30.1200478
+      ],
+      [
+       31.8503135,
+       30.1198223
+      ]
+     ]
+    ]
+   },
+   "properties": {
+    "feature_type": "green_space",
+    "name": "Courtyard garden"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     31.8505195,
+     30.1199594
+    ]
+   },
+   "properties": {
+    "feature_type": "tree",
+    "height_m": 6,
+    "canopy_radius_m": 3,
+    "name": "Existing tree"
+   }
+  }
+ ]
+}

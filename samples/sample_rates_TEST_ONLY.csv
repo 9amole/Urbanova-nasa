@@ -1,0 +1,4 @@
+quantity_type,description,unit,rate,currency,price_date,source,region
+green_space_added_m2,TEST soft landscaping,m2,100,XTS,2026-09-01,TEST VALUES - not real prices,test
+trees_added_count,TEST semi-mature tree supply and plant,each,1000,XTS,2026-09-01,TEST VALUES - not real prices,test
+shade_structure_added_m2,TEST shade canopy,m2,500,XTS,2026-09-01,TEST VALUES - not real prices,test

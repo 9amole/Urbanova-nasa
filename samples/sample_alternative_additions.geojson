@@ -1,0 +1,205 @@
+{
+ "type": "FeatureCollection",
+ "name": "SYNTHETIC alternative additions",
+ "features": [
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     31.849171,
+     30.1198845
+    ]
+   },
+   "properties": {
+    "feature_type": "tree",
+    "height_m": 7,
+    "canopy_radius_m": 4,
+    "name": "New tree 1"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     31.8492955,
+     30.1198855
+    ]
+   },
+   "properties": {
+    "feature_type": "tree",
+    "height_m": 7,
+    "canopy_radius_m": 4,
+    "name": "New tree 2"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     31.84942,
+     30.1198866
+    ]
+   },
+   "properties": {
+    "feature_type": "tree",
+    "height_m": 7,
+    "canopy_radius_m": 4,
+    "name": "New tree 3"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     31.8495446,
+     30.1198877
+    ]
+   },
+   "properties": {
+    "feature_type": "tree",
+    "height_m": 7,
+    "canopy_radius_m": 4,
+    "name": "New tree 4"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     31.8496691,
+     30.1198888
+    ]
+   },
+   "properties": {
+    "feature_type": "tree",
+    "height_m": 7,
+    "canopy_radius_m": 4,
+    "name": "New tree 5"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     31.8497937,
+     30.1198899
+    ]
+   },
+   "properties": {
+    "feature_type": "tree",
+    "height_m": 7,
+    "canopy_radius_m": 4,
+    "name": "New tree 6"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       31.8493798,
+       30.119778
+      ],
+      [
+       31.8496911,
+       30.1197807
+      ],
+      [
+       31.8496901,
+       30.119871
+      ],
+      [
+       31.8493787,
+       30.1198682
+      ],
+      [
+       31.8493798,
+       30.119778
+      ]
+     ]
+    ]
+   },
+   "properties": {
+    "feature_type": "shade_structure",
+    "height_m": 3.5,
+    "name": "Plaza shade canopy"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       31.8503727,
+       30.1191911
+      ],
+      [
+       31.8509954,
+       30.1191966
+      ],
+      [
+       31.8509928,
+       30.1194222
+      ],
+      [
+       31.85037,
+       30.1194167
+      ],
+      [
+       31.8503727,
+       30.1191911
+      ]
+     ]
+    ]
+   },
+   "properties": {
+    "feature_type": "green_space",
+    "name": "Car park converted to garden"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       31.85037,
+       30.1194167
+      ],
+      [
+       31.8509928,
+       30.1194222
+      ],
+      [
+       31.8509896,
+       30.1196928
+      ],
+      [
+       31.8503669,
+       30.1196874
+      ],
+      [
+       31.85037,
+       30.1194167
+      ]
+     ]
+    ]
+   },
+   "properties": {
+    "feature_type": "parking",
+    "name": "Reduced car park"
+   }
+  }
+ ]
+}

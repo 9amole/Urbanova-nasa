@@ -1,0 +1,38 @@
+{
+ "type": "FeatureCollection",
+ "features": [
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       31.8489726,
+       30.1190886
+      ],
+      [
+       31.8510483,
+       30.1191068
+      ],
+      [
+       31.8510274,
+       30.1209113
+      ],
+      [
+       31.8489517,
+       30.1208932
+      ],
+      [
+       31.8489726,
+       30.1190886
+      ]
+     ]
+    ]
+   },
+   "properties": {
+    "name": "SYNTHETIC sample site"
+   }
+  }
+ ]
+}
