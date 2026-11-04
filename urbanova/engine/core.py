@@ -1,0 +1,107 @@
+"""Run the analysis modules for one design, with no database, web or authentication dependency.
+
+Both the prototype app (orchestrator) and the engine API call `run_design`, so there is one
+code path for every analysis. Provenance goes to the active recorder (see urbanova.recording).
+"""
+
+from __future__ import annotations
+
+import copy
+import logging
+import traceback
+from typing import Callable
+
+from .. import findings, recording
+from ..analysis import climate, compliance, context, solar, surface_heat, urban_form, vegetation
+from ..analysis.common import FAILED, SKIPPED, Context
+from ..readiness import ANALYSES, RUNNABLE
+
+log = logging.getLogger("urbanova.engine")
+
+MODULES = {
+    "climate_baseline": climate.run, "site_context": context.run, "urban_form": urban_form.run, "vegetation": vegetation.run,
+    "surface_heat": surface_heat.run, "solar_shade": solar.run, "planning_compliance": compliance.run,
+}
+# Modules whose result depends only on the site and settings, never on the design. In a request
+# with several designs they run once and every design receives the same result (remediation D4),
+# together with the values they leave in ctx.shared for later modules.
+SITE_LEVEL = {"climate_baseline", "site_context", "surface_heat"}
+
+
+def run_design(ctx: Context, selected: list[str], on_module: Callable[[str, int], None] | None = None) -> dict:
+    """Run the selected modules in order for ctx.scenario (None = site only).
+
+    Returns {"results", "module_status", "metrics", "layers", "dataset_ids", "findings", "recommendations", "status", "warnings"}.
+    Metric, finding and recommendation records carry ids; nothing is persisted here.
+    """
+    results: dict[str, dict] = {}
+    module_status: dict[str, dict] = {}
+    metrics: list[dict] = []
+    layers: list[dict] = []
+    dataset_ids: list[str] = []
+    for i, mod in enumerate(RUNNABLE):
+        if mod not in selected:
+            module_status[mod] = {"status": SKIPPED, "label": ANALYSES[mod], "reason": "Not selected for this run."}
+            continue
+        if on_module:
+            on_module(mod, i)
+        res = _run_module(ctx, mod)
+        results[mod] = res
+        for m in res["metrics"]:
+            metrics.append({**m, "id": recording.new_id("met"), "run_id": ctx.run_id, "module": mod, "calculated_at": recording.now(),
+                            "design_dependent": int(m["design_dependent"])})
+        for lay in res["layers"]:
+            layers.append({"id": recording.new_id("lyr"), "run_id": ctx.run_id, "module": mod, **lay})
+        dataset_ids.extend(d for d in res["datasets"] if d not in dataset_ids)
+        module_status[mod] = {"status": res["status"], "label": ANALYSES[mod], "reason": res.get("reason"), "warnings": res["warnings"],
+                              "limitations": res["limitations"], "details": jsonable(res["details"]), "provider_failures": res.get("provider_failures", []),
+                              "shared_across_designs": bool(res.get("_shared"))}
+    fnds, recs = findings.generate({"id": ctx.run_id}, ctx.project, results, metrics, ctx.shared)
+    ran = [s["status"] for s in module_status.values() if s["status"] != SKIPPED]
+    if ran and all(s == "completed" for s in ran):
+        status = "succeeded"
+    elif any(s in ("completed", "partial") for s in ran):
+        status = "partially_succeeded"
+    else:
+        status = "failed"
+    warnings = [f"{ANALYSES[m]}: {w}" for m, s in module_status.items() for w in s.get("warnings", [])]
+    return {"results": results, "module_status": module_status, "metrics": metrics, "layers": layers, "dataset_ids": dataset_ids,
+            "findings": fnds, "recommendations": recs, "status": status, "warnings": warnings}
+
+
+def _run_module(ctx: Context, mod: str) -> dict:
+    key = ("module", mod)
+    if mod in SITE_LEVEL and key in ctx.site_cache:
+        res, shared = ctx.site_cache[key]
+        ctx.shared.update(shared)
+        return {**copy.deepcopy({k: v for k, v in res.items() if k != "_shared"}), "_shared": True}
+    before = set(ctx.shared)
+    try:
+        res = MODULES[mod](ctx)
+    except Exception as exc:
+        log.error("module %s failed in run %s: %s", mod, ctx.run_id, traceback.format_exc())
+        res = {"status": FAILED, "metrics": [], "layers": [], "datasets": [], "warnings": [], "limitations": [], "details": {},
+               "reason": f"The module failed unexpectedly ({type(exc).__name__}). Other modules were not affected.", "provider_failures": []}
+    if mod in SITE_LEVEL:
+        # Cache every outcome, failures included: all designs of one request must see the same site data.
+        ctx.site_cache[key] = (copy.deepcopy(res), {k: ctx.shared[k] for k in set(ctx.shared) - before})
+    return res
+
+
+def jsonable(obj):
+    import json
+
+    return json.loads(json.dumps(obj, default=_default))
+
+
+def _default(o):
+    try:
+        import numpy as np
+
+        if isinstance(o, np.generic):
+            return o.item()
+        if isinstance(o, np.ndarray):
+            return None
+    except ImportError:
+        pass
+    return str(o)

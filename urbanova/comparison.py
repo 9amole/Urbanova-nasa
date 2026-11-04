@@ -71,11 +71,23 @@ def compare(project: dict, user: dict, baseline_id: str, alt_ids: list[str], cri
             issues.append(f"'{a['name']}' was analysed with different settings ({', '.join(diffs)}); results are not comparable. Re-run all scenarios together.")
     if issues:
         return _store(project, user, base, alts, runs, criteria, {"comparable": False, "issues": issues})
-    bm = _metrics(b_run["id"])
+    metrics = {s["id"]: _metrics(runs[s["id"]]["id"]) for s in [base] + alts}
+    checks = {s["id"]: ((runs[s["id"]]["module_status"] or {}).get("planning_compliance", {}).get("details", {}) or {}).get("checks", []) for s in [base] + alts}
+    findings_by = {s["id"]: db.select("findings", "run_id = ? AND classification != 'data_quality_issue'", [runs[s["id"]]["id"]]) for s in [base] + alts}
+    costs = {a["id"]: cost.estimate(project, base, a) for a in alts}
+    result = compare_core(base, alts, metrics, checks, findings_by, costs, criteria)
+    return _store(project, user, base, alts, runs, criteria, result)
+
+
+def compare_core(base: dict, alts: list[dict], metrics: dict[str, dict[str, dict]], checks: dict[str, list[dict]],
+                 findings_by: dict[str, list[dict]], costs: dict[str, dict], criteria: list[dict] | None) -> dict:
+    """Compare already-analysed designs. No database: everything is passed in, keyed by design id.
+    base/alts need "id" and "name"; metrics[design_id] maps metric_name to a metric record."""
+    bm = metrics[base["id"]]
     rows = []
     site_condition = []
     for a in alts:
-        am = _metrics(runs[a["id"]]["id"])
+        am = metrics[a["id"]]
         names = sorted({n for n, m in bm.items() if m["design_dependent"]} | {n for n, m in am.items() if m["design_dependent"]})
         for n in names:
             b, x = bm.get(n), am.get(n)
@@ -103,7 +115,6 @@ def compare(project: dict, user: dict, baseline_id: str, alt_ids: list[str], cri
             for n, m in bm.items():
                 if not m["design_dependent"] and m["state"] == V.AVAILABLE:
                     site_condition.append({"metric": n, "label": m["label"], "value": m["value"], "unit": m["unit"]})
-    checks = {s["id"]: ((runs[s["id"]]["module_status"] or {}).get("planning_compliance", {}).get("details", {}) or {}).get("checks", []) for s in [base] + alts}
     planning = []
     for a in alts:
         for c in checks[a["id"]]:
@@ -112,18 +123,16 @@ def compare(project: dict, user: dict, baseline_id: str, alt_ids: list[str], cri
                              "baseline_measured": (bc or {}).get("measured"), "alternative_measured": c.get("measured"), "limit": c["limit"]})
     findings_summary = {}
     for s in [base] + alts:
-        fs = db.select("findings", "run_id = ? AND classification != 'data_quality_issue'", [runs[s["id"]]["id"]])
+        fs = [f for f in findings_by.get(s["id"], []) if f["classification"] != "data_quality_issue"]
         findings_summary[s["id"]] = {lvl: sum(1 for f in fs if f["severity"] == lvl) for lvl in ("high", "moderate", "low")}
-    costs = {a["id"]: cost.estimate(project, base, a) for a in alts}
     not_comparable = {r["metric"] for r in rows if r["outcome"] == "not_comparable"}
-    ranking = _rank(criteria, base, alts, bm, {a["id"]: _metrics(runs[a["id"]]["id"]) for a in alts}, not_comparable) if criteria else None
-    result = {
+    ranking = _rank(criteria, base, alts, bm, {a["id"]: metrics[a["id"]] for a in alts}, not_comparable) if criteria else None
+    return {
         "comparable": True, "rows": rows, "site_conditions_shared": site_condition,
         "site_conditions_note": "Climate, satellite LST and NDVI describe the existing site and are identical for every scenario. Phase 1 has no validated model to predict how a design changes them, so they are not compared.",
         "planning": planning, "findings_by_severity": findings_summary, "costs": costs, "ranking": ranking, "direction_note": DIRECTION_NOTE,
         "statement": "This comparison shows differences in supported indicators. It does not identify a universally optimal design.",
     }
-    return _store(project, user, base, alts, runs, criteria, result)
 
 
 def _val(m: dict | None):
@@ -156,14 +165,25 @@ def _rank(criteria, base, alts, bm, alt_metrics, not_comparable: set) -> dict:
             continue
         lo, hi = min(vals.values()), max(vals.values())
         scores = {sid: (1.0 if hi - lo < EPS else ((v - lo) / (hi - lo) if PREFERRED[name] == "higher" else (hi - v) / (hi - lo))) for sid, v in vals.items()}
-        per_criterion.append({"metric": name, "weight": w, "direction": PREFERRED[name], "scores": scores})
+        unit = next((m[name].get("unit") for _, _, m in scen if name in m), None)
+        base_v = vals.get(base["id"])
+        # Raw values and differences travel with the scores: with min-max scaling a 0.1-point and a
+        # 40-point difference both score 0 vs 1, so the score alone can overstate small differences.
+        per_criterion.append({"metric": name, "label": next((m[name].get("label") for _, _, m in scen if name in m), name), "unit": unit,
+                              "weight": w, "direction": PREFERRED[name], "scores": scores,
+                              "values": vals, "difference_vs_baseline": {sid: (round(v - base_v, 4) if base_v is not None else None) for sid, v in vals.items()},
+                              "range": round(hi - lo, 4)})
     agg = {}
     for sid, sname, _ in scen:
         num = sum(pc["weight"] * pc["scores"][sid] for pc in per_criterion if sid in pc["scores"])
         den = sum(pc["weight"] for pc in per_criterion if sid in pc["scores"])
         agg[sid] = {"name": sname, "score": round(num / den, 3) if den else None, "weight_coverage": round(den / sum(pc["weight"] for pc in per_criterion), 2) if per_criterion else 0}
+    small_set = None
+    if len(scen) < 3:
+        small_set = ("Only two scenarios are compared, so every criterion scores 1 for the better scenario and 0 for the other, however small "
+                     "the difference. Read the raw values and differences shown with each score before relying on the ranking.")
     return {"method": "Min–max normalisation across the compared scenarios (0 = worst, 1 = best on that criterion) and a weighted mean using your weights.",
-            "criteria": per_criterion, "aggregate": agg, "notes": notes,
+            "criteria": per_criterion, "aggregate": agg, "notes": notes, "small_set_warning": small_set, "scenario_count": len(scen),
             "caveat": "Scores are relative to the scenarios compared and depend entirely on the chosen weights; they do not show that any design is optimal."}
 
 

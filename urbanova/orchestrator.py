@@ -5,21 +5,15 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
-import traceback
 from concurrent.futures import ThreadPoolExecutor
 
 from . import ANALYSIS_VERSION, __version__, db, documents, files, findings
-from .analysis import climate, compliance, context, solar, surface_heat, urban_form, vegetation
-from .analysis.common import FAILED, SKIPPED, Context
+from .analysis.common import SKIPPED, Context
+from .engine.core import MODULES, jsonable, run_design
 from .readiness import ANALYSES, RUNNABLE
 from .settings import settings
 
 log = logging.getLogger("urbanova.orchestrator")
-
-MODULES = {
-    "climate_baseline": climate.run, "site_context": context.run, "urban_form": urban_form.run, "vegetation": vegetation.run,
-    "surface_heat": surface_heat.run, "solar_shade": solar.run, "planning_compliance": compliance.run,
-}
 OBJECTIVE_MODULES = {
     "main_concerns": set(RUNNABLE),
     "surface_heat": {"climate_baseline", "surface_heat", "urban_form", "vegetation"},
@@ -125,31 +119,46 @@ def resolve_config(project: dict, payload: dict) -> dict:
 
 
 def start_run(project: dict, scenario: dict | None, user: dict, payload: dict, *, background: bool = True) -> dict:
+    return start_runs(project, [scenario], user, payload, background=background)[0]
+
+
+def start_runs(project: dict, scenarios: list[dict | None], user: dict, payload: dict, *, background: bool = True) -> list[dict]:
+    """Create one run per scenario with identical settings and execute them in one job, sharing site
+    data, so the scenarios are compared on the same observations (remediation D4)."""
     if not project.get("location_confirmed"):
         raise RunError("Confirm the site location on the map before running analyses (avoids costly runs on the wrong site).")
-    if scenario and (scenario["project_id"] != project["id"] or scenario["status"] != "active"):
-        raise RunError("The selected scenario is not an active scenario of this project.")
+    for scenario in scenarios:
+        if scenario and (scenario["project_id"] != project["id"] or scenario["status"] != "active"):
+            raise RunError("The selected scenario is not an active scenario of this project.")
     cfg = resolve_config(project, payload or {})
-    now = db.now()
-    job = {"id": db.new_id("job"), "project_id": project["id"], "job_type": "analysis_run", "status": "queued", "progress": 0, "stage": "queued",
-           "input": {"scenario_id": (scenario or {}).get("id"), "modules": cfg["modules"]}, "created_at": now}
-    db.insert("jobs", job)
-    run = {
-        "id": db.new_id("run"), "project_id": project["id"], "scenario_id": (scenario or {}).get("id"), "job_id": job["id"],
-        "configuration": cfg, "fingerprint": fingerprint(project, scenario, cfg), "input_dataset_ids": [], "analysis_version": ANALYSIS_VERSION,
-        "software_version": __version__, "status": "queued", "module_status": {}, "warnings": [], "created_by": user["id"],
-    }
-    db.insert("runs", run)
+    run_ids = []
+    for scenario in scenarios:
+        job = {"id": db.new_id("job"), "project_id": project["id"], "job_type": "analysis_run", "status": "queued", "progress": 0, "stage": "queued",
+               "input": {"scenario_id": (scenario or {}).get("id"), "modules": cfg["modules"]}, "created_at": db.now()}
+        db.insert("jobs", job)
+        run = {
+            "id": db.new_id("run"), "project_id": project["id"], "scenario_id": (scenario or {}).get("id"), "job_id": job["id"],
+            "configuration": cfg, "fingerprint": fingerprint(project, scenario, cfg), "input_dataset_ids": [], "analysis_version": ANALYSIS_VERSION,
+            "software_version": __version__, "status": "queued", "module_status": {}, "warnings": [], "created_by": user["id"],
+        }
+        db.insert("runs", run)
+        run_ids.append(run["id"])
     if background:
-        _executor.submit(_safe_execute, run["id"])
+        _executor.submit(_execute_group, run_ids)
     else:
-        _safe_execute(run["id"])
-    return db.get("runs", run["id"])
+        _execute_group(run_ids)
+    return [db.get("runs", r) for r in run_ids]
 
 
-def _safe_execute(run_id: str) -> None:
+def _execute_group(run_ids: list[str]) -> None:
+    site_cache: dict = {}
+    for run_id in run_ids:
+        _safe_execute(run_id, site_cache)
+
+
+def _safe_execute(run_id: str, site_cache: dict | None = None) -> None:
     try:
-        execute(run_id)
+        execute(run_id, site_cache)
     except Exception:  # never leave a job "running" forever
         log.exception("run %s crashed", run_id)
         run = db.get("runs", run_id)
@@ -158,75 +167,36 @@ def _safe_execute(run_id: str) -> None:
                                                 "error_details": {"message": "Unexpected internal error; see server log."}})
 
 
-def execute(run_id: str) -> None:
+def execute(run_id: str, site_cache: dict | None = None) -> None:
+    """Run one stored run through the engine core and persist its records (prototype app only)."""
     run = db.get("runs", run_id)
     project = db.get("projects", run["project_id"])
     scenario = db.get("scenarios", run["scenario_id"]) if run["scenario_id"] else None
     cfg = run["configuration"]
     db.update("runs", "id", run_id, {"status": "running", "started_at": db.now()})
     db.update("jobs", "id", run["job_id"], {"status": "running", "started_at": db.now()})
-    ctx = Context(project=project, scenario=scenario, config=cfg, run_id=run_id, out_dir=files.outputs_dir(project["id"], run_id))
-    results: dict[str, dict] = {}
-    module_status: dict[str, dict] = {}
-    metric_rows: list[dict] = []
-    dataset_ids: list[str] = []
-    selected = cfg["modules"]
-    for i, mod in enumerate(RUNNABLE):
-        if mod not in selected:
-            module_status[mod] = {"status": SKIPPED, "label": ANALYSES[mod], "reason": "Not selected for this run."}
-            continue
+    ctx = Context(project=project, scenario=scenario, config=cfg, run_id=run_id, out_dir=files.outputs_dir(project["id"], run_id),
+                  rules=documents.rules_for_analysis(project["id"]), site_cache=site_cache if site_cache is not None else {})
+
+    def progress(mod: str, i: int) -> None:
         db.update("jobs", "id", run["job_id"], {"stage": ANALYSES[mod], "progress": round(i / len(RUNNABLE), 2)})
-        try:
-            res = MODULES[mod](ctx)
-        except Exception as exc:
-            log.error("module %s failed in run %s: %s", mod, run_id, traceback.format_exc())
-            res = {"status": FAILED, "metrics": [], "layers": [], "datasets": [], "warnings": [], "limitations": [], "details": {},
-                   "reason": f"The module failed unexpectedly ({type(exc).__name__}). Other modules were not affected.", "provider_failures": []}
-        results[mod] = res
-        for m in res["metrics"]:
-            row = {**m, "id": db.new_id("met"), "run_id": run_id, "module": mod, "calculated_at": db.now(), "design_dependent": int(m["design_dependent"])}
-            db.insert("metrics", row)
-            metric_rows.append(row)
-        for lay in res["layers"]:
-            db.insert("layers", {"id": db.new_id("lyr"), "run_id": run_id, "module": mod, **lay})
-        dataset_ids.extend(res["datasets"])
-        module_status[mod] = {"status": res["status"], "label": ANALYSES[mod], "reason": res.get("reason"), "warnings": res["warnings"],
-                              "limitations": res["limitations"], "details": _jsonable(res["details"]), "provider_failures": res.get("provider_failures", [])}
-        db.update("runs", "id", run_id, {"module_status": module_status})
-    db.update("jobs", "id", run["job_id"], {"stage": "Findings and recommendations", "progress": 0.95})
-    fnds, recs = findings.generate(run, project, results, metric_rows, ctx.shared)
-    for f in fnds:
+
+    out = run_design(ctx, cfg["modules"], on_module=progress)
+    for row in out["metrics"]:
+        db.insert("metrics", row)
+    for lay in out["layers"]:
+        db.insert("layers", lay)
+    for f in out["findings"]:
         db.insert("findings", f)
-    for r in recs:
+    for r in out["recommendations"]:
         db.insert("recommendations", r)
-    ran = [s["status"] for m, s in module_status.items() if s["status"] != SKIPPED]
-    if ran and all(s == "completed" for s in ran):
-        status = "succeeded"
-    elif any(s in ("completed", "partial") for s in ran):
-        status = "partially_succeeded"
-    else:
-        status = "failed"
-    warnings = [f"{ANALYSES[m]}: {w}" for m, s in module_status.items() for w in s.get("warnings", [])]
-    db.update("runs", "id", run_id, {"status": status, "completed_at": db.now(), "module_status": module_status, "input_dataset_ids": dataset_ids, "warnings": warnings})
-    db.update("jobs", "id", run["job_id"], {"status": status, "progress": 1.0, "stage": "done", "completed_at": db.now(),
-                                            "output": {"run_id": run_id, "findings": len(fnds), "recommendations": len(recs)}})
+    db.update("runs", "id", run_id, {"status": out["status"], "completed_at": db.now(), "module_status": out["module_status"],
+                                     "input_dataset_ids": out["dataset_ids"], "warnings": out["warnings"]})
+    db.update("jobs", "id", run["job_id"], {"status": out["status"], "progress": 1.0, "stage": "done", "completed_at": db.now(),
+                                            "output": {"run_id": run_id, "findings": len(out["findings"]), "recommendations": len(out["recommendations"])}})
 
 
-def _jsonable(obj):
-    return json.loads(json.dumps(obj, default=_default))
-
-
-def _default(o):
-    try:
-        import numpy as np
-
-        if isinstance(o, np.generic):
-            return o.item()
-        if isinstance(o, np.ndarray):
-            return None
-    except ImportError:
-        pass
-    return str(o)
+_jsonable = jsonable
 
 
 def run_bundle(run: dict) -> dict:
@@ -236,7 +206,7 @@ def run_bundle(run: dict) -> dict:
         "run": {**run, "stale_modules": stale_modules(run)},
         "metrics": metrics,
         "layers": [{k: v for k, v in lay.items() if k != "path"} for lay in db.select("layers", "run_id = ?", [run["id"]])],
-        "findings": sorted(db.select("findings", "run_id = ?", [run["id"]]), key=lambda f: -findings.SEVERITY_ORDER.get(f["severity"], 0)),
+        "findings": sorted(db.select("findings", "run_id = ?", [run["id"]]), key=findings.sort_key),
         "recommendations": db.select("recommendations", "run_id = ?", [run["id"]]),
         "datasets": [_with_approval(db.get("datasets", d)) for d in run.get("input_dataset_ids") or []],
         "objectives": objective_answers(run),
@@ -255,25 +225,43 @@ def _with_approval(d: dict | None) -> dict | None:
     """Attach the provider's approval status so every displayed source shows it (FR-09, user requirement)."""
     if not d:
         return d
+    return {**d, **approval_info(d["source_id"]), "usage_context": settings.usage_context}
+
+
+def approval_info(source_id: str) -> dict:
+    """Approval status, a human-readable label and whether the decision maker confirmed the terms (FR-09)."""
     from .providers.base import registry
 
-    p = registry().get(d["source_id"], {})
+    p = registry().get(source_id, {})
     status = p.get("approval_status")
-    label = APPROVAL_LABELS.get(status, status)
+    conf = p.get("confirmation") or {}
     if status == "approved":
         label = f"Approved by {p.get('approved_by', 'unknown')} on {p.get('approved_on', '?')}"
-    return {**d, "approval_status": status, "approval_label": label, "approval_note": p.get("approval_note"), "usage_context": settings.usage_context}
+    elif status == "fr_recommended":
+        label = "Recommended in the FR" if conf else APPROVAL_LABELS[status]
+    else:
+        label = APPROVAL_LABELS.get(status, status)
+    if status in ("approved", "fr_recommended"):
+        label += (f"; terms confirmed by {conf['by']} on {conf['on']} for {conf['scope']}" if conf
+                  else " — confirmation by the decision maker pending")
+    if p.get("commercial_use") == "unverified":
+        label += "; commercial-use terms unverified"
+    return {"approval_status": status, "approval_label": label, "approval_note": p.get("approval_note"), "terms_confirmed": bool(conf)}
 
 
 def objective_answers(run: dict) -> list[dict]:
     """Which selected questions this run can answer, and why not (FR-49)."""
+    project = db.get("projects", run["project_id"])
+    available = {m["metric_name"] for m in db.select("metrics", "run_id = ? AND state = 'available'", [run["id"]])}
+    return answer_objectives(project.get("objectives") or [], run.get("module_status") or {}, available)
+
+
+def answer_objectives(objectives: list[str], ms: dict, available: set[str]) -> list[dict]:
+    """Database-free core of objective_answers: module statuses + names of available metrics."""
     from .projects import OBJECTIVES
 
-    project = db.get("projects", run["project_id"])
-    ms = run.get("module_status") or {}
-    available = {m["metric_name"] for m in db.select("metrics", "run_id = ? AND state = 'available'", [run["id"]])}
     out = []
-    for obj in project.get("objectives") or []:
+    for obj in objectives:
         needed = OBJECTIVE_MODULES.get(obj, set())
         if obj == "data_gaps":
             out.append({"objective": obj, "question": OBJECTIVES[obj], "answerable": True, "explanation": "See the readiness check and data-quality findings."})

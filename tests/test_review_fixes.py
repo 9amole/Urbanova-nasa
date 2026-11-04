@@ -53,8 +53,15 @@ def test_provenance_shows_source_status(client, auth, monkeypatch):
     pid = make_project(client, auth)
     b = run(client, auth, pid, config={"modules": ["climate_baseline"]})
     ds = b["datasets"][0]
-    assert ds["approval_status"] == "fr_recommended" and "not yet confirmed" in ds["approval_label"]
-    assert ds["usage_context"] == "non_commercial_evaluation"
+    assert ds["approval_status"] == "fr_recommended" and "terms confirmed by Project decision maker" in ds["approval_label"]
+    assert ds["terms_confirmed"] is True and ds["usage_context"] == "non_commercial_evaluation"
+    # Without a recorded confirmation the label says the terms are not yet confirmed.
+    from urbanova import orchestrator
+    from urbanova.providers.base import registry
+
+    monkeypatch.delitem(registry()["open_meteo_archive"], "confirmation")
+    info = orchestrator.approval_info("open_meteo_archive")
+    assert "not yet confirmed" in info["approval_label"] and info["terms_confirmed"] is False
 
 
 # ---------------------------------------------------------------- Open-Meteo licence context
@@ -283,6 +290,7 @@ def test_recorded_approval_enables_satellite_routes_and_is_shown(client, auth, e
     b = run(client, auth, pid, config={"modules": ["surface_heat"], "hot_months": [7]})
     ds = b["datasets"][0]
     assert ds["approval_status"] == "approved" and ds["approval_label"].startswith("Approved by Project owner")
+    assert "confirmed by Project decision maker" in ds["approval_label"] and "commercial-use terms unverified" in ds["approval_label"]
 
 
 def test_basemap_requests_send_origin_referrer(client):
@@ -291,3 +299,13 @@ def test_basemap_requests_send_origin_referrer(client):
     assert r.headers["Referrer-Policy"] == "strict-origin-when-cross-origin"
     bm = client.get("/api/v1/meta").json()["basemap"]
     assert "{z}" in bm["url"] and "OpenStreetMap" in bm["attribution"]
+
+
+@pytest.mark.parametrize("layer, expected", [
+    ("PARKING", "parking"), ("CAR_PARK", "parking"), ("Surface car park", "parking"), ("GARAGE", "parking"),
+    ("PARK", "green_space"), ("Pocket park", "green_space"), ("GREEN_LANDSCAPE", "green_space"),
+])
+def test_parking_layers_are_not_classified_as_green(layer, expected):
+    from urbanova import plans
+    assert plans.classify({}, layer)[0] == expected
+    assert plans.classify({"name": layer})[0] == expected

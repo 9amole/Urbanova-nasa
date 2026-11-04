@@ -221,8 +221,14 @@ async def readiness_check(pid: str, request: Request, user: dict = Depends(curre
 @app.post(f"{API}/projects/{{pid}}/uploads", status_code=201)
 async def upload(pid: str, file: UploadFile = File(...), category: str = Form(...), epsg: str | None = Form(None),
                  source: str | None = Form(None), variable: str | None = Form(None), unit: str | None = Form(None),
-                 license: str | None = Form(None), observation_date: str | None = Form(None), user: dict = Depends(current_user)):
+                 license: str | None = Form(None), observation_date: str | None = Form(None), plan_mode: str | None = Form(None),
+                 user: dict = Depends(current_user)):
     p, _ = _project(pid, user, "editor")
+    previous = plans.active_features(pid) if category == "urban_plan" else []
+    if previous and plan_mode not in ("replace", "add"):
+        # Never duplicate silently: a second plan needs an explicit choice.
+        raise plans.PlanError(f"This project already has {len(previous)} active plan feature(s). Choose 'replace' (the previous "
+                                 "features are deactivated and kept in history) or 'add' (the new features are added alongside them).")
     content = await file.read(int(settings.max_upload_mb * 1024 * 1024) + 1)
     detected, warnings = files.validate_upload(file.filename or "upload", content, category)
     rec = files.register_file(pid, user["id"], file.filename or "upload", file.content_type, content, category, detected, warnings)
@@ -230,6 +236,10 @@ async def upload(pid: str, file: UploadFile = File(...), category: str = Form(..
     try:
         if category == "urban_plan":
             outcome = plans.import_plan(p, rec, content, epsg)
+            if previous:
+                outcome["plan_mode"] = plan_mode
+                if plan_mode == "replace":
+                    outcome["replaced_features"] = plans.deactivate_features(previous, user, f"replaced by plan file {rec['original_filename']}")
         elif category == "planning_document":
             outcome = documents.ingest_document(p, rec)
         elif category == "rate_table":
@@ -256,6 +266,12 @@ def list_files(pid: str, user: dict = Depends(current_user)):
 def file_original(fid: str, user: dict = Depends(current_user)):
     f, _ = _owned("files", fid, user)
     return FileResponse(f["storage_path"], filename=f["original_filename"], media_type="application/octet-stream")
+
+
+@app.post(f"{API}/files/{{fid}}/confirm-units")
+def confirm_file_units(fid: str, user: dict = Depends(current_user)):
+    f, _ = _owned("files", fid, user, "editor")
+    return plans.confirm_units(f, user)
 
 
 @app.get(f"{API}/projects/{{pid}}/features")
@@ -385,7 +401,7 @@ async def start_all(pid: str, request: Request, user: dict = Depends(current_use
     scens = db.select("scenarios", "project_id = ? AND status = 'active'", [pid], order="kind DESC, created_at")
     if not scens:
         raise scenarios.ScenarioError("Create the baseline scenario first.")
-    return [orchestrator.start_run(p, s, user, cfg) for s in scens]
+    return orchestrator.start_runs(p, scens, user, cfg)
 
 
 @app.get(f"{API}/projects/{{pid}}/analysis-runs")

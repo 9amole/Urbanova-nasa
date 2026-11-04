@@ -19,7 +19,7 @@ from typing import Any
 
 import httpx
 
-from .. import db
+from .. import recording
 from ..settings import load_config, settings
 
 FAILURE_KINDS = {
@@ -59,7 +59,8 @@ def registry() -> dict[str, dict]:
 
 # Approval states that allow a provider to be called. "fr_recommended" = named in the
 # Functional Requirements as a recommended integration and used here for non-commercial
-# evaluation; "approved" = confirmed by the supervisor (record approved_by/approved_on).
+# evaluation; "approved" = an explicit recorded approval (approved_by/approved_on). Whether the
+# decision maker has confirmed the terms is recorded in `confirmation` and shown in labels.
 USABLE_APPROVAL = {"fr_recommended", "fr_required", "approved"}
 
 
@@ -69,9 +70,12 @@ def availability(provider_id: str) -> tuple[bool, str | None, str]:
     if not p or p.get("implementation_status") != "implemented" or not p.get("enabled"):
         return False, "disabled", f"{(p or {}).get('name', provider_id)} is not enabled in this build."
     if p.get("approval_status") not in USABLE_APPROVAL:
-        return False, "not_approved", f"{p['name']} is awaiting supervisor approval ({p.get('approval_note') or 'access route not named in the Functional Requirements'}). It is not used until approved in config/providers.json."
+        return False, "not_approved", f"{p['name']} is awaiting supervisor approval ({p.get('approval_note') or 'access route not named in the Functional Requirements'}). It is not used until approved in urbanova/config/providers.json."
     if settings.usage_context == "commercial" and p.get("commercial_use") == "requires_subscription" and not _has_commercial_key(p):
         return False, "license_restricted", f"{p['name']} may not be used commercially on its free tier. Configure a commercial subscription key or use another source."
+    if settings.usage_context == "commercial" and p.get("commercial_use") == "unverified":
+        # Conservative default: terms nobody has reviewed are not assumed to allow commercial use.
+        return False, "license_restricted", f"The commercial-use terms of {p['name']} have not been reviewed. It is not used in the commercial context until the team records a decision in urbanova/config/providers.json."
     return True, None, ""
 
 
@@ -95,9 +99,9 @@ def redact(url: str) -> str:
 
 
 def _log(provider_id: str, url: str, status: int | None, ms: int, outcome: str, attempt: int, cache_hit: bool, message: str = "") -> None:
-    db.insert("provider_logs", {
+    recording.current().request_log({
         "provider": provider_id, "url": redact(url)[:500], "status_code": status, "duration_ms": ms,
-        "outcome": outcome, "attempt": attempt, "cache_hit": int(cache_hit), "message": message[:500], "at": db.now(),
+        "outcome": outcome, "attempt": attempt, "cache_hit": int(cache_hit), "message": message[:500], "at": recording.now(),
     })
 
 
@@ -124,7 +128,7 @@ def read_cache(provider_id: str, key: str) -> dict | None:
 
 def write_cache(provider_id: str, key: str, params: Any, body: Any) -> str:
     path = _cache_path(provider_id, key)
-    path.write_text(json.dumps({"retrieved_at": db.now(), "params": params, "body": body}, default=str), encoding="utf-8")
+    path.write_text(json.dumps({"retrieved_at": recording.now(), "params": params, "body": body}, default=str), encoding="utf-8")
     return str(path)
 
 
@@ -163,7 +167,9 @@ def _http_json(provider_id: str, method: str, url: str, *, params: dict | None =
     for attempt in range(1, settings.http_max_retries + 1):
         t0 = time.monotonic()
         try:
-            with httpx.Client(timeout=settings.http_timeout_s, headers={"User-Agent": settings.user_agent}, follow_redirects=True) as client:
+            # Per-provider timeout (e.g. Overpass: longer than the 60 s its query allows the server).
+            timeout = float(prov.get("timeout_s") or settings.http_timeout_s)
+            with httpx.Client(timeout=timeout, headers={"User-Agent": settings.user_agent}, follow_redirects=True) as client:
                 resp = client.request(method, url, params=params, data=data, json=json_body)
         except httpx.TimeoutException as exc:
             ms = int((time.monotonic() - t0) * 1000)
@@ -200,7 +206,7 @@ def _http_json(provider_id: str, method: str, url: str, *, params: dict | None =
             raise ProviderError(provider_id, "invalid_response", "Response was not JSON.")
         _log(provider_id, full_url, resp.status_code, ms, "success", attempt, False)
         raw_path = write_cache(provider_id, key, cache_params or params, body) if cache else None
-        return body, {"cache_hit": False, "cache_key": key, "retrieved_at": db.now(), "raw_path": raw_path}
+        return body, {"cache_hit": False, "cache_key": key, "retrieved_at": recording.now(), "raw_path": raw_path}
     assert last_err is not None
     raise last_err
 

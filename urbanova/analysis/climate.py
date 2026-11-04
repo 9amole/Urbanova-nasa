@@ -104,6 +104,10 @@ def run(ctx: Context) -> dict:
     warnings, limitations = [], [
         f"Values come from {data['provider_name']} gridded reanalysis at {data['spatial_resolution']}. They describe regional conditions, not the microclimate inside the development.",
         "Air temperature is not land surface temperature and neither alone measures pedestrian thermal comfort.",
+        # From the D3 station check (validation/climate_ghcn_results.json, docs/VALIDATION.md).
+        "Checked against two Egyptian weather stations, ERA5 daily maximum temperature was within about 0.7 °C on average, but daily "
+        "minimum temperature was 1.5–2.2 °C warmer; counts of tropical nights (TR) can therefore be overstated by tens of nights per "
+        "year, and threshold counts such as TX35 shift noticeably with small biases.",
     ]
     if failures:
         status = PARTIAL

@@ -24,7 +24,7 @@ You need a Windows PC with internet access.
    Leave this window open while you test. Closing it stops the app.
 6. Open **<http://127.0.0.1:8000>** in Chrome or Edge.
 
-**Optional technical check:** `powershell -ExecutionPolicy Bypass -File .\run.ps1 test` runs the automated tests. It takes about 40 seconds and should end with `58 passed`.
+**Optional technical check:** `powershell -ExecutionPolicy Bypass -File .\run.ps1 test` runs the automated tests. It takes about 40 seconds and should end with `153 passed`.
 
 **If something goes wrong:**
 
@@ -156,7 +156,7 @@ The app should give a clear message every time, never a crash or a silent wrong 
 These are explained in `docs/DECISIONS.md` §5. The most important are:
 
 1. **Data sources:** confirm Open-Meteo/ERA5, NASA POWER and OpenStreetMap, and the Microsoft Planetary Computer route for Landsat and Sentinel-2. The project owner approved that route on 2026-11-01, and your confirmation is requested.
-2. **Provisional thresholds:** approve or replace them (`config/rules.json`).
+2. **Provisional thresholds:** approve or replace them (`urbanova/config/rules.json`).
 3. **Commercial use:** Open-Meteo's free tier is for non-commercial use only. For commercial use, choose a paid subscription or another source.
 4. **Upload formats:** confirm GeoJSON, plus DXF with an EPSG code, for the MVP.
 5. **Scope:** decide whether billing, notifications, organisations and admin (Modules 11–14) are part of Phase 1.

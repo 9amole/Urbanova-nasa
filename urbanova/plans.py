@@ -37,15 +37,18 @@ KEYWORDS: list[tuple[str, str]] = [
     (r"boundary|plot|parcel|site[_ ]?line|red[_ ]?line", "site_boundary"),
     (r"building|bldg|footprint|block|tower|villa|house", "building"),
     (r"road|street|highway|path|walkway|footway|sidewalk|carriageway|circulation", "road"),
-    (r"tree|canopy", "tree"),
-    (r"green|park|garden|lawn|grass|landscap|planting|vegetat", "green_space"),
-    (r"parking|car[_ ]?park|garage", "parking"),
+    # Shade structures before trees: "shade canopy" / "canopy structure" are built, not planted.
     (r"pergola|shade|canopy[_ ]?struct|shelter", "shade_structure"),
+    (r"tree|canopy", "tree"),
+    # Parking before green: "park" would otherwise claim PARKING / CAR_PARK layers as green space.
+    (r"parking|car[_ \-]?park|garage", "parking"),
+    # "park" only as a park, never as part of "parking" or "car park".
+    (r"green|(?<!car)(?<!car[_ \-])park(?!ing)|garden|lawn|grass|landscap|planting|vegetat", "green_space"),
     (r"plaza|courtyard|square|open[_ ]?space|hardscape|paved", "open_space"),
     (r"water|pond|pool|lake|fountain", "water"),
     (r"zone|landuse|land[_ ]?use|zoning", "land_use_zone"),
 ]
-TYPE_PROPS = ("feature_type", "type", "class", "category", "layer", "landuse", "use", "kind", "name")
+TYPE_PROPS = ("feature_type", "type", "class", "category", "layer", "landuse", "leisure", "natural", "amenity", "use", "kind", "name")
 HEIGHT_PROPS = ("height_m", "height", "bldg_height", "building_height")
 FLOOR_PROPS = ("floors", "levels", "storeys", "stories", "building:levels", "num_floors")
 DEFAULT_TREE_CANOPY_RADIUS_M = None  # never assumed — a point tree without canopy size has no area
@@ -76,36 +79,49 @@ def classify(props: dict, layer: str | None = None) -> tuple[str, str, str]:
     return "unclassified", "no recognisable attribute", "low"
 
 
-def _number(props: dict, keys: tuple[str, ...]) -> tuple[float | None, str | None]:
+METRES = re.compile(r"^\s*(\d+(?:\.\d+)?)\s*(?:m|metres?|meters?)?\s*$", re.I)
+COUNT = re.compile(r"^\s*(\d+(?:\.\d+)?)\s*$")
+
+
+def _number(props: dict, keys: tuple[str, ...], issues: list[str], metres: bool = True) -> tuple[float | None, str | None]:
+    """First positive value among `keys`. Lengths must be in metres: a bare number or one ending in "m".
+    Any other unit (ft, cm, mm, ...) or text is reported and ignored, never converted or stripped."""
     for k in keys:
-        if k in props and props[k] not in (None, ""):
-            try:
-                v = float(str(props[k]).replace("m", "").strip())
-            except ValueError:
+        raw = props.get(k)
+        if raw in (None, "") or isinstance(raw, bool):
+            continue
+        if isinstance(raw, (int, float)):
+            v = float(raw)
+        else:
+            m = (METRES if metres else COUNT).match(str(raw))
+            if not m:
+                expect = "a number in metres (for example 12 or 12 m)" if metres else "a whole number"
+                issues.append(f"Attribute '{k}' = '{raw}' is not {expect}; it was ignored. Correct it on the Inputs tab.")
                 continue
-            if v > 0:
-                return v, k
+            v = float(m.group(1))
+        if v > 0:
+            return v, k
     return None, None
 
 
 def _attributes(props: dict) -> tuple[dict, list[str]]:
     attrs: dict[str, Any] = {}
-    issues = []
-    h, hk = _number(props, HEIGHT_PROPS)
+    issues: list[str] = []
+    h, hk = _number(props, HEIGHT_PROPS, issues)
     if h is not None:
         if h > 1000:
             issues.append(f"Height {h} m is implausible and was ignored.")
         else:
             attrs["height_m"] = h
             attrs["height_source"] = f"user data attribute '{hk}'"
-    f, fk = _number(props, FLOOR_PROPS)
+    f, fk = _number(props, FLOOR_PROPS, issues, metres=False)
     if f is not None:
         if f > 200 or f != int(f):
             issues.append(f"Floor count {f} is implausible and was ignored.")
         else:
             attrs["floors"] = int(f)
             attrs["floors_source"] = f"user data attribute '{fk}'"
-    canopy, ck = _number(props, ("canopy_radius_m", "crown_radius_m"))
+    canopy, ck = _number(props, ("canopy_radius_m", "crown_radius_m"), issues)
     if canopy is not None:
         attrs["canopy_radius_m"] = canopy
     for k in ("name", "species", "surface_material", "albedo", "land_use"):
@@ -117,7 +133,7 @@ def _attributes(props: dict) -> tuple[dict, list[str]]:
 def _feature_record(project_id: str, file_id: str, geom_wgs: BaseGeometry, props: dict, ref: str, layer: str | None = None) -> dict:
     ftype, source, conf = classify(props, layer)
     attrs, issues = _attributes(props)
-    review = "needs_review" if conf == "low" else "auto_classified"
+    review = "needs_review" if conf == "low" or issues else "auto_classified"
     gj = mapping(geom_wgs)
     return {
         "id": db.new_id("ftr"), "project_id": project_id, "file_id": file_id, "feature_type": ftype,
@@ -181,7 +197,66 @@ def parse_geojson(content: bytes, declared_epsg: str | None) -> tuple[list[tuple
     return out, notes, src_crs
 
 
-def parse_dxf(path: str, declared_epsg: str | None) -> tuple[list[tuple[BaseGeometry, dict, str, str]], list[str], str]:
+def _dxf_geometries(entity, layer_override: str | None, depth: int, notes: list[str], skipped: dict[str, int]):
+    """Yield (geometry, layer, reference) for one DXF entity; INSERT blocks are exploded recursively."""
+    from ezdxf import path as dxfpath
+
+    kind = entity.dxftype()
+    layer = entity.dxf.get("layer", "0")
+    if layer == "0" and layer_override:
+        layer = layer_override  # block contents on layer 0 inherit the INSERT's layer (AutoCAD convention)
+    ref = f"{kind} {entity.dxf.get('handle', '?')}"
+    try:
+        if kind == "LWPOLYLINE":
+            pts = [(q[0], q[1]) for q in entity.get_points("xy")]
+            closed = entity.closed or (len(pts) > 2 and pts[0] == pts[-1])
+        elif kind == "POLYLINE":
+            pts = [(v.dxf.location.x, v.dxf.location.y) for v in entity.vertices]
+            closed = entity.is_closed
+        elif kind == "LINE":
+            pts = [(entity.dxf.start.x, entity.dxf.start.y), (entity.dxf.end.x, entity.dxf.end.y)]
+            closed = False
+        elif kind == "CIRCLE":
+            c = entity.dxf.center
+            yield Point(c.x, c.y).buffer(entity.dxf.radius, quad_segs=16), layer, ref
+            return
+        elif kind == "HATCH":
+            rings = []
+            for hp in dxfpath.from_hatch(entity):
+                ring = [(v.x, v.y) for v in hp.flattening(0.05)]
+                if len(ring) >= 3:
+                    rings.append(Polygon(ring))
+            if not rings:
+                skipped["HATCH (no closed boundary)"] = skipped.get("HATCH (no closed boundary)", 0) + 1
+                return
+            rings.sort(key=lambda g: g.area, reverse=True)
+            outer = rings[0]
+            for inner in rings[1:]:
+                if outer.contains(inner):
+                    outer = outer.difference(inner)  # island / hole inside the hatch
+            yield outer, layer, ref
+            return
+        elif kind == "INSERT":
+            if depth >= 5:
+                skipped["INSERT (nested deeper than 5 levels)"] = skipped.get("INSERT (nested deeper than 5 levels)", 0) + 1
+                return
+            for sub in entity.virtual_entities():
+                for g, lyr, sref in _dxf_geometries(sub, layer, depth + 1, notes, skipped):
+                    yield g, lyr, f"{ref} > {sref}"
+            return
+        else:
+            skipped[kind] = skipped.get(kind, 0) + 1
+            return
+    except Exception as exc:  # malformed entity
+        notes.append(f"Entity {ref} skipped: {exc}")
+        return
+    if len(pts) < 2:
+        return
+    yield (Polygon(pts) if closed and len(pts) >= 3 else LineString(pts)), layer, ref
+
+
+def parse_dxf(path: str, declared_epsg: str | None) -> tuple[list[tuple[BaseGeometry, dict, str, str]], list[str], str, dict]:
+    """Return (items, notes, crs, meta). meta: units_unconfirmed (bool), skipped_entities ({type: count})."""
     import ezdxf
     from ezdxf import recover
 
@@ -204,57 +279,58 @@ def parse_dxf(path: str, declared_epsg: str | None) -> tuple[list[tuple[BaseGeom
     # 6 = metres. Any other unit would need explicit scaling, which we do not guess.
     if units not in (0, 6):
         raise PlanError(f"The drawing units code $INSUNITS={units} is not metres. Re-export the drawing in metres.")
-    if units == 0:
-        notes.append("The drawing does not declare units ($INSUNITS unset); coordinates are assumed to be metres in the declared CRS. Verify the scale.")
+    units_unconfirmed = units == 0
+    if units_unconfirmed:
+        notes.append(
+            "The drawing does not declare its units ($INSUNITS unset), so the scale is unresolved. Features are marked for review "
+            "and area-based indicators stay blocked until you confirm that the drawing units are metres."
+        )
     out = []
+    skipped: dict[str, int] = {}
     for e in doc.modelspace():
-        layer = e.dxf.get("layer", "0")
-        kind = e.dxftype()
-        try:
-            if kind == "LWPOLYLINE":
-                pts = [(p[0], p[1]) for p in e.get_points("xy")]
-                closed = e.closed or (len(pts) > 2 and pts[0] == pts[-1])
-            elif kind == "POLYLINE":
-                pts = [(v.dxf.location.x, v.dxf.location.y) for v in e.vertices]
-                closed = e.is_closed
-            elif kind == "LINE":
-                pts = [(e.dxf.start.x, e.dxf.start.y), (e.dxf.end.x, e.dxf.end.y)]
-                closed = False
-            elif kind == "CIRCLE":
-                c = e.dxf.center
-                out.append((Point(c.x, c.y).buffer(e.dxf.radius, quad_segs=16), {"layer": layer}, f"{kind} {e.dxf.handle}", layer))
-                continue
-            else:
-                continue
-        except Exception as exc:  # malformed entity
-            notes.append(f"Entity {kind} {e.dxf.get('handle', '?')} skipped: {exc}")
-            continue
-        if len(pts) < 2:
-            continue
-        geom = Polygon(pts) if closed and len(pts) >= 3 else LineString(pts)
-        out.append((geom, {"layer": layer}, f"{kind} {e.dxf.handle}", layer))
-    return out, notes, crs
+        for geom, layer, ref in _dxf_geometries(e, None, 0, notes, skipped):
+            out.append((geom, {"layer": layer}, ref, layer))
+    if skipped:
+        notes.append("Entities not used as plan geometry: " + ", ".join(f"{n} {k}" for k, n in sorted(skipped.items())) + ".")
+    return out, notes, crs, {"units_unconfirmed": units_unconfirmed, "skipped_entities": skipped}
+
+
+REFERENCE_ONLY = {
+    "status": "stored_reference_only",
+    "message": (
+        "Stored as a reference drawing. Automatic geometry extraction from PDF/image plans is not supported in "
+        "this build, and an image is not georeferenced: no areas are calculated from it. To analyse this design, "
+        "export the plan as GeoJSON or DXF (with its EPSG code)."
+    ),
+    "features_extracted": 0,
+}
 
 
 def import_plan(project: dict, file_rec: dict, content: bytes, declared_epsg: str | None) -> dict:
-    """Extract features from a plan file. Returns the file validation summary."""
+    """Extract features from a stored plan file and save them (prototype app). Returns the file validation summary."""
     ftype = file_rec["detected_type"]
-    pid = project["id"]
     if ftype in ("pdf", "png", "jpeg"):
-        return {
-            "status": "stored_reference_only",
-            "message": (
-                "Stored as a reference drawing. Automatic geometry extraction from PDF/image plans is not supported in "
-                "this build, and an image is not georeferenced: no areas are calculated from it. To analyse this design, "
-                "export the plan as GeoJSON or DXF (with its EPSG code)."
-            ),
-            "features_extracted": 0,
-        }
+        return dict(REFERENCE_ONLY)
+    out = extract_features(project, file_rec["id"], ftype, content, file_rec["storage_path"], declared_epsg)
+    for r in out["records"]:
+        db.insert("features", r)
+    return {**out["summary"], "quality": geometry_quality(project["id"])}
+
+
+def extract_features(project: dict, file_id: str | None, ftype: str, content: bytes, path: str | None, declared_epsg: str | None) -> dict:
+    """Database-free extraction: {"records": feature records, "summary": validation summary}.
+    `project` needs latitude and longitude; `path` is required for DXF (ezdxf reads from disk)."""
+    pid = project.get("id")
+    if ftype in ("pdf", "png", "jpeg"):
+        return {"records": [], "summary": dict(REFERENCE_ONLY)}
     if ftype == "geojson":
         raw, notes, src_crs = parse_geojson(content, declared_epsg)
         items = [(g, p, ref, None) for g, p, ref in raw]
+        meta: dict = {"units_unconfirmed": False, "skipped_entities": {}}
     elif ftype == "dxf":
-        items, notes, src_crs = parse_dxf(file_rec["storage_path"], declared_epsg)
+        if not path:
+            raise PlanError("A DXF file must be read from disk; no file path was given.")
+        items, notes, src_crs, meta = parse_dxf(path, declared_epsg)
     else:
         raise PlanError(f"{ftype.upper()} is not a plan format.")
     if not items:
@@ -266,13 +342,17 @@ def import_plan(project: dict, file_rec: dict, content: bytes, declared_epsg: st
     for geom, props, ref, layer in items:
         g_wgs = geo.reproject(geom, src_crs, geo.WGS84)
         fixed, reason = geo.repair(g_wgs)
-        rec = _feature_record(pid, file_rec["id"], fixed, props, ref, layer)
+        rec = _feature_record(pid, file_id, fixed, props, ref, layer)
         if reason:
             rec["correction_history"][0]["issues"].append(f"Invalid geometry repaired automatically ({reason}); review the shape.")
             rec["review_status"] = "needs_review"
         if rec["feature_type"] in AREA_TYPES and fixed.geom_type in ("LineString", "MultiLineString"):
             rec["correction_history"][0]["issues"].append("An area feature type was assigned to an open line; it cannot contribute area until corrected.")
             rec["review_status"] = "needs_review"
+        if meta["units_unconfirmed"]:
+            rec["attributes"]["units_unconfirmed"] = True
+            rec["review_status"] = "needs_review"
+            rec["correction_history"][0]["issues"].append("Drawing units are not declared; confirm they are metres before areas are used.")
         if geo.to_local(fixed, local).distance(site_pt) > 5000:
             far += 1
             rec["review_status"] = "needs_review"
@@ -282,22 +362,21 @@ def import_plan(project: dict, file_rec: dict, content: bytes, declared_epsg: st
         raise PlanError(
             "All features are more than 5 km from the project location. The CRS is probably wrong, or the plan belongs to another site."
         )
-    for r in records:
-        db.insert("features", r)
     by_type: dict[str, int] = {}
     for r in records:
         by_type[r["feature_type"]] = by_type.get(r["feature_type"], 0) + 1
-    quality = geometry_quality(pid)
-    return {
+    return {"records": records, "summary": {
         "status": "extracted",
         "source_crs": src_crs,
         "features_extracted": len(records),
         "by_type": by_type,
         "needs_review": sum(1 for r in records if r["review_status"] == "needs_review"),
         "notes": notes + issues,
-        "quality": quality,
+        "units_unconfirmed": meta["units_unconfirmed"],
+        "skipped_entities": meta["skipped_entities"],
+        "quality": geometry_quality_for(records, project),
         "enabled_analyses": enabled_by_geometry(by_type, records),
-    }
+    }}
 
 
 def enabled_by_geometry(by_type: dict, records: list[dict]) -> list[str]:
@@ -319,8 +398,11 @@ def active_features(project_id: str) -> list[dict]:
 
 def geometry_quality(project_id: str) -> dict:
     """Geometry-quality report: invalid, overlapping and unreviewed features (FR-02 step 6)."""
-    feats = active_features(project_id)
-    project = db.get("projects", project_id)
+    return geometry_quality_for(active_features(project_id), db.get("projects", project_id))
+
+
+def geometry_quality_for(feats: list[dict], project: dict) -> dict:
+    """Database-free core of geometry_quality. `project` needs latitude, longitude and optional boundary."""
     local = geo.utm_crs_for(project["latitude"], project["longitude"])
     buildings = [(f["id"], geo.to_local(shape(f["geometry"]), local)) for f in feats if f["feature_type"] == "building" and shape(f["geometry"]).geom_type in ("Polygon", "MultiPolygon")]
     overlaps = []
@@ -357,8 +439,33 @@ def geometry_quality(project_id: str) -> dict:
         "building_overlaps": overlaps,
         "outside_site": outside,
         "buildings_without_height": [f["id"] for f in feats if f["feature_type"] == "building" and "height_m" not in (f["attributes"] or {})],
+        "units_unconfirmed": [f["id"] for f in feats if (f["attributes"] or {}).get("units_unconfirmed")],
         "boundary_conflict": boundary_conflict,
     }
+
+
+def deactivate_features(feats: list[dict], user: dict, reason: str) -> int:
+    """Deactivate features (kept in the database and history, never deleted)."""
+    for f in feats:
+        history = list(f.get("correction_history") or [])
+        history.append({"at": db.now(), "by": user["id"], "event": "deactivated", "reason": reason})
+        db.update("features", "id", f["id"], {"active": 0, "correction_history": history})
+    return len(feats)
+
+
+def confirm_units(file_rec: dict, user: dict) -> dict:
+    """The user confirms that an undeclared-unit DXF is drawn in metres; recorded on every affected feature."""
+    feats = db.select("features", "file_id = ?", [file_rec["id"]])
+    affected = [f for f in feats if (f["attributes"] or {}).get("units_unconfirmed")]
+    if not affected:
+        raise PlanError("This file has no features with unconfirmed drawing units.")
+    for f in affected:
+        attrs = {k: v for k, v in f["attributes"].items() if k != "units_unconfirmed"}
+        attrs["units_source"] = "user confirmed drawing units are metres"
+        history = list(f.get("correction_history") or [])
+        history.append({"at": db.now(), "by": user["id"], "event": "units_confirmed_metres"})
+        db.update("features", "id", f["id"], {"attributes": attrs, "correction_history": history})
+    return {"confirmed": len(affected)}
 
 
 def correct_feature(feature: dict, user: dict, changes: dict) -> dict:

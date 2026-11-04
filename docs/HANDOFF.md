@@ -1,0 +1,155 @@
+# URBANOVA analysis engine — handoff to the backend team
+
+This repository hands over the **analysis side** of URBANOVA Phase 1 as one component, `urbanova.engine`. It turns a site, designs, verified planning rules and unit rates into metrics, findings, recommendations, map layers and a scenario comparison, each with full provenance.
+
+**What the engine is not:**
+
+* It is not a web service, user system, database or UI. Those belong to the backend platform (decision C3, `docs/DECISIONS.md` §0).
+* It is not production-validated. Read §8 before relying on any result.
+
+| Owned by the backend team | Owned by data science (this repository) |
+|---|---|
+| Users, authentication, roles, organisations, SSO | Analysis methods, thresholds and their status (`urbanova/config/rules.json`) |
+| Projects, file storage, database (e.g. PostGIS), result storage | Data sources, access routes and licence records (`urbanova/config/providers.json`) |
+| Job queue, retries, timeouts at job level, scaling | Input validation of analysis requests; provider retries and caching inside a call |
+| Product UI, maps, report presentation, notifications, billing, admin | Recommendation templates (`urbanova/config/recommendations.json`) and the result contract |
+| Security hardening, rate limiting, secrets management, monitoring | Validation evidence (`docs/VALIDATION.md`) and method documentation (`docs/METHODOLOGY.md`) |
+
+## 1. Install
+
+You need Python 3.11. The engine needs no API keys.
+
+```bash
+pip install "urbanova @ git+https://github.com/Urbanoova/urbanova-1.1"   # engine only
+pip install "urbanova[app,test] @ git+https://github.com/Urbanoova/urbanova-1.1"   # + prototype demo app and tests
+```
+
+The exact tested versions are in `requirements.txt`. On Linux, macOS and Windows, `rasterio` installs from wheels that include GDAL.
+
+## 2. Use
+
+```python
+from urbanova.engine import analyse, extract_plan, extract_rules, EngineInputError
+
+plan = extract_plan("plan.dxf", dxf_bytes, {"latitude": 30.12, "longitude": 31.85}, epsg="32636")
+rules = extract_rules("conditions.pdf", pdf_bytes)            # English or Arabic text-layer PDFs
+result = analyse(request_dict, output_dir="/var/urbanova/results/<request-id>")
+```
+
+The command-line runner is useful from other languages and for trying the engine out:
+
+```bash
+python -m urbanova.engine analyse examples/engine_request_sample.json --out out/ --result out/result.json
+```
+
+```bash
+python -m urbanova.engine extract-plan plan.dxf --lat 30.12 --lon 31.85 --epsg 32636
+```
+
+```bash
+python -m urbanova.engine extract-rules conditions.pdf
+```
+
+```bash
+python -m urbanova.engine validate out/result.json
+```
+
+```bash
+python -m urbanova.engine schema --out schemas/
+```
+
+Exit codes: 0 success, 2 invalid input (the errors are printed as JSON), 1 unexpected error.
+
+## 3. Integration flow
+
+1. **Plan upload.** Call `extract_plan()` with the uploaded GeoJSON or DXF. Show the returned features to a person to review: `review_status`, `classification_confidence`, `issues` and the quality report (overlaps, features outside the site, buildings without heights).
+   * A DXF without declared units returns `units_unconfirmed`. `analyse()` refuses those features until a person confirms the drawing is in metres. On confirmation, drop the flag.
+   * PDF and image plans are reference-only (decision C3).
+2. **Planning documents.** Call `extract_rules()`. Every candidate keeps its exact wording and page. Low-confidence candidates carry English notes explaining why (decimal comma, reversed Arabic text, basement floors, advisory wording, conflicts).
+   * A person verifies or rejects each one. Only verified rules go into `analyse()`.
+   * Send the count of unverified candidates, and any conflicting plot areas that are still unresolved.
+3. **Unit rates.** Use quoted rates only. The engine never invents a price; quantities without a rate come back as `price_required`.
+4. **Designs.** Send one baseline (the original design) and up to 5 alternatives. All designs in one request share the same site data and settings (D4), so a comparison in the same request is like-for-like.
+5. **Analyse.** Call `analyse()` in a background worker, not in a web request. With live data it takes about 1–2 minutes for two designs, mostly network time.
+6. **Store and present** the result. Map layers are PNG overlays in Web Mercator with WGS 84 bounds, or GeoJSON, plus analysis-grade GeoTIFFs in local UTM. All are referenced by paths relative to `output_dir`.
+   * Show every dataset's `attribution`, which the licences require.
+   * Show `approval_label`, the `limitations`, and any finding whose threshold status is `provisional_not_approved` *as provisional*.
+
+## 4. The contract
+
+The contract is defined in `urbanova/engine/contract.py` and exported as JSON Schema (`schemas/analysis_request.schema.json`, `schemas/analysis_result.schema.json`). A test fails if the exported schemas fall out of date. `contract_version` is `1.0`: a breaking change raises the major number, and an addition raises the minor.
+
+Rules the UI must respect:
+
+* **Missing is never zero.** A metric has a value only when `state` is `available`. Otherwise `value` is null and `reason` says why: unknown, unavailable, blocked, invalid or not_applicable.
+* **`output_kind`** says what a value is: observed, reanalysis, calculated, classified, modelled or user_provided. Show it.
+* **Findings:**
+  * `severity` comes from a stated rule. Provisional bands are capped at *moderate* (the band level is kept in `threshold.band_level`).
+  * `affected_area` says where a finding applies. Regional climate findings have no geometry and must not be drawn on the site.
+* **Module outcomes:** every module reports `completed`, `partial`, `blocked`, `unavailable`, `failed` or `skipped`, with a reason. A provider outage **never** raises; it is reported per module. `shared_across_designs` marks site results reused for a second design.
+* **Reproducibility:**
+  * `input_fingerprint` is identical for identical inputs, ignoring `request_id`.
+  * `analysis_version` changes whenever a method changes. Treat results with a different version as out of date and never compare them.
+* **Invalid input** raises `EngineInputError`, whose `.errors` is a list of `{"loc": [...], "msg": "..."}` entries. Map it to HTTP 422 and show the messages.
+
+## 5. Configuration and operations
+
+| Environment variable | Purpose | Default |
+|---|---|---|
+| `URBANOVA_DATA_DIR` | Provider response cache (`cache/`) | `./data` in a source checkout, `~/.urbanova` when installed |
+| `URBANOVA_CONFIG_DIR` | Use a reviewed copy of `providers.json`, `rules.json`, `recommendations.json` | the copy inside the package |
+| `URBANOVA_USAGE_CONTEXT` | `non_commercial_evaluation` or `commercial`. Commercial mode refuses Open-Meteo's free tier and sources whose commercial terms are unverified | `non_commercial_evaluation` |
+| `OPEN_METEO_API_KEY` | Open-Meteo customer endpoint for commercial use (server-side only; never logged or cached) | unset |
+| `URBANOVA_OFFLINE` | `1` = never call providers; analyses report *unavailable* | `0` |
+| `URBANOVA_HTTP_TIMEOUT_S`, `URBANOVA_HTTP_MAX_RETRIES` | HTTP client defaults (Overpass has its own 75 s timeout in the registry) | 45, 3 |
+
+**Concurrency:** `analyse()` can run in parallel threads or processes. Provenance is collected per call (context variable), and the file cache is protected per key. Give each call its own `output_dir`.
+
+**Outbound network access** needed with default settings:
+
+* `archive-api.open-meteo.com`, and `customer-archive-api.open-meteo.com` with a key;
+* `power.larc.nasa.gov`;
+* `overpass-api.de`;
+* `planetarycomputer.microsoft.com`;
+* `*.blob.core.windows.net` (satellite image files).
+
+**Production load:**
+
+* Overpass must be an own instance or a regional extract (registry note).
+* The Planetary Computer terms must be reviewed before commercial use (decision C1).
+
+**Safety:** uploaded files are parsed, never executed. Requests are limited to 6 designs, 5,000 features per design and a bounded vertex count. Secrets come from the environment only.
+
+## 6. Testing
+
+```bash
+python -m pytest
+```
+
+This runs offline in about 30 s with mocked providers. It covers the FR acceptance tests, the remediation regressions, the engine contract, input validation, the database-free path, D4 sharing, and Arabic extraction.
+
+Live checks (need internet):
+
+* `scripts/smoke.py`: the prototype app end to end;
+* `scripts/validate_climate_ghcn.py`;
+* `scripts/plausibility_satellite.py`;
+* `scripts/validate_real_geometry.py`.
+
+The results of the last run are in `docs/VERIFICATION.md` and `docs/VALIDATION.md`.
+
+## 7. The prototype app
+
+`urbanova/api.py`, `web/` and `run.ps1` are a reference demo: FastAPI, SQLite, local accounts and a Leaflet UI. It uses the same engine core (`urbanova.engine.core.run_design`), so it shows exactly what the engine computes. It is **not** the integration target: its accounts, storage and UI are prototype-level. `report.py` contains a reference HTML/PDF report layout (FR-33, 14 sections) that the product report can follow.
+
+## 8. Known limitations and open items
+
+* **Evidence:** results come from synthetic samples, real OSM geometry, and station and land-cover checks (`docs/VALIDATION.md`). **No real project has been validated** (D2 open). In particular there has been no real CAD export, no real Arabic planning document and no scanned page.
+* **Thresholds:** severity thresholds marked provisional are not approved (decision C2).
+* **Climate data:** ERA5 minimum temperatures were 1.5–2.2 °C warmer than two Egyptian stations, so tropical-night counts can be overstated. This is stated on every climate result.
+* **Licensing:** commercial use is not cleared (decision C1).
+* **Not in Phase 1:**
+  * OCR of scanned documents;
+  * PDF or image plan digitising;
+  * temperature or comfort prediction from a design;
+  * population and air quality analyses;
+  * generative-AI explanations.

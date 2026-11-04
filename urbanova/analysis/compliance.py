@@ -8,9 +8,9 @@ from ..settings import load_config
 from .common import BLOCKED, COMPLETED, PARTIAL, Context, result
 
 
-def plot_area_status(project: dict, rules: dict, site_area: float | None, tolerance_pct: float) -> dict:
+def plot_area_status(project: dict, rules: dict, site_area: float | None, tolerance_pct: float, ambiguities: list[dict]) -> dict:
     """Is the area denominator for ratio checks settled? (acceptance test 'Conflicting plot areas')."""
-    ambiguities = [a for a in documents.unresolved_ambiguities(project["id"]) if a["rule_type"] == "plot_area_m2"]
+    ambiguities = [a for a in ambiguities if a["rule_type"] == "plot_area_m2"]
     if ambiguities:
         return {"ok": False, "reason": "The planning document states conflicting plot areas (" + ", ".join(f"{v:,.0f} m²" for v in ambiguities[0]["values"]) + "). Verify the correct figure on the Planning rules screen before ratio checks are run."}
     stated = rules.get("plot_area_m2")
@@ -22,7 +22,7 @@ def plot_area_status(project: dict, rules: dict, site_area: float | None, tolera
 
 
 def run(ctx: Context) -> dict:
-    rules = documents.verified_rules(ctx.project["id"])
+    rules = ctx.rules.get("verified") or {}
     cfg = load_config("rules.json")
     checks_cfg = cfg["planning_checks"]
     checkable = {k: r for k, r in rules.items() if k in checks_cfg}
@@ -33,7 +33,7 @@ def run(ctx: Context) -> dict:
     if not uf:
         return result(BLOCKED, reason="Urban-form indicators are unavailable (no design geometry), so verified rules cannot be checked.", details={"checks": []})
     site_area = uf.get("site_area_m2", {}).get("value")
-    area_status = plot_area_status(ctx.project, rules, site_area, cfg["plot_area_tolerance_pct"])
+    area_status = plot_area_status(ctx.project, rules, site_area, cfg["plot_area_tolerance_pct"], ctx.rules.get("ambiguities") or [])
     checks, metrics = [], []
     for rtype, rule in checkable.items():
         spec = documents.RULE_TYPES[rtype]
@@ -53,7 +53,7 @@ def run(ctx: Context) -> dict:
                          label_result=("Passes the configured geometric check" if passes else "Does not meet the verified rule") + " (not a statutory approval)")
         checks.append(check)
     ctx.shared["compliance_checks"] = checks
-    unverified = db_unverified(ctx.project["id"])
+    unverified = int(ctx.rules.get("unverified_count") or 0)
     warnings = []
     if unverified:
         warnings.append(f"{unverified} candidate rule(s) are still unverified and were not applied.")
@@ -61,8 +61,3 @@ def run(ctx: Context) -> dict:
     return result(status, metrics=metrics, warnings=warnings, details={"checks": checks, "plot_area": area_status},
                   limitations=["Results are labelled as geometric checks against user-verified rules; URBANOVA does not grant statutory approval."])
 
-
-def db_unverified(project_id: str) -> int:
-    from .. import db
-
-    return len(db.select("rules", "project_id = ? AND status = 'candidate'", [project_id]))

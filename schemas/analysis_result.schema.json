@@ -1,0 +1,876 @@
+{
+  "$defs": {
+    "Dataset": {
+      "additionalProperties": true,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "source_id": {
+          "title": "Source Id",
+          "type": "string"
+        },
+        "dataset_type": {
+          "title": "Dataset Type",
+          "type": "string"
+        },
+        "data_nature": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Data Nature"
+        },
+        "approval_status": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Approval Status"
+        },
+        "approval_label": {
+          "title": "Approval Label",
+          "type": "string"
+        },
+        "terms_confirmed": {
+          "title": "Terms Confirmed",
+          "type": "boolean"
+        },
+        "license": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "License"
+        },
+        "attribution": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Attribution"
+        }
+      },
+      "required": [
+        "id",
+        "source_id",
+        "dataset_type",
+        "data_nature",
+        "approval_status",
+        "approval_label",
+        "terms_confirmed",
+        "license",
+        "attribution"
+      ],
+      "title": "Dataset",
+      "type": "object"
+    },
+    "DesignResult": {
+      "properties": {
+        "design_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "None for a site-only analysis.",
+          "title": "Design Id"
+        },
+        "design_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Design Name"
+        },
+        "kind": {
+          "anyOf": [
+            {
+              "enum": [
+                "baseline",
+                "alternative"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Kind"
+        },
+        "status": {
+          "enum": [
+            "succeeded",
+            "partially_succeeded",
+            "failed"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "modules": {
+          "additionalProperties": {
+            "$ref": "#/$defs/ModuleOutcome"
+          },
+          "title": "Modules",
+          "type": "object"
+        },
+        "metrics": {
+          "items": {
+            "$ref": "#/$defs/Metric"
+          },
+          "title": "Metrics",
+          "type": "array"
+        },
+        "findings": {
+          "items": {
+            "$ref": "#/$defs/Finding"
+          },
+          "title": "Findings",
+          "type": "array"
+        },
+        "recommendations": {
+          "items": {
+            "$ref": "#/$defs/Recommendation"
+          },
+          "title": "Recommendations",
+          "type": "array"
+        },
+        "layers": {
+          "items": {
+            "$ref": "#/$defs/Layer"
+          },
+          "title": "Layers",
+          "type": "array"
+        },
+        "objectives": {
+          "items": {
+            "$ref": "#/$defs/ObjectiveAnswer"
+          },
+          "title": "Objectives",
+          "type": "array"
+        },
+        "warnings": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Warnings",
+          "type": "array"
+        }
+      },
+      "required": [
+        "design_id",
+        "design_name",
+        "kind",
+        "status",
+        "modules",
+        "metrics",
+        "findings",
+        "recommendations",
+        "layers",
+        "objectives",
+        "warnings"
+      ],
+      "title": "DesignResult",
+      "type": "object"
+    },
+    "Finding": {
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "category": {
+          "title": "Category",
+          "type": "string"
+        },
+        "classification": {
+          "enum": [
+            "environmental_indicator",
+            "potential_environmental_concern",
+            "planning_rule_check",
+            "data_quality_issue",
+            "modelled_outcome"
+          ],
+          "title": "Classification",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "summary": {
+          "title": "Summary",
+          "type": "string"
+        },
+        "severity": {
+          "enum": [
+            "high",
+            "moderate",
+            "low",
+            "info"
+          ],
+          "title": "Severity",
+          "type": "string"
+        },
+        "severity_rule": {
+          "title": "Severity Rule",
+          "type": "string"
+        },
+        "affected_area": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Affected Area"
+        },
+        "geometry": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Geometry"
+        },
+        "rule_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Rule Id"
+        },
+        "threshold": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Includes status 'provisional_not_approved' for unapproved bands; such findings never exceed 'moderate'.",
+          "title": "Threshold"
+        },
+        "evidence": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Evidence",
+          "type": "array"
+        },
+        "sources": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Sources",
+          "type": "array"
+        },
+        "confidence": {
+          "title": "Confidence",
+          "type": "string"
+        },
+        "limitations": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Limitations",
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "category",
+        "classification",
+        "title",
+        "summary",
+        "severity",
+        "severity_rule",
+        "affected_area",
+        "geometry",
+        "rule_id",
+        "threshold",
+        "evidence",
+        "sources",
+        "confidence",
+        "limitations"
+      ],
+      "title": "Finding",
+      "type": "object"
+    },
+    "Layer": {
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "module": {
+          "title": "Module",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "layer_kind": {
+          "title": "Layer Kind",
+          "type": "string"
+        },
+        "output_kind": {
+          "enum": [
+            "observed",
+            "reanalysis",
+            "calculated",
+            "classified",
+            "modelled",
+            "user_provided"
+          ],
+          "title": "Output Kind",
+          "type": "string"
+        },
+        "file": {
+          "description": "Path relative to the output directory (PNG overlay in Web Mercator, or GeoJSON).",
+          "title": "File",
+          "type": "string"
+        },
+        "bounds": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "type": "number"
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "WGS 84 south/west/north/east of a raster overlay.",
+          "title": "Bounds"
+        },
+        "legend": {
+          "default": null,
+          "title": "Legend"
+        },
+        "meta": {
+          "additionalProperties": true,
+          "description": "geotiff: relative path of the analysis-grade GeoTIFF in the local UTM CRS, when produced.",
+          "title": "Meta",
+          "type": "object"
+        }
+      },
+      "required": [
+        "id",
+        "module",
+        "name",
+        "layer_kind",
+        "output_kind",
+        "file"
+      ],
+      "title": "Layer",
+      "type": "object"
+    },
+    "Metric": {
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "metric_name": {
+          "title": "Metric Name",
+          "type": "string"
+        },
+        "label": {
+          "title": "Label",
+          "type": "string"
+        },
+        "module": {
+          "title": "Module",
+          "type": "string"
+        },
+        "state": {
+          "description": "Missing values are never 0: a value is present only when state is 'available'.",
+          "enum": [
+            "available",
+            "unknown",
+            "unavailable",
+            "invalid",
+            "blocked",
+            "not_applicable"
+          ],
+          "title": "State",
+          "type": "string"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Value"
+        },
+        "unit": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Unit"
+        },
+        "reason": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Why the value is not available.",
+          "title": "Reason"
+        },
+        "output_kind": {
+          "enum": [
+            "observed",
+            "reanalysis",
+            "calculated",
+            "classified",
+            "modelled",
+            "user_provided"
+          ],
+          "title": "Output Kind",
+          "type": "string"
+        },
+        "method": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Method"
+        },
+        "design_dependent": {
+          "title": "Design Dependent",
+          "type": "integer"
+        },
+        "source_dataset_ids": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Source Dataset Ids",
+          "type": "array"
+        },
+        "quality": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Quality"
+        },
+        "uncertainty": {
+          "default": null,
+          "title": "Uncertainty"
+        },
+        "extra": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Extra"
+        }
+      },
+      "required": [
+        "id",
+        "metric_name",
+        "label",
+        "module",
+        "state",
+        "value",
+        "unit",
+        "output_kind",
+        "method",
+        "design_dependent"
+      ],
+      "title": "Metric",
+      "type": "object"
+    },
+    "ModuleOutcome": {
+      "properties": {
+        "status": {
+          "enum": [
+            "completed",
+            "partial",
+            "blocked",
+            "unavailable",
+            "failed",
+            "skipped"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "label": {
+          "title": "Label",
+          "type": "string"
+        },
+        "reason": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reason"
+        },
+        "warnings": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Warnings",
+          "type": "array"
+        },
+        "limitations": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Limitations",
+          "type": "array"
+        },
+        "details": {
+          "additionalProperties": true,
+          "default": {},
+          "title": "Details",
+          "type": "object"
+        },
+        "provider_failures": {
+          "default": [],
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Provider Failures",
+          "type": "array"
+        },
+        "shared_across_designs": {
+          "default": false,
+          "description": "True when this outcome was computed once for the site and reused for this design.",
+          "title": "Shared Across Designs",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "status",
+        "label"
+      ],
+      "title": "ModuleOutcome",
+      "type": "object"
+    },
+    "ObjectiveAnswer": {
+      "properties": {
+        "objective": {
+          "title": "Objective",
+          "type": "string"
+        },
+        "question": {
+          "title": "Question",
+          "type": "string"
+        },
+        "answerable": {
+          "title": "Answerable",
+          "type": "boolean"
+        },
+        "supported_by": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Supported By",
+          "type": "array"
+        },
+        "not_available": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Not Available",
+          "type": "array"
+        },
+        "explanation": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Explanation"
+        }
+      },
+      "required": [
+        "objective",
+        "question",
+        "answerable"
+      ],
+      "title": "ObjectiveAnswer",
+      "type": "object"
+    },
+    "Recommendation": {
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "finding_id": {
+          "title": "Finding Id",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "problem": {
+          "title": "Problem",
+          "type": "string"
+        },
+        "intervention": {
+          "title": "Intervention",
+          "type": "string"
+        },
+        "expected_direction": {
+          "description": "Direction of impact only; never a quantified prediction.",
+          "title": "Expected Direction",
+          "type": "string"
+        },
+        "required_inputs": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Required Inputs",
+          "type": "array"
+        },
+        "tradeoffs": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Tradeoffs",
+          "type": "array"
+        },
+        "evaluation_method": {
+          "title": "Evaluation Method",
+          "type": "string"
+        },
+        "target": {
+          "additionalProperties": true,
+          "title": "Target",
+          "type": "object"
+        },
+        "review_status": {
+          "title": "Review Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "finding_id",
+        "title",
+        "problem",
+        "intervention",
+        "expected_direction",
+        "required_inputs",
+        "tradeoffs",
+        "evaluation_method",
+        "target",
+        "review_status"
+      ],
+      "title": "Recommendation",
+      "type": "object"
+    }
+  },
+  "properties": {
+    "contract_version": {
+      "title": "Contract Version",
+      "type": "string"
+    },
+    "engine_version": {
+      "title": "Engine Version",
+      "type": "string"
+    },
+    "analysis_version": {
+      "description": "Version of the analysis methods; results with different versions are not comparable.",
+      "title": "Analysis Version",
+      "type": "string"
+    },
+    "request_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Request Id"
+    },
+    "input_fingerprint": {
+      "description": "SHA-256 (16 hex) of the normalised request; identical inputs give an identical fingerprint.",
+      "title": "Input Fingerprint",
+      "type": "string"
+    },
+    "generated_at": {
+      "title": "Generated At",
+      "type": "string"
+    },
+    "usage_context": {
+      "enum": [
+        "non_commercial_evaluation",
+        "commercial"
+      ],
+      "title": "Usage Context",
+      "type": "string"
+    },
+    "status": {
+      "enum": [
+        "succeeded",
+        "partially_succeeded",
+        "failed"
+      ],
+      "title": "Status",
+      "type": "string"
+    },
+    "designs": {
+      "items": {
+        "$ref": "#/$defs/DesignResult"
+      },
+      "title": "Designs",
+      "type": "array"
+    },
+    "datasets": {
+      "items": {
+        "$ref": "#/$defs/Dataset"
+      },
+      "title": "Datasets",
+      "type": "array"
+    },
+    "provider_requests": {
+      "description": "One entry per outbound request or cache hit; secrets are redacted.",
+      "items": {
+        "additionalProperties": true,
+        "type": "object"
+      },
+      "title": "Provider Requests",
+      "type": "array"
+    },
+    "comparison": {
+      "anyOf": [
+        {
+          "additionalProperties": true,
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Comparison"
+    },
+    "warnings": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Warnings",
+      "type": "array"
+    },
+    "limitations": {
+      "description": "Statements that apply to every result of this build (e.g. provisional thresholds).",
+      "items": {
+        "type": "string"
+      },
+      "title": "Limitations",
+      "type": "array"
+    }
+  },
+  "required": [
+    "contract_version",
+    "engine_version",
+    "analysis_version",
+    "request_id",
+    "input_fingerprint",
+    "generated_at",
+    "usage_context",
+    "status",
+    "designs",
+    "datasets",
+    "provider_requests",
+    "comparison",
+    "warnings",
+    "limitations"
+  ],
+  "title": "AnalysisResult",
+  "type": "object"
+}

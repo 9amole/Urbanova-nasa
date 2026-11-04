@@ -7,3 +7,6 @@ data/
 .env.*
 !.env.example
 .claude/
+build/
+dist/
+*.egg-info/

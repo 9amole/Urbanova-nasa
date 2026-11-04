@@ -4,9 +4,23 @@ Evidence-based environmental decision support for a development site: create a p
 
 This is a **clean rebuild** of Phase 1 against `URBANOVA_Phase_1_Functional_Requirements_Integrated.md`. The earlier prototype (`../urbanova`) is untouched and remains available for reference — see [docs/DECISIONS.md](docs/DECISIONS.md) §1 for why it was not extended and what was carried forward.
 
-> Status: **Phase 1 prototype for supervisor review — not production-ready.** The satellite access route was approved by the project owner on 2026-11-01 (supervisor confirmation still recommended); several severity thresholds are provisional. See [docs/VERIFICATION.md](docs/VERIFICATION.md) and the open decisions in [docs/DECISIONS.md](docs/DECISIONS.md).
+> Status: **Phase 1 analysis engine, ready for backend integration — not production-validated.** Phase C decisions were taken on 2026-11-04 ([docs/DECISIONS.md](docs/DECISIONS.md) §0). Several severity thresholds stay provisional and no real project has been validated yet. See [docs/VERIFICATION.md](docs/VERIFICATION.md) and [docs/VALIDATION.md](docs/VALIDATION.md).
 
-## Quick start (Windows, Python 3.11)
+## For the backend team
+
+Start with **[docs/HANDOFF.md](docs/HANDOFF.md)**. The integration component is `urbanova.engine`: JSON in, JSON out, with no database, web framework or accounts. The contract is in `schemas/`, and an example request is `examples/engine_request_sample.json`.
+
+```bash
+pip install -e ".[app,test]"
+```
+
+```bash
+python -m urbanova.engine analyse examples/engine_request_sample.json --out out/ --result out/result.json
+```
+
+The web app described below is a **reference demo** built on the same engine core. It is not the integration target.
+
+## Prototype demo app: quick start (Windows, Python 3.11)
 
 ```powershell
 .\run.ps1 setup      # creates .venv and installs pinned requirements
@@ -50,14 +64,14 @@ Heat Analysis (the primary analysis, Module 5) is built from three parts:
 
 Vegetation (Sentinel-2 NDVI) uses the same mirror and is enabled under the same approval. If a site covers fewer than 9 native 100 m thermal pixels (under about 9 ha, like the 4 ha sample), the LST module completes *with limitations* and warns that site values are dominated by mixed pixels.
 
-The build does **not** predict air-temperature or comfort changes from a design: no validated model is available in Phase 1 (FR §1 boundaries, FR-18, FR-23). Severity bands marked **provisional — not approved** in `config/rules.json` are shown as such wherever a finding appears.
+The build does **not** predict air-temperature or comfort changes from a design: no validated model is available in Phase 1 (FR §1 boundaries, FR-18, FR-23). Severity bands marked **provisional — not approved** in `urbanova/config/rules.json` are shown as such wherever a finding appears.
 
 ## Data sources, approval and licences
 
-`config/providers.json` records every provider with an `approval_status`. A provider is called only when it is implemented, enabled, and `fr_recommended`, `fr_required` or `approved`:
+`urbanova/config/providers.json` records every provider with an `approval_status`. A provider is called only when it is implemented, enabled, and `fr_recommended`, `fr_required` or `approved`:
 
 * `fr_recommended` — named in the FR as a recommended integration (Open-Meteo, NASA POWER, OSM Overpass). Used for non-commercial evaluation; the team must still confirm the terms (FR-09).
-* `approved` — recorded with `approved_by` and `approved_on`. The Planetary Computer access route for Landsat and Sentinel-2 is not named in the FR; the project owner approved it on 2026-11-01. Supervisor confirmation is still recommended before release.
+* `approved` — recorded with `approved_by` and `approved_on`. The Planetary Computer access route for Landsat and Sentinel-2 is not named in the FR; the project owner approved it on 2026-11-01. Supervisor confirmation is pending (`supervisor_confirmed: false`) and its commercial-use terms are unverified, so results label it "supervisor confirmation pending; commercial-use terms unverified" and the commercial licence context does not use it.
 * `pending_supervisor_approval` — never called. Any future source outside the FR starts here.
 
 **Open-Meteo free tier is non-commercial only.** It affects the prototype as follows:
@@ -79,17 +93,23 @@ The team must also confirm the licence of every other source (Overpass fair use,
 ## Repository layout
 
 ```
-urbanova/            backend package
-  api.py             REST API (/api/v1) + static UI
-  projects.py geo.py security.py files.py plans.py documents.py
-  providers/         adapters: weather (Open-Meteo, NASA POWER), osm (Overpass), satellite (STAC/COG), base (retry, cache, logging)
-  analysis/          climate, context, urban_form, surface_heat, vegetation, solar, compliance
-  readiness.py orchestrator.py findings.py scenarios.py comparison.py cost.py explain.py report.py supplementary.py catalog.py values.py
-config/              providers.json (registry), rules.json (thresholds + justification), recommendations.json
-web/                 index.html, app.js, styles.css (no build step; Leaflet 1.9.4 from unpkg with SRI)
-samples/             synthetic demo inputs     scripts/  make_samples.py, smoke.py (live end-to-end)
-tests/               acceptance tests mapped to FR §17 and B.7
-docs/                REQUIREMENTS_TRACEABILITY.md, DECISIONS.md, METHODOLOGY.md, VERIFICATION.md
+urbanova/                 Python package
+  engine/                 INTEGRATION COMPONENT: api.py (analyse, extract_plan, extract_rules), contract.py (JSON contract),
+                          core.py (runs the modules; shared by the demo app), __main__.py (command line)
+  analysis/               climate, context, urban_form, surface_heat, vegetation, solar, compliance
+  providers/              adapters: weather (Open-Meteo, NASA POWER), osm (Overpass), satellite (STAC/COG), base (retry, cache, logging)
+  config/                 providers.json (registry + licence decisions), rules.json (thresholds + status), recommendations.json
+  plans.py documents.py findings.py comparison.py cost.py geo.py values.py recording.py catalog.py explain.py
+  api.py orchestrator.py db.py security.py projects.py scenarios.py report.py ...   prototype demo app (reference only)
+schemas/                  analysis_request.schema.json, analysis_result.schema.json (generated from engine/contract.py)
+examples/                 engine_request_sample.json (synthetic)
+validation/               results of the D2/D3 checks (see docs/VALIDATION.md)
+web/                      demo UI: index.html, app.js, styles.css (no build step; Leaflet 1.9.4 from unpkg with SRI)
+samples/                  synthetic demo inputs
+scripts/                  make_samples.py, make_engine_example.py, smoke.py (live demo), validate_climate_ghcn.py,
+                          plausibility_satellite.py, validate_real_geometry.py
+tests/                    FR §17 acceptance, remediation regressions, engine contract, Arabic extraction
+docs/                     HANDOFF.md, DECISIONS.md, VALIDATION.md, VERIFICATION.md, METHODOLOGY.md, REQUIREMENTS_TRACEABILITY.md
 ```
 
 Runtime data (SQLite database, uploads, provider cache, outputs) lives in `./data` (git-ignored).

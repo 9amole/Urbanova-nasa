@@ -96,7 +96,7 @@ CREATE TABLE IF NOT EXISTS findings (
     id TEXT PRIMARY KEY, run_id TEXT NOT NULL, category TEXT NOT NULL, classification TEXT NOT NULL,
     title TEXT NOT NULL, summary TEXT, geometry TEXT, metric_ids TEXT, severity TEXT NOT NULL,
     severity_rule TEXT, rule_id TEXT, threshold TEXT, evidence TEXT, sources TEXT,
-    confidence TEXT, limitations TEXT, created_at TEXT NOT NULL
+    confidence TEXT, limitations TEXT, affected_area TEXT, created_at TEXT NOT NULL
 );
 CREATE TABLE IF NOT EXISTS recommendations (
     id TEXT PRIMARY KEY, run_id TEXT NOT NULL, finding_id TEXT NOT NULL, title TEXT NOT NULL,
@@ -127,6 +127,11 @@ CREATE INDEX IF NOT EXISTS ix_metrics_run ON metrics(run_id);
 CREATE INDEX IF NOT EXISTS ix_findings_run ON findings(run_id);
 CREATE INDEX IF NOT EXISTS ix_datasets_cache ON datasets(cache_key);
 """
+
+# Columns added after the first release: (table, column, type). Applied once to existing databases.
+MIGRATIONS: list[tuple[str, str, str]] = [
+    ("findings", "affected_area", "TEXT"),
+]
 
 # Columns holding JSON documents, decoded automatically on read.
 JSON_COLUMNS: dict[str, set[str]] = {
@@ -174,6 +179,9 @@ def conn() -> sqlite3.Connection:
         with _init_lock:
             if path not in _initialised_for:
                 c.executescript(SCHEMA)
+                for table, column, ctype in MIGRATIONS:
+                    if column not in {r["name"] for r in c.execute(f"PRAGMA table_info({table})")}:
+                        c.execute(f"ALTER TABLE {table} ADD COLUMN {column} {ctype}")
                 c.commit()
                 _initialised_for.add(path)
     return c

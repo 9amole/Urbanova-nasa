@@ -9,7 +9,7 @@ from datetime import date
 from shapely.geometry import shape
 from shapely.ops import unary_union
 
-from . import db, geo
+from . import db, geo, recording
 
 QUANTITY_TYPES = {
     "green_space_added_m2": {"label": "Green space added", "unit": "m2"},
@@ -24,6 +24,10 @@ STALE_PRICE_YEARS = 2
 
 class CostError(ValueError):
     pass
+
+
+def validate_rate(row: dict, line: str = "") -> dict:
+    return _validate_rate(row, line)
 
 
 def _validate_rate(row: dict, line: str = "") -> dict:
@@ -88,7 +92,9 @@ def _quantities(project: dict, fc: dict) -> dict:
     return {"areas": areas, "trees": trees}
 
 
-def estimate(project: dict, baseline: dict, alternative: dict) -> dict:
+def estimate(project: dict, baseline: dict, alternative: dict, rates: list[dict] | None = None) -> dict:
+    """Indicative cost of the alternative vs the baseline. `rates` defaults to the project's stored rates;
+    each rate needs quantity_type, rate, currency, price_date, source and id (validate with validate_rate)."""
     qb, qa = _quantities(project, baseline["features"]), _quantities(project, alternative["features"])
     raw = {
         "green_space_added_m2": qa["areas"]["green_space"] - qb["areas"]["green_space"],
@@ -97,7 +103,10 @@ def estimate(project: dict, baseline: dict, alternative: dict) -> dict:
         "shade_structure_added_m2": qa["areas"]["shade_structure"] - qb["areas"]["shade_structure"],
         "building_footprint_removed_m2": qb["areas"]["building"] - qa["areas"]["building"],
     }
-    rates = db.select("rate_items", "project_id = ?", [project["id"]], order="price_date DESC")
+    if rates is None:
+        rates = db.select("rate_items", "project_id = ?", [project["id"]], order="price_date DESC")
+    else:
+        rates = sorted(rates, key=lambda r: r["price_date"], reverse=True)
     lines, totals, exclusions, warnings = [], {}, [], []
     for qt, qty in raw.items():
         if qty <= 0.5:
@@ -129,5 +138,5 @@ def estimate(project: dict, baseline: dict, alternative: dict) -> dict:
         "exclusions": exclusions + ["Design fees, demolition, utilities, irrigation systems, maintenance, taxes and contingency are excluded unless supplied as rates."],
         "warnings": warnings,
         "label": "Indicative cost estimate from user-supplied rates — not a quotation or bill of quantities.",
-        "estimated_at": db.now(),
+        "estimated_at": recording.now(),
     }

@@ -1,7 +1,9 @@
 """Site and urban-form indicators from scenario geometry (FR-16).
 
-All areas are computed in the project's local UTM zone. Overlapping features of
-one class are unioned so nothing is double counted. Heat-relevant design
+All areas are computed in the project's local UTM zone. Overlapping features are
+unioned within each class, and across classes for combined indicators (green
+space incl. tree canopies; open space incl. green space; hard surface), so an
+overlap is counted once per indicator. Heat-relevant design
 indicators (green share, hard-surface share) are reported as indicators, not as
 predicted temperatures.
 """
@@ -91,9 +93,11 @@ def compute(ctx: Context) -> dict:
             warnings.append(f"{len(road_lines)} road feature(s) are centre-lines without width; they are excluded from road area.")
         m.append(V.metric("road_area_m2", "Road and circulation area (polygons)", round(road, 1), "m²", method=method_area, **dd))
         m.append(V.metric("parking_area_m2", "Parking area", round(parking, 1), "m²", method=method_area, **dd))
-        open_sp = area_of("open_space") or 0.0
-        m.append(V.metric("open_space_pct", "Open-space proportion (designated open space + green space)", round((open_sp + green) / denom * 100, 2), "%",
-                          method=f"(Designated open space + green space) ÷ {denom_label} × 100", **dd))
+        # Union, not sum: a garden inside a plaza or a tree canopy over a courtyard is counted once.
+        open_parts = [g for g, _ in feats.get("open_space", []) if g.geom_type in POLY] + green_parts
+        open_total = unary_union(open_parts).intersection(site_l).area if open_parts else 0.0
+        m.append(V.metric("open_space_pct", "Open-space proportion (designated open space + green space)", round(open_total / denom * 100, 2), "%",
+                          method=f"Union of designated open-space and green-space polygons (overlaps counted once), clipped to the site, ÷ {denom_label} × 100", **dd))
         hard = unary_union([g for t in ("road", "parking") for g, _ in feats.get(t, []) if g.geom_type in POLY] or [Point(0, 0).buffer(0)]).intersection(site_l).area
         m.append(V.metric("hard_surface_pct", "Mapped hard-surface proportion (roads + parking)", round(hard / denom * 100, 2), "%",
                           method=f"Union of road and parking polygons ÷ {denom_label} × 100. Plazas/courtyards with unknown surface material are not counted.", **dd))
@@ -154,6 +158,8 @@ def compute(ctx: Context) -> dict:
 def run(ctx: Context) -> dict:
     if not ctx.scenario or not ctx.scenario.get("features", {}).get("features"):
         return result(BLOCKED, reason="No design geometry. Upload an urban plan (GeoJSON or DXF) and create the baseline scenario.")
+    if any(f["properties"].get("units_unconfirmed") for f in ctx.scenario["features"]["features"]):
+        return result(BLOCKED, reason="The design comes from a DXF drawing whose units are not confirmed, so areas are not reliable. Confirm the units are metres on the Inputs tab.")
     out = compute(ctx)
     ctx.shared["urban_form"] = {mm["metric_name"]: mm for mm in out["metrics"]}
     status = COMPLETED if out["has_boundary"] and not out["warnings"] else PARTIAL

@@ -1,0 +1,592 @@
+{
+ "type": "FeatureCollection",
+ "name": "MOCK NC-01 alternative additions",
+ "features": [
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       31.4829926,
+       29.9955878
+      ],
+      [
+       31.4840291,
+       29.9955998
+      ],
+      [
+       31.4840225,
+       29.9960328
+      ],
+      [
+       31.482986,
+       29.9960209
+      ],
+      [
+       31.4829926,
+       29.9955878
+      ]
+     ]
+    ]
+   },
+   "properties": {
+    "name": "Car park converted to garden",
+    "feature_type": "green_space"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       31.482986,
+       29.9960209
+      ],
+      [
+       31.4840225,
+       29.9960328
+      ],
+      [
+       31.4840184,
+       29.9963034
+      ],
+      [
+       31.4829819,
+       29.9962915
+      ],
+      [
+       31.482986,
+       29.9960209
+      ]
+     ]
+    ]
+   },
+   "properties": {
+    "name": "Reduced car park",
+    "feature_type": "parking"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     31.4811432,
+     29.9972312
+    ]
+   },
+   "properties": {
+    "name": "Walkway tree A1",
+    "feature_type": "tree",
+    "height_m": 7.0,
+    "canopy_radius_m": 4.0
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     31.4814127,
+     29.9972344
+    ]
+   },
+   "properties": {
+    "name": "Walkway tree A2",
+    "feature_type": "tree",
+    "height_m": 7.0,
+    "canopy_radius_m": 4.0
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     31.4816821,
+     29.9972375
+    ]
+   },
+   "properties": {
+    "name": "Walkway tree A3",
+    "feature_type": "tree",
+    "height_m": 7.0,
+    "canopy_radius_m": 4.0
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     31.4819516,
+     29.9972406
+    ]
+   },
+   "properties": {
+    "name": "Walkway tree A4",
+    "feature_type": "tree",
+    "height_m": 7.0,
+    "canopy_radius_m": 4.0
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     31.4822211,
+     29.9972437
+    ]
+   },
+   "properties": {
+    "name": "Walkway tree A5",
+    "feature_type": "tree",
+    "height_m": 7.0,
+    "canopy_radius_m": 4.0
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     31.4824906,
+     29.9972468
+    ]
+   },
+   "properties": {
+    "name": "Walkway tree A6",
+    "feature_type": "tree",
+    "height_m": 7.0,
+    "canopy_radius_m": 4.0
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     31.48276,
+     29.9972499
+    ]
+   },
+   "properties": {
+    "name": "Walkway tree A7",
+    "feature_type": "tree",
+    "height_m": 7.0,
+    "canopy_radius_m": 4.0
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     31.4830295,
+     29.997253
+    ]
+   },
+   "properties": {
+    "name": "Walkway tree A8",
+    "feature_type": "tree",
+    "height_m": 7.0,
+    "canopy_radius_m": 4.0
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     31.483299,
+     29.9972561
+    ]
+   },
+   "properties": {
+    "name": "Walkway tree A9",
+    "feature_type": "tree",
+    "height_m": 7.0,
+    "canopy_radius_m": 4.0
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     31.4835684,
+     29.9972592
+    ]
+   },
+   "properties": {
+    "name": "Walkway tree A10",
+    "feature_type": "tree",
+    "height_m": 7.0,
+    "canopy_radius_m": 4.0
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     31.4838379,
+     29.9972623
+    ]
+   },
+   "properties": {
+    "name": "Walkway tree A11",
+    "feature_type": "tree",
+    "height_m": 7.0,
+    "canopy_radius_m": 4.0
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     31.4811383,
+     29.9975515
+    ]
+   },
+   "properties": {
+    "name": "Walkway tree B1",
+    "feature_type": "tree",
+    "height_m": 7.0,
+    "canopy_radius_m": 4.0
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     31.4814078,
+     29.9975546
+    ]
+   },
+   "properties": {
+    "name": "Walkway tree B2",
+    "feature_type": "tree",
+    "height_m": 7.0,
+    "canopy_radius_m": 4.0
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     31.4816773,
+     29.9975577
+    ]
+   },
+   "properties": {
+    "name": "Walkway tree B3",
+    "feature_type": "tree",
+    "height_m": 7.0,
+    "canopy_radius_m": 4.0
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     31.4819467,
+     29.9975608
+    ]
+   },
+   "properties": {
+    "name": "Walkway tree B4",
+    "feature_type": "tree",
+    "height_m": 7.0,
+    "canopy_radius_m": 4.0
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     31.4822162,
+     29.9975639
+    ]
+   },
+   "properties": {
+    "name": "Walkway tree B5",
+    "feature_type": "tree",
+    "height_m": 7.0,
+    "canopy_radius_m": 4.0
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     31.4824857,
+     29.9975671
+    ]
+   },
+   "properties": {
+    "name": "Walkway tree B6",
+    "feature_type": "tree",
+    "height_m": 7.0,
+    "canopy_radius_m": 4.0
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     31.4827552,
+     29.9975702
+    ]
+   },
+   "properties": {
+    "name": "Walkway tree B7",
+    "feature_type": "tree",
+    "height_m": 7.0,
+    "canopy_radius_m": 4.0
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     31.4830246,
+     29.9975733
+    ]
+   },
+   "properties": {
+    "name": "Walkway tree B8",
+    "feature_type": "tree",
+    "height_m": 7.0,
+    "canopy_radius_m": 4.0
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     31.4832941,
+     29.9975764
+    ]
+   },
+   "properties": {
+    "name": "Walkway tree B9",
+    "feature_type": "tree",
+    "height_m": 7.0,
+    "canopy_radius_m": 4.0
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     31.4835636,
+     29.9975795
+    ]
+   },
+   "properties": {
+    "name": "Walkway tree B10",
+    "feature_type": "tree",
+    "height_m": 7.0,
+    "canopy_radius_m": 4.0
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     31.4838331,
+     29.9975826
+    ]
+   },
+   "properties": {
+    "name": "Walkway tree B11",
+    "feature_type": "tree",
+    "height_m": 7.0,
+    "canopy_radius_m": 4.0
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     31.4823175,
+     29.996356
+    ]
+   },
+   "properties": {
+    "name": "Plaza tree 1",
+    "feature_type": "tree",
+    "height_m": 7.0,
+    "canopy_radius_m": 4.0
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     31.4825455,
+     29.9963587
+    ]
+   },
+   "properties": {
+    "name": "Plaza tree 2",
+    "feature_type": "tree",
+    "height_m": 7.0,
+    "canopy_radius_m": 4.0
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     31.4827735,
+     29.9963613
+    ]
+   },
+   "properties": {
+    "name": "Plaza tree 3",
+    "feature_type": "tree",
+    "height_m": 7.0,
+    "canopy_radius_m": 4.0
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     31.4823142,
+     29.9965725
+    ]
+   },
+   "properties": {
+    "name": "Plaza tree 4",
+    "feature_type": "tree",
+    "height_m": 7.0,
+    "canopy_radius_m": 4.0
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     31.4825422,
+     29.9965752
+    ]
+   },
+   "properties": {
+    "name": "Plaza tree 5",
+    "feature_type": "tree",
+    "height_m": 7.0,
+    "canopy_radius_m": 4.0
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     31.4827703,
+     29.9965778
+    ]
+   },
+   "properties": {
+    "name": "Plaza tree 6",
+    "feature_type": "tree",
+    "height_m": 7.0,
+    "canopy_radius_m": 4.0
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       31.482275,
+       29.9964277
+      ],
+      [
+       31.4825237,
+       29.9964306
+      ],
+      [
+       31.4825226,
+       29.9965028
+      ],
+      [
+       31.4822739,
+       29.9964999
+      ],
+      [
+       31.482275,
+       29.9964277
+      ]
+     ]
+    ]
+   },
+   "properties": {
+    "name": "Plaza shade canopy west",
+    "feature_type": "shade_structure",
+    "height_m": 4.0
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       31.4825652,
+       29.9964311
+      ],
+      [
+       31.4828139,
+       29.9964339
+      ],
+      [
+       31.4828128,
+       29.9965061
+      ],
+      [
+       31.4825641,
+       29.9965032
+      ],
+      [
+       31.4825652,
+       29.9964311
+      ]
+     ]
+    ]
+   },
+   "properties": {
+    "name": "Plaza shade canopy east",
+    "feature_type": "shade_structure",
+    "height_m": 4.0
+   }
+  }
+ ]
+}

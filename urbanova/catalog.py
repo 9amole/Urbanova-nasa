@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from . import db
+from . import recording
 from .providers.base import registry
 
 
@@ -17,8 +17,8 @@ def register(project_id: str | None, source_id: str, dataset_type: str, *, acqui
              product_id: str | None = None, original_filename: str | None = None, checksum: str | None = None,
              data_nature: str | None = None, license_: str | None = None, attribution: str | None = None) -> str:
     prov = registry().get(source_id, {})
-    ds_id = db.new_id("dst")
-    db.insert("datasets", {
+    ds_id = recording.new_id("dst")
+    return recording.current().dataset({
         "id": ds_id, "project_id": project_id, "source_id": source_id, "dataset_type": dataset_type,
         "data_nature": data_nature or prov.get("data_nature"), "product_id": product_id,
         "acquisition_method": acquisition_method, "request_params": request_params, "cache_key": cache_key,
@@ -29,9 +29,8 @@ def register(project_id: str | None, source_id: str, dataset_type: str, *, acqui
         "variables": variables, "units": units, "crs": crs,
         "license": license_ or prov.get("license"), "attribution": attribution or prov.get("attribution"),
         "quality": quality or {}, "provenance": provenance or [], "parent_ids": parent_ids or [],
-        "scene_ids": scene_ids or [], "created_at": db.now(),
+        "scene_ids": scene_ids or [], "created_at": recording.now(),
     })
-    return ds_id
 
 
 def public_dataset(d: dict) -> dict:

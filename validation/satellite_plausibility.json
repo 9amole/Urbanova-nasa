@@ -1,0 +1,63 @@
+{
+  "generated_at": "2026-11-04T16:51:51+00:00",
+  "method": "D3 (satellite part): plausibility check of the NDVI and LST outputs on land covers with known behaviour.",
+  "sites": [
+    {
+      "key": "farmland",
+      "label": "Irrigated farmland, Nile Delta (near Tanta)",
+      "latitude": 30.765,
+      "longitude": 31.035,
+      "modules": {
+        "climate_baseline": "completed",
+        "vegetation": "completed",
+        "surface_heat": "partial"
+      },
+      "reasons": {},
+      "ndvi_site_mean": 0.448,
+      "ndvi_surroundings_mean": 0.396,
+      "lst_site_median_c": 37.76,
+      "lst_surroundings_median_c": 37.56,
+      "lst_scenes_used": 6.0
+    },
+    {
+      "key": "water",
+      "label": "Open water, Lake Qarun",
+      "latitude": 29.47,
+      "longitude": 30.65,
+      "modules": {
+        "climate_baseline": "completed",
+        "vegetation": "completed",
+        "surface_heat": "partial"
+      },
+      "reasons": {},
+      "ndvi_site_mean": -0.329,
+      "ndvi_surroundings_mean": -0.316,
+      "lst_site_median_c": 31.47,
+      "lst_surroundings_median_c": 31.37,
+      "lst_scenes_used": 6.0
+    },
+    {
+      "key": "desert",
+      "label": "Bare desert (synthetic sample point)",
+      "latitude": 30.12,
+      "longitude": 31.85,
+      "modules": {
+        "climate_baseline": "completed",
+        "vegetation": "completed",
+        "surface_heat": "partial"
+      },
+      "reasons": {},
+      "ndvi_site_mean": 0.084,
+      "ndvi_surroundings_mean": 0.078,
+      "lst_site_median_c": 53.13,
+      "lst_surroundings_median_c": 52.77,
+      "lst_scenes_used": 6.0
+    }
+  ],
+  "checks": {
+    "ndvi_water_lt_desert_lt_farmland": true,
+    "ndvi_farmland_above_0.2": true,
+    "lst_water_lt_farmland_lt_desert": true
+  },
+  "note": "None means a value was unavailable (for example no clear scene); it is not counted as a pass."
+}

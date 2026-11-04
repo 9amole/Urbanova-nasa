@@ -44,7 +44,12 @@
       "approval_status": "fr_recommended",
       "approval_note": "Named in FR §3 item 2. Free tier is NON-COMMERCIAL only.",
       "caching_permitted": true,
-      "commercial_key_env": "OPEN_METEO_API_KEY"
+      "commercial_key_env": "OPEN_METEO_API_KEY",
+      "confirmation": {
+        "by": "Project decision maker (data science lead)",
+        "on": "2026-11-04",
+        "scope": "Phase 1 non-commercial evaluation and handoff"
+      }
     },
     {
       "id": "nasa_power_daily",
@@ -84,7 +89,12 @@
       "fallback_ids": [],
       "approval_status": "fr_recommended",
       "approval_note": "Named in FR §3 item 1 and A.4.",
-      "caching_permitted": true
+      "caching_permitted": true,
+      "confirmation": {
+        "by": "Project decision maker (data science lead)",
+        "on": "2026-11-04",
+        "scope": "Phase 1 non-commercial evaluation and handoff"
+      }
     },
     {
       "id": "osm_overpass",
@@ -122,7 +132,14 @@
       "fallback_ids": [],
       "approval_status": "fr_recommended",
       "approval_note": "Named in FR §3 item 5. Public Overpass instances are for fair use; heavy/commercial workloads should use an own instance or regional extract.",
-      "caching_permitted": true
+      "caching_permitted": true,
+      "confirmation": {
+        "by": "Project decision maker (data science lead)",
+        "on": "2026-11-04",
+        "scope": "Phase 1 non-commercial evaluation and handoff"
+      },
+      "timeout_s": 75,
+      "timeout_note": "Client timeout 75 s, longer than the [timeout:60] the Overpass query allows the server, so a slow but valid answer is not abandoned."
     },
     {
       "id": "pc_landsat_c2_l2",
@@ -147,7 +164,7 @@
       "usage_limits": "Planetary Computer fair-use; SAS tokens expire after ~1 hour.",
       "license": "Landsat data: public domain (USGS). Planetary Computer terms of use apply to the access service.",
       "attribution": "Landsat Collection 2 courtesy of the U.S. Geological Survey; accessed via Microsoft Planetary Computer",
-      "commercial_use": "permitted",
+      "commercial_use": "unverified",
       "units": {
         "lst": "K (scaled)",
         "lst_output": "°C"
@@ -157,10 +174,15 @@
       "fallback_ids": [],
       "access_note": "The FR names USGS as the source. This build reads the identical USGS Collection 2 product from the Planetary Computer mirror because it needs no credentials. Confirm this access route with the supervisor.",
       "approval_status": "approved",
-      "approval_note": "Access route approved by the project owner for Phase 1 evaluation. The products (USGS Landsat C2 L2 / ESA Sentinel-2 L2A) are named in the FR; the Planetary Computer route is not, so supervisor confirmation is still recommended before release.",
+      "approval_note": "Access route approved by the project owner on 2026-11-01 and confirmed by the project decision maker on 2026-11-04 for Phase 1 non-commercial evaluation (decision C1). The products (USGS Landsat C2 L2 / ESA Sentinel-2 L2A) are named in the FR; the Planetary Computer route is not. Its terms of use have not been reviewed for commercial use, so commercial use stays unverified and the commercial licence context does not use it.",
       "caching_permitted": false,
-      "approved_by": "Project owner (approved in the development session)",
-      "approved_on": "2026-11-01"
+      "approved_by": "Project owner (development session)",
+      "approved_on": "2026-11-01",
+      "confirmation": {
+        "by": "Project decision maker (data science lead)",
+        "on": "2026-11-04",
+        "scope": "Phase 1 non-commercial evaluation and handoff"
+      }
     },
     {
       "id": "pc_sentinel2_l2a",
@@ -186,7 +208,7 @@
       "usage_limits": "Planetary Computer fair-use; SAS tokens expire after ~1 hour.",
       "license": "Copernicus Sentinel data terms (free, full and open)",
       "attribution": "Contains modified Copernicus Sentinel data; accessed via Microsoft Planetary Computer",
-      "commercial_use": "permitted",
+      "commercial_use": "unverified",
       "units": {
         "reflectance": "unitless (DN/10000, minus 1000 offset for processing baseline ≥ 04.00)",
         "ndvi": "unitless"
@@ -196,10 +218,15 @@
       "fallback_ids": [],
       "access_note": "The FR proposes the Copernicus Data Space Ecosystem (account required). This build reads the identical ESA L2A product from the Planetary Computer mirror. A CDSE adapter is not implemented.",
       "approval_status": "approved",
-      "approval_note": "Access route approved by the project owner for Phase 1 evaluation. The products (USGS Landsat C2 L2 / ESA Sentinel-2 L2A) are named in the FR; the Planetary Computer route is not, so supervisor confirmation is still recommended before release.",
+      "approval_note": "Access route approved by the project owner on 2026-11-01 and confirmed by the project decision maker on 2026-11-04 for Phase 1 non-commercial evaluation (decision C1). The products (USGS Landsat C2 L2 / ESA Sentinel-2 L2A) are named in the FR; the Planetary Computer route is not. Its terms of use have not been reviewed for commercial use, so commercial use stays unverified and the commercial licence context does not use it.",
       "caching_permitted": false,
-      "approved_by": "Project owner (approved in the development session)",
-      "approved_on": "2026-11-01"
+      "approved_by": "Project owner (development session)",
+      "approved_on": "2026-11-01",
+      "confirmation": {
+        "by": "Project decision maker (data science lead)",
+        "on": "2026-11-04",
+        "scope": "Phase 1 non-commercial evaluation and handoff"
+      }
     },
     {
       "id": "copernicus_cdse",
@@ -271,6 +298,47 @@
       "fallback_ids": [],
       "approval_status": "fr_required",
       "approval_note": "Required by FR A.1/A.6.",
+      "caching_permitted": true
+    },
+    {
+      "id": "noaa_ghcn_daily",
+      "name": "NOAA GHCN-Daily station observations",
+      "documentation_url": "https://www.ncei.noaa.gov/products/land-based-station/global-historical-climatology-network-daily",
+      "implementation_status": "implemented",
+      "enabled": true,
+      "priority": 99,
+      "access_method": "file_download",
+      "data_type": "weather_station",
+      "data_nature": "observed",
+      "variables": [
+        "TMAX",
+        "TMIN"
+      ],
+      "geographic_coverage": "Global station network (coverage varies by station)",
+      "spatial_resolution": "Point (weather station)",
+      "temporal_resolution": "Daily",
+      "temporal_coverage": "Station-dependent",
+      "authentication": "none",
+      "usage_limits": "Public bulk files; no API key.",
+      "license": "Public domain (U.S. Government work); citation requested",
+      "attribution": "Menne et al. (2012), Global Historical Climatology Network - Daily (GHCN-Daily), NOAA National Centers for Environmental Information",
+      "commercial_use": "permitted",
+      "units": {
+        "temperature": "°C (files store tenths of °C)"
+      },
+      "suitability": "validation_only",
+      "validation_only": true,
+      "known_limitations": "A station is a point; ERA5 is a ~25 km cell average, so differences are expected even when both are correct. Station records can have gaps and quality flags.",
+      "fallback_ids": [],
+      "approval_status": "approved",
+      "approved_by": "Project decision maker (data science lead)",
+      "approved_on": "2026-11-04",
+      "confirmation": {
+        "by": "Project decision maker (data science lead)",
+        "on": "2026-11-04",
+        "scope": "Scientific validation only (D3); never used to produce product results"
+      },
+      "approval_note": "Approved on 2026-11-04 for the climate validation script only (decision D3). Not used by any analysis module.",
       "caching_permitted": true
     }
   ]

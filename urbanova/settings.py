@@ -13,7 +13,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-CONFIG_DIR = ROOT / "config"
+# Provider registry, rules and recommendation templates ship inside the package; a deployment can
+# point URBANOVA_CONFIG_DIR at its own reviewed copy.
+CONFIG_DIR = Path(os.environ.get("URBANOVA_CONFIG_DIR") or Path(__file__).resolve().parent / "config")
 
 
 def _load_dotenv() -> None:
@@ -40,7 +42,9 @@ def _bool(name: str, default: bool) -> bool:
 
 @dataclass
 class Settings:
-    data_dir: Path = field(default_factory=lambda: Path(os.environ.get("URBANOVA_DATA_DIR", ROOT / "data")))
+    # Default: ./data in a source checkout; ~/.urbanova for an installed package (never site-packages).
+    data_dir: Path = field(default_factory=lambda: Path(os.environ.get("URBANOVA_DATA_DIR")
+                                                        or (ROOT / "data" if (ROOT / "pyproject.toml").exists() else Path.home() / ".urbanova")))
     max_upload_mb: float = float(os.environ.get("URBANOVA_MAX_UPLOAD_MB", "25"))
     session_hours: float = float(os.environ.get("URBANOVA_SESSION_HOURS", "12"))
     # Disable all outbound provider calls (tests, offline demos). Analyses that
@@ -89,6 +93,6 @@ settings = Settings()
 
 
 def load_config(name: str) -> dict:
-    """Load a JSON configuration file from `config/` (providers, rules, ...)."""
+    """Load a JSON configuration file from `urbanova/config/` (providers, rules, ...)."""
     with open(CONFIG_DIR / name, encoding="utf-8") as fh:
         return json.load(fh)

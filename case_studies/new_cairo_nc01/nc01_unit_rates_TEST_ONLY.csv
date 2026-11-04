@@ -1,0 +1,5 @@
+quantity_type,description,unit,rate,currency,price_date,source,region
+green_space_added_m2,TEST soft landscaping with irrigation,m2,100,XTS,2026-10-01,TEST VALUES - not real prices,test
+trees_added_count,TEST semi-mature tree supply and plant,each,1000,XTS,2026-10-01,TEST VALUES - not real prices,test
+shade_structure_added_m2,TEST tensile shade canopy,m2,500,XTS,2026-10-01,TEST VALUES - not real prices,test
+hard_surface_removed_m2,TEST asphalt removal and disposal,m2,20,XTS,2026-10-01,TEST VALUES - not real prices,test

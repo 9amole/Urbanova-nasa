@@ -1,0 +1,662 @@
+{
+  "$defs": {
+    "ClimatePeriod": {
+      "additionalProperties": false,
+      "properties": {
+        "start_year": {
+          "description": "First calendar year of the climate baseline.",
+          "minimum": 1981,
+          "title": "Start Year",
+          "type": "integer"
+        },
+        "end_year": {
+          "description": "Last completed calendar year; at most 30 years after start_year.",
+          "title": "End Year",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "start_year",
+        "end_year"
+      ],
+      "title": "ClimatePeriod",
+      "type": "object"
+    },
+    "CompareRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "baseline_id": {
+          "title": "Baseline Id",
+          "type": "string"
+        },
+        "alternative_ids": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 5,
+          "minItems": 1,
+          "title": "Alternative Ids",
+          "type": "array"
+        },
+        "criteria": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/$defs/Criterion"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional weighted scoring; omit for a plain comparison.",
+          "title": "Criteria"
+        }
+      },
+      "required": [
+        "baseline_id",
+        "alternative_ids"
+      ],
+      "title": "CompareRequest",
+      "type": "object"
+    },
+    "Criterion": {
+      "additionalProperties": false,
+      "properties": {
+        "metric": {
+          "title": "Metric",
+          "type": "string"
+        },
+        "weight": {
+          "exclusiveMinimum": 0,
+          "title": "Weight",
+          "type": "number"
+        }
+      },
+      "required": [
+        "metric",
+        "weight"
+      ],
+      "title": "Criterion",
+      "type": "object"
+    },
+    "Design": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "description": "Caller's identifier for the design; echoed in the result.",
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9_.:-]+$",
+          "title": "Id",
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 160,
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "kind": {
+          "description": "Exactly one design may be the baseline (the original design).",
+          "enum": [
+            "baseline",
+            "alternative"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "features": {
+          "additionalProperties": true,
+          "description": "GeoJSON FeatureCollection in WGS 84. Every feature needs properties.feature_type (see FeatureType). Optional properties: height_m, floors, canopy_radius_m (point trees), name, land_use. Use extract_plan() to produce reviewed features from GeoJSON/DXF uploads.",
+          "title": "Features",
+          "type": "object"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "kind",
+        "features"
+      ],
+      "title": "Design",
+      "type": "object"
+    },
+    "Rate": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Id"
+        },
+        "quantity_type": {
+          "enum": [
+            "green_space_added_m2",
+            "hard_surface_removed_m2",
+            "trees_added_count",
+            "shade_structure_added_m2",
+            "building_footprint_removed_m2"
+          ],
+          "title": "Quantity Type",
+          "type": "string"
+        },
+        "unit": {
+          "title": "Unit",
+          "type": "string"
+        },
+        "rate": {
+          "minimum": 0,
+          "title": "Rate",
+          "type": "number"
+        },
+        "currency": {
+          "description": "ISO 4217 code, e.g. EGP; XTS for test values.",
+          "maxLength": 3,
+          "minLength": 3,
+          "title": "Currency",
+          "type": "string"
+        },
+        "price_date": {
+          "description": "YYYY-MM-DD",
+          "title": "Price Date",
+          "type": "string"
+        },
+        "source": {
+          "description": "Quotation reference, supplier or schedule of rates. Prices are never invented.",
+          "minLength": 1,
+          "title": "Source",
+          "type": "string"
+        },
+        "region": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Region"
+        }
+      },
+      "required": [
+        "quantity_type",
+        "unit",
+        "rate",
+        "currency",
+        "price_date",
+        "source"
+      ],
+      "title": "Rate",
+      "type": "object"
+    },
+    "RuleSource": {
+      "additionalProperties": false,
+      "properties": {
+        "document": {
+          "description": "Document, authority or clause the rule comes from.",
+          "minLength": 1,
+          "title": "Document",
+          "type": "string"
+        },
+        "page": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Page"
+        },
+        "text": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Exact wording of the condition, kept as evidence (any language).",
+          "title": "Text"
+        }
+      },
+      "required": [
+        "document"
+      ],
+      "title": "RuleSource",
+      "type": "object"
+    },
+    "Rules": {
+      "additionalProperties": false,
+      "properties": {
+        "verified": {
+          "description": "Only user-verified rules are applied. At most one per rule_type.",
+          "items": {
+            "$ref": "#/$defs/VerifiedRule"
+          },
+          "title": "Verified",
+          "type": "array"
+        },
+        "unverified_count": {
+          "default": 0,
+          "description": "Number of candidate rules not yet verified; reported as a warning, never applied.",
+          "minimum": 0,
+          "title": "Unverified Count",
+          "type": "integer"
+        },
+        "conflicting_plot_areas_m2": {
+          "description": "Plot areas stated differently in the documents and not yet resolved. Two or more values block ratio checks until resolved.",
+          "items": {
+            "type": "number"
+          },
+          "title": "Conflicting Plot Areas M2",
+          "type": "array"
+        }
+      },
+      "title": "Rules",
+      "type": "object"
+    },
+    "Settings": {
+      "additionalProperties": false,
+      "properties": {
+        "modules": {
+          "anyOf": [
+            {
+              "items": {
+                "enum": [
+                  "climate_baseline",
+                  "site_context",
+                  "urban_form",
+                  "vegetation",
+                  "surface_heat",
+                  "solar_shade",
+                  "planning_compliance"
+                ],
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Modules to run. Default: derived from the objectives.",
+          "title": "Modules"
+        },
+        "hot_months": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "integer"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Override of the hot-season months (1-12). Default: the 3 hottest months of the climate record.",
+          "title": "Hot Months"
+        },
+        "solar_date": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Date (YYYY-MM-DD) for the shade analysis. Default: the 21st of the middle hottest month.",
+          "title": "Solar Date"
+        },
+        "context_buffer_m": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Context Buffer M"
+        },
+        "lst_buffer_m": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Lst Buffer M"
+        },
+        "ndvi_buffer_m": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Ndvi Buffer M"
+        },
+        "satellite_years": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Satellite Years"
+        },
+        "lst_max_scenes": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Lst Max Scenes"
+        },
+        "ndvi_max_scenes": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Ndvi Max Scenes"
+        },
+        "ndvi_lookback_days": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Ndvi Lookback Days"
+        },
+        "max_scene_cloud_pct": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Max Scene Cloud Pct"
+        },
+        "min_valid_site_fraction": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Min Valid Site Fraction"
+        }
+      },
+      "title": "Settings",
+      "type": "object"
+    },
+    "Site": {
+      "additionalProperties": false,
+      "properties": {
+        "latitude": {
+          "description": "WGS 84 latitude of the site, decimal degrees.",
+          "maximum": 90,
+          "minimum": -90,
+          "title": "Latitude",
+          "type": "number"
+        },
+        "longitude": {
+          "description": "WGS 84 longitude of the site, decimal degrees.",
+          "maximum": 180,
+          "minimum": -180,
+          "title": "Longitude",
+          "type": "number"
+        },
+        "boundary": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Site boundary as a GeoJSON Polygon or MultiPolygon (or a Feature / FeatureCollection holding one), WGS 84. Without it, site statistics use a 100 m radius around the point and site-relative ratios are blocked.",
+          "title": "Boundary"
+        },
+        "verified_site_area_m2": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Plot area from a verified planning document, used instead of the boundary area for ratios when set.",
+          "title": "Verified Site Area M2"
+        },
+        "climate_period": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ClimatePeriod"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Climate baseline period. Default: the last 5 complete calendar years."
+        }
+      },
+      "required": [
+        "latitude",
+        "longitude"
+      ],
+      "title": "Site",
+      "type": "object"
+    },
+    "VerifiedRule": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Caller's rule identifier; generated when omitted.",
+          "title": "Id"
+        },
+        "rule_type": {
+          "enum": [
+            "max_building_coverage_pct",
+            "max_height_m",
+            "max_floors",
+            "min_setback_m",
+            "min_green_space_pct",
+            "min_open_space_pct",
+            "max_far",
+            "plot_area_m2",
+            "permitted_land_use",
+            "parking_requirement"
+          ],
+          "title": "Rule Type",
+          "type": "string"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Numeric limit (required for numeric rule types).",
+          "title": "Value"
+        },
+        "value_text": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Text value for permitted_land_use / parking_requirement.",
+          "title": "Value Text"
+        },
+        "source": {
+          "$ref": "#/$defs/RuleSource"
+        }
+      },
+      "required": [
+        "rule_type",
+        "source"
+      ],
+      "title": "VerifiedRule",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "contract_version": {
+      "const": "1.0",
+      "title": "Contract Version",
+      "type": "string"
+    },
+    "request_id": {
+      "anyOf": [
+        {
+          "maxLength": 64,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Caller's identifier; echoed in the result and used as the project id in provenance.",
+      "title": "Request Id"
+    },
+    "site": {
+      "$ref": "#/$defs/Site"
+    },
+    "objectives": {
+      "items": {
+        "enum": [
+          "main_concerns",
+          "surface_heat",
+          "vegetation",
+          "shade",
+          "compare_alternatives",
+          "planning_compliance",
+          "data_gaps"
+        ],
+        "type": "string"
+      },
+      "title": "Objectives",
+      "type": "array"
+    },
+    "designs": {
+      "description": "0 designs = site-only analysis. At most 1 baseline + 5 alternatives. All designs share the same site data and settings, so they are comparable.",
+      "items": {
+        "$ref": "#/$defs/Design"
+      },
+      "maxItems": 6,
+      "title": "Designs",
+      "type": "array"
+    },
+    "rules": {
+      "$ref": "#/$defs/Rules"
+    },
+    "rates": {
+      "items": {
+        "$ref": "#/$defs/Rate"
+      },
+      "title": "Rates",
+      "type": "array"
+    },
+    "settings": {
+      "$ref": "#/$defs/Settings"
+    },
+    "compare": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/CompareRequest"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    }
+  },
+  "required": [
+    "contract_version",
+    "site"
+  ],
+  "title": "AnalysisRequest",
+  "type": "object"
+}

@@ -25,6 +25,12 @@ class Context:
     run_id: str
     out_dir: Path
     shared: dict = field(default_factory=dict)
+    # Planning rules for compliance: {"verified": {rule_type: rule}, "unverified_count": int,
+    # "ambiguities": [{"rule_type", "values", "message"}]}. Supplied by the caller (app or engine).
+    rules: dict = field(default_factory=lambda: {"verified": {}, "unverified_count": 0, "ambiguities": []})
+    # Shared by every design analysed in one request, so site data is fetched once and every
+    # design is compared on identical observations (remediation D4).
+    site_cache: dict = field(default_factory=dict)
 
     @property
     def lat(self) -> float:

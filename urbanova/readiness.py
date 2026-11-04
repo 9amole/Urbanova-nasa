@@ -51,7 +51,7 @@ def assess(project: dict, scenario: dict | None = None) -> dict:
         reasons = [availability(i) for i in ids]
         if any(ok for ok, _, _ in reasons):
             return [], ""
-        return [r for _, _, r in reasons], "A supervisor must approve a data source for this analysis (config/providers.json)."
+        return [r for _, _, r in reasons], "A supervisor must approve a data source for this analysis (urbanova/config/providers.json)."
 
     climate_block, climate_step = source_block(["open_meteo_archive", "nasa_power_daily"])
     out.append(_entry("climate_baseline", BLOCKED if climate_block else READY, climate_block, "Regional climate statistics.",

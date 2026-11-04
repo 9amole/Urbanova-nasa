@@ -1,0 +1,3166 @@
+{
+ "type": "FeatureCollection",
+ "name": "MOCK NC-01 alternative design (complete)",
+ "features": [
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       31.4808403,
+       29.9966999
+      ],
+      [
+       31.4809854,
+       29.9967016
+      ],
+      [
+       31.4809826,
+       29.996882
+      ],
+      [
+       31.4808375,
+       29.9968803
+      ],
+      [
+       31.4808403,
+       29.9966999
+      ]
+     ]
+    ]
+   },
+   "properties": {
+    "name": "Main gate and entrance road",
+    "feature_type": "road"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       31.4810038,
+       29.9954927
+      ],
+      [
+       31.4840301,
+       29.9955276
+      ],
+      [
+       31.4840291,
+       29.9955998
+      ],
+      [
+       31.4810027,
+       29.9955649
+      ],
+      [
+       31.4810038,
+       29.9954927
+      ]
+     ]
+    ]
+   },
+   "properties": {
+    "name": "Ring road south",
+    "feature_type": "road"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       31.4809653,
+       29.9980187
+      ],
+      [
+       31.4839918,
+       29.9980536
+      ],
+      [
+       31.4839907,
+       29.9981258
+      ],
+      [
+       31.4809642,
+       29.9980909
+      ],
+      [
+       31.4809653,
+       29.9980187
+      ]
+     ]
+    ]
+   },
+   "properties": {
+    "name": "Ring road north",
+    "feature_type": "road"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       31.4809209,
+       29.9954918
+      ],
+      [
+       31.4810038,
+       29.9954927
+      ],
+      [
+       31.4809854,
+       29.9967016
+      ],
+      [
+       31.4809025,
+       29.9967006
+      ],
+      [
+       31.4809209,
+       29.9954918
+      ]
+     ]
+    ]
+   },
+   "properties": {
+    "name": "Ring road west (south part)",
+    "feature_type": "road"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       31.4808997,
+       29.9968811
+      ],
+      [
+       31.4809826,
+       29.996882
+      ],
+      [
+       31.4809642,
+       29.9980909
+      ],
+      [
+       31.4808813,
+       29.9980899
+      ],
+      [
+       31.4808997,
+       29.9968811
+      ]
+     ]
+    ]
+   },
+   "properties": {
+    "name": "Ring road west (north part)",
+    "feature_type": "road"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       31.4840301,
+       29.9955276
+      ],
+      [
+       31.4841131,
+       29.9955286
+      ],
+      [
+       31.4840736,
+       29.9981267
+      ],
+      [
+       31.4839907,
+       29.9981258
+      ],
+      [
+       31.4840301,
+       29.9955276
+      ]
+     ]
+    ]
+   },
+   "properties": {
+    "name": "Ring road east",
+    "feature_type": "road"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       31.4809847,
+       29.9967467
+      ],
+      [
+       31.4840111,
+       29.9967816
+      ],
+      [
+       31.4840097,
+       29.9968718
+      ],
+      [
+       31.4809833,
+       29.9968369
+      ],
+      [
+       31.4809847,
+       29.9967467
+      ]
+     ]
+    ]
+   },
+   "properties": {
+    "name": "Central spine road",
+    "feature_type": "road"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       31.4809868,
+       29.9966114
+      ],
+      [
+       31.4840131,
+       29.9966463
+      ],
+      [
+       31.4840111,
+       29.9967816
+      ],
+      [
+       31.4809847,
+       29.9967467
+      ],
+      [
+       31.4809868,
+       29.9966114
+      ]
+     ]
+    ]
+   },
+   "properties": {
+    "name": "Spine sidewalk south (paved)",
+    "feature_type": "open_space"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       31.4809833,
+       29.9968369
+      ],
+      [
+       31.4840097,
+       29.9968718
+      ],
+      [
+       31.4840077,
+       29.9970071
+      ],
+      [
+       31.4809813,
+       29.9969722
+      ],
+      [
+       31.4809833,
+       29.9968369
+      ]
+     ]
+    ]
+   },
+   "properties": {
+    "name": "Spine sidewalk north (paved)",
+    "feature_type": "open_space"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       31.4811056,
+       29.9969737
+      ],
+      [
+       31.4814788,
+       29.996978
+      ],
+      [
+       31.4814757,
+       29.9971764
+      ],
+      [
+       31.4811026,
+       29.9971721
+      ],
+      [
+       31.4811056,
+       29.9969737
+      ]
+     ]
+    ]
+   },
+   "properties": {
+    "name": "Block N1-1",
+    "feature_type": "building",
+    "floors": 4,
+    "height_m": 15.0
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       31.4817275,
+       29.9969808
+      ],
+      [
+       31.4821006,
+       29.9969851
+      ],
+      [
+       31.4820976,
+       29.9971836
+      ],
+      [
+       31.4817245,
+       29.9971793
+      ],
+      [
+       31.4817275,
+       29.9969808
+      ]
+     ]
+    ]
+   },
+   "properties": {
+    "name": "Block N1-2",
+    "feature_type": "building",
+    "floors": 4,
+    "height_m": 15.0
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       31.4823494,
+       29.996988
+      ],
+      [
+       31.4827225,
+       29.9969923
+      ],
+      [
+       31.4827195,
+       29.9971908
+      ],
+      [
+       31.4823463,
+       29.9971865
+      ],
+      [
+       31.4823494,
+       29.996988
+      ]
+     ]
+    ]
+   },
+   "properties": {
+    "name": "Block N1-3",
+    "feature_type": "building",
+    "floors": 4,
+    "height_m": 15.0
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       31.4829712,
+       29.9969952
+      ],
+      [
+       31.4833443,
+       29.9969995
+      ],
+      [
+       31.4833413,
+       29.9971979
+      ],
+      [
+       31.4829682,
+       29.9971936
+      ],
+      [
+       31.4829712,
+       29.9969952
+      ]
+     ]
+    ]
+   },
+   "properties": {
+    "name": "Block N1-4",
+    "feature_type": "building",
+    "floors": 4,
+    "height_m": 15.0
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       31.4835931,
+       29.9970023
+      ],
+      [
+       31.4839662,
+       29.9970066
+      ],
+      [
+       31.4839632,
+       29.9972051
+      ],
+      [
+       31.4835901,
+       29.9972008
+      ],
+      [
+       31.4835931,
+       29.9970023
+      ]
+     ]
+    ]
+   },
+   "properties": {
+    "name": "Block N1-5",
+    "feature_type": "building",
+    "floors": 4,
+    "height_m": 15.0
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       31.481096,
+       29.9976052
+      ],
+      [
+       31.4814691,
+       29.9976095
+      ],
+      [
+       31.4814661,
+       29.9978079
+      ],
+      [
+       31.481093,
+       29.9978036
+      ],
+      [
+       31.481096,
+       29.9976052
+      ]
+     ]
+    ]
+   },
+   "properties": {
+    "name": "Block N2-1",
+    "feature_type": "building",
+    "floors": 4,
+    "height_m": 15.0
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       31.4817179,
+       29.9976123
+      ],
+      [
+       31.482091,
+       29.9976166
+      ],
+      [
+       31.482088,
+       29.9978151
+      ],
+      [
+       31.4817149,
+       29.9978108
+      ],
+      [
+       31.4817179,
+       29.9976123
+      ]
+     ]
+    ]
+   },
+   "properties": {
+    "name": "Block N2-2",
+    "feature_type": "building",
+    "floors": 4,
+    "height_m": 15.0
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       31.4823398,
+       29.9976195
+      ],
+      [
+       31.4827129,
+       29.9976238
+      ],
+      [
+       31.4827099,
+       29.9978223
+      ],
+      [
+       31.4823367,
+       29.997818
+      ],
+      [
+       31.4823398,
+       29.9976195
+      ]
+     ]
+    ]
+   },
+   "properties": {
+    "name": "Block N2-3 (landmark, G+4)",
+    "feature_type": "building",
+    "floors": 4,
+    "height_m": 15.0
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       31.4829616,
+       29.9976267
+      ],
+      [
+       31.4833347,
+       29.997631
+      ],
+      [
+       31.4833317,
+       29.9978294
+      ],
+      [
+       31.4829586,
+       29.9978251
+      ],
+      [
+       31.4829616,
+       29.9976267
+      ]
+     ]
+    ]
+   },
+   "properties": {
+    "name": "Block N2-4",
+    "feature_type": "building",
+    "floors": 4,
+    "height_m": 15.0
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       31.4835835,
+       29.9976338
+      ],
+      [
+       31.4839566,
+       29.9976381
+      ],
+      [
+       31.4839536,
+       29.9978366
+      ],
+      [
+       31.4835805,
+       29.9978323
+      ],
+      [
+       31.4835835,
+       29.9976338
+      ]
+     ]
+    ]
+   },
+   "properties": {
+    "name": "Block N2-5",
+    "feature_type": "building",
+    "floors": 4,
+    "height_m": 15.0
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       31.4809765,
+       29.997288
+      ],
+      [
+       31.4840029,
+       29.9973229
+      ],
+      [
+       31.4839997,
+       29.9975304
+      ],
+      [
+       31.4809733,
+       29.9974955
+      ],
+      [
+       31.4809765,
+       29.997288
+      ]
+     ]
+    ]
+   },
+   "properties": {
+    "name": "North garden court",
+    "feature_type": "green_space"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       31.4809782,
+       29.9971707
+      ],
+      [
+       31.4840046,
+       29.9972056
+      ],
+      [
+       31.4840029,
+       29.9973229
+      ],
+      [
+       31.4809765,
+       29.997288
+      ],
+      [
+       31.4809782,
+       29.9971707
+      ]
+     ]
+    ]
+   },
+   "properties": {
+    "name": "North walkway 1 (paved)",
+    "feature_type": "open_space"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       31.4809733,
+       29.9974955
+      ],
+      [
+       31.4839997,
+       29.9975304
+      ],
+      [
+       31.4839981,
+       29.9976386
+      ],
+      [
+       31.4809717,
+       29.9976037
+      ],
+      [
+       31.4809733,
+       29.9974955
+      ]
+     ]
+    ]
+   },
+   "properties": {
+    "name": "North walkway 2 (paved)",
+    "feature_type": "open_space"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       31.4809686,
+       29.9978022
+      ],
+      [
+       31.483995,
+       29.9978371
+      ],
+      [
+       31.4839918,
+       29.9980536
+      ],
+      [
+       31.4809653,
+       29.9980187
+      ],
+      [
+       31.4809686,
+       29.9978022
+      ]
+     ]
+    ]
+   },
+   "properties": {
+    "name": "North resident parking",
+    "feature_type": "parking"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       31.4811142,
+       29.9964143
+      ],
+      [
+       31.4814873,
+       29.9964186
+      ],
+      [
+       31.4814843,
+       29.9966171
+      ],
+      [
+       31.4811111,
+       29.9966128
+      ],
+      [
+       31.4811142,
+       29.9964143
+      ]
+     ]
+    ]
+   },
+   "properties": {
+    "name": "Block S1-1",
+    "feature_type": "building",
+    "floors": 4,
+    "height_m": 15.0
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       31.481736,
+       29.9964215
+      ],
+      [
+       31.4821091,
+       29.9964258
+      ],
+      [
+       31.4821061,
+       29.9966243
+      ],
+      [
+       31.481733,
+       29.99662
+      ],
+      [
+       31.481736,
+       29.9964215
+      ]
+     ]
+    ]
+   },
+   "properties": {
+    "name": "Block S1-2",
+    "feature_type": "building",
+    "floors": 4,
+    "height_m": 15.0
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       31.4829797,
+       29.9964358
+      ],
+      [
+       31.4833528,
+       29.9964401
+      ],
+      [
+       31.4833498,
+       29.9966386
+      ],
+      [
+       31.4829767,
+       29.9966343
+      ],
+      [
+       31.4829797,
+       29.9964358
+      ]
+     ]
+    ]
+   },
+   "properties": {
+    "name": "Block S1-4",
+    "feature_type": "building",
+    "floors": 4,
+    "height_m": 15.0
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       31.4836016,
+       29.996443
+      ],
+      [
+       31.4839747,
+       29.9964473
+      ],
+      [
+       31.4839717,
+       29.9966458
+      ],
+      [
+       31.4835986,
+       29.9966415
+      ],
+      [
+       31.4836016,
+       29.996443
+      ]
+     ]
+    ]
+   },
+   "properties": {
+    "name": "Block S1-5",
+    "feature_type": "building",
+    "floors": 4,
+    "height_m": 15.0
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       31.4811257,
+       29.9956565
+      ],
+      [
+       31.4814988,
+       29.9956608
+      ],
+      [
+       31.4814944,
+       29.9959495
+      ],
+      [
+       31.4811213,
+       29.9959452
+      ],
+      [
+       31.4811257,
+       29.9956565
+      ]
+     ]
+    ]
+   },
+   "properties": {
+    "name": "Block S2-1",
+    "feature_type": "building",
+    "floors": 4,
+    "height_m": 15.0
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       31.4817476,
+       29.9956637
+      ],
+      [
+       31.4821207,
+       29.995668
+      ],
+      [
+       31.4821163,
+       29.9959567
+      ],
+      [
+       31.4817432,
+       29.9959524
+      ],
+      [
+       31.4817476,
+       29.9956637
+      ]
+     ]
+    ]
+   },
+   "properties": {
+    "name": "Block S2-2",
+    "feature_type": "building",
+    "floors": 4,
+    "height_m": 15.0
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       31.4823697,
+       29.9956528
+      ],
+      [
+       31.4827842,
+       29.9956576
+      ],
+      [
+       31.4827793,
+       29.9959824
+      ],
+      [
+       31.4823647,
+       29.9959776
+      ],
+      [
+       31.4823697,
+       29.9956528
+      ]
+     ]
+    ]
+   },
+   "properties": {
+    "name": "Clubhouse",
+    "feature_type": "building",
+    "floors": 2,
+    "height_m": 8.0
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       31.4822357,
+       29.9962829
+      ],
+      [
+       31.4828576,
+       29.9962901
+      ],
+      [
+       31.4828523,
+       29.9966329
+      ],
+      [
+       31.4822305,
+       29.9966257
+      ],
+      [
+       31.4822357,
+       29.9962829
+      ]
+     ]
+    ]
+   },
+   "properties": {
+    "name": "Central plaza (paved)",
+    "feature_type": "open_space"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       31.4823015,
+       29.9960491
+      ],
+      [
+       31.4827989,
+       29.9960548
+      ],
+      [
+       31.4827962,
+       29.9962352
+      ],
+      [
+       31.4822987,
+       29.9962295
+      ],
+      [
+       31.4823015,
+       29.9960491
+      ]
+     ]
+    ]
+   },
+   "properties": {
+    "name": "Swimming pool",
+    "feature_type": "water"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       31.4809956,
+       29.996034
+      ],
+      [
+       31.4821149,
+       29.9960469
+      ],
+      [
+       31.4821102,
+       29.9963536
+      ],
+      [
+       31.4809909,
+       29.9963407
+      ],
+      [
+       31.4809956,
+       29.996034
+      ]
+     ]
+    ]
+   },
+   "properties": {
+    "name": "Pocket park",
+    "feature_type": "green_space"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     31.4811481,
+     29.9969065
+    ]
+   },
+   "properties": {
+    "name": "Street tree 1",
+    "feature_type": "tree",
+    "height_m": 6.0,
+    "canopy_radius_m": 3.0
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     31.4814591,
+     29.9969101
+    ]
+   },
+   "properties": {
+    "name": "Street tree 2",
+    "feature_type": "tree",
+    "height_m": 6.0,
+    "canopy_radius_m": 3.0
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     31.48177,
+     29.9969137
+    ]
+   },
+   "properties": {
+    "name": "Street tree 3",
+    "feature_type": "tree",
+    "height_m": 6.0,
+    "canopy_radius_m": 3.0
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     31.4820809,
+     29.9969172
+    ]
+   },
+   "properties": {
+    "name": "Street tree 4",
+    "feature_type": "tree",
+    "height_m": 6.0,
+    "canopy_radius_m": 3.0
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     31.4823919,
+     29.9969208
+    ]
+   },
+   "properties": {
+    "name": "Street tree 5",
+    "feature_type": "tree",
+    "height_m": 6.0,
+    "canopy_radius_m": 3.0
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     31.4827028,
+     29.9969244
+    ]
+   },
+   "properties": {
+    "name": "Street tree 6",
+    "feature_type": "tree",
+    "height_m": 6.0,
+    "canopy_radius_m": 3.0
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     31.4830137,
+     29.996928
+    ]
+   },
+   "properties": {
+    "name": "Street tree 7",
+    "feature_type": "tree",
+    "height_m": 6.0,
+    "canopy_radius_m": 3.0
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     31.4833246,
+     29.9969316
+    ]
+   },
+   "properties": {
+    "name": "Street tree 8",
+    "feature_type": "tree",
+    "height_m": 6.0,
+    "canopy_radius_m": 3.0
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     31.4836356,
+     29.9969352
+    ]
+   },
+   "properties": {
+    "name": "Street tree 9",
+    "feature_type": "tree",
+    "height_m": 6.0,
+    "canopy_radius_m": 3.0
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     31.4839465,
+     29.9969387
+    ]
+   },
+   "properties": {
+    "name": "Street tree 10",
+    "feature_type": "tree",
+    "height_m": 6.0,
+    "canopy_radius_m": 3.0
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       31.4808595,
+       29.9954369
+      ],
+      [
+       31.4841761,
+       29.9954751
+      ],
+      [
+       31.4841752,
+       29.9955293
+      ],
+      [
+       31.4808587,
+       29.995491
+      ],
+      [
+       31.4808595,
+       29.9954369
+      ]
+     ]
+    ]
+   },
+   "properties": {
+    "name": "Bare ground 1 (unlandscaped)",
+    "feature_type": "open_space"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       31.4808587,
+       29.995491
+      ],
+      [
+       31.4809209,
+       29.9954918
+      ],
+      [
+       31.4809025,
+       29.9967006
+      ],
+      [
+       31.4808403,
+       29.9966999
+      ],
+      [
+       31.4808587,
+       29.995491
+      ]
+     ]
+    ]
+   },
+   "properties": {
+    "name": "Bare ground 2 (unlandscaped)",
+    "feature_type": "open_space"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       31.4841131,
+       29.9955286
+      ],
+      [
+       31.4841752,
+       29.9955293
+      ],
+      [
+       31.4841358,
+       29.9981274
+      ],
+      [
+       31.4840736,
+       29.9981267
+      ],
+      [
+       31.4841131,
+       29.9955286
+      ]
+     ]
+    ]
+   },
+   "properties": {
+    "name": "Bare ground 3 (unlandscaped)",
+    "feature_type": "open_space"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       31.4810027,
+       29.9955649
+      ],
+      [
+       31.4829926,
+       29.9955878
+      ],
+      [
+       31.4829915,
+       29.99566
+      ],
+      [
+       31.4810016,
+       29.9956371
+      ],
+      [
+       31.4810027,
+       29.9955649
+      ]
+     ]
+    ]
+   },
+   "properties": {
+    "name": "Bare ground 4 (unlandscaped)",
+    "feature_type": "open_space"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       31.4810016,
+       29.9956371
+      ],
+      [
+       31.4823697,
+       29.9956528
+      ],
+      [
+       31.4823694,
+       29.9956709
+      ],
+      [
+       31.4810013,
+       29.9956551
+      ],
+      [
+       31.4810016,
+       29.9956371
+      ]
+     ]
+    ]
+   },
+   "properties": {
+    "name": "Bare ground 5 (unlandscaped)",
+    "feature_type": "open_space"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       31.4827842,
+       29.9956576
+      ],
+      [
+       31.4829915,
+       29.99566
+      ],
+      [
+       31.4829866,
+       29.9959848
+      ],
+      [
+       31.4827793,
+       29.9959824
+      ],
+      [
+       31.4827842,
+       29.9956576
+      ]
+     ]
+    ]
+   },
+   "properties": {
+    "name": "Bare ground 6 (unlandscaped)",
+    "feature_type": "open_space"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       31.4810013,
+       29.9956551
+      ],
+      [
+       31.4811257,
+       29.9956565
+      ],
+      [
+       31.4811213,
+       29.9959452
+      ],
+      [
+       31.4809969,
+       29.9959438
+      ],
+      [
+       31.4810013,
+       29.9956551
+      ]
+     ]
+    ]
+   },
+   "properties": {
+    "name": "Bare ground 7 (unlandscaped)",
+    "feature_type": "open_space"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       31.4814988,
+       29.9956608
+      ],
+      [
+       31.4817476,
+       29.9956637
+      ],
+      [
+       31.4817432,
+       29.9959524
+      ],
+      [
+       31.4814944,
+       29.9959495
+      ],
+      [
+       31.4814988,
+       29.9956608
+      ]
+     ]
+    ]
+   },
+   "properties": {
+    "name": "Bare ground 8 (unlandscaped)",
+    "feature_type": "open_space"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       31.4821207,
+       29.995668
+      ],
+      [
+       31.4823694,
+       29.9956709
+      ],
+      [
+       31.482365,
+       29.9959596
+      ],
+      [
+       31.4821163,
+       29.9959567
+      ],
+      [
+       31.4821207,
+       29.995668
+      ]
+     ]
+    ]
+   },
+   "properties": {
+    "name": "Bare ground 9 (unlandscaped)",
+    "feature_type": "open_space"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       31.4809969,
+       29.9959438
+      ],
+      [
+       31.482365,
+       29.9959596
+      ],
+      [
+       31.4823647,
+       29.9959776
+      ],
+      [
+       31.4809967,
+       29.9959618
+      ],
+      [
+       31.4809969,
+       29.9959438
+      ]
+     ]
+    ]
+   },
+   "properties": {
+    "name": "Bare ground 10 (unlandscaped)",
+    "feature_type": "open_space"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       31.4809967,
+       29.9959618
+      ],
+      [
+       31.4829866,
+       29.9959848
+      ],
+      [
+       31.4829855,
+       29.9960569
+      ],
+      [
+       31.4809956,
+       29.996034
+      ],
+      [
+       31.4809967,
+       29.9959618
+      ]
+     ]
+    ]
+   },
+   "properties": {
+    "name": "Bare ground 11 (unlandscaped)",
+    "feature_type": "open_space"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       31.4821149,
+       29.9960469
+      ],
+      [
+       31.4823015,
+       29.9960491
+      ],
+      [
+       31.4822987,
+       29.9962295
+      ],
+      [
+       31.4821122,
+       29.9962273
+      ],
+      [
+       31.4821149,
+       29.9960469
+      ]
+     ]
+    ]
+   },
+   "properties": {
+    "name": "Bare ground 12 (unlandscaped)",
+    "feature_type": "open_space"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       31.4827989,
+       29.9960548
+      ],
+      [
+       31.4829855,
+       29.9960569
+      ],
+      [
+       31.4829828,
+       29.9962374
+      ],
+      [
+       31.4827962,
+       29.9962352
+      ],
+      [
+       31.4827989,
+       29.9960548
+      ]
+     ]
+    ]
+   },
+   "properties": {
+    "name": "Bare ground 13 (unlandscaped)",
+    "feature_type": "open_space"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       31.4821122,
+       29.9962273
+      ],
+      [
+       31.4829828,
+       29.9962374
+      ],
+      [
+       31.4829819,
+       29.9962915
+      ],
+      [
+       31.4821113,
+       29.9962815
+      ],
+      [
+       31.4821122,
+       29.9962273
+      ]
+     ]
+    ]
+   },
+   "properties": {
+    "name": "Bare ground 14 (unlandscaped)",
+    "feature_type": "open_space"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       31.4821113,
+       29.9962815
+      ],
+      [
+       31.4822357,
+       29.9962829
+      ],
+      [
+       31.4822346,
+       29.9963551
+      ],
+      [
+       31.4821102,
+       29.9963536
+      ],
+      [
+       31.4821113,
+       29.9962815
+      ]
+     ]
+    ]
+   },
+   "properties": {
+    "name": "Bare ground 15 (unlandscaped)",
+    "feature_type": "open_space"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       31.4828576,
+       29.9962901
+      ],
+      [
+       31.4840184,
+       29.9963034
+      ],
+      [
+       31.4840162,
+       29.9964478
+      ],
+      [
+       31.4828554,
+       29.9964344
+      ],
+      [
+       31.4828576,
+       29.9962901
+      ]
+     ]
+    ]
+   },
+   "properties": {
+    "name": "Bare ground 16 (unlandscaped)",
+    "feature_type": "open_space"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       31.4809909,
+       29.9963407
+      ],
+      [
+       31.4822346,
+       29.9963551
+      ],
+      [
+       31.4822335,
+       29.9964272
+      ],
+      [
+       31.4809898,
+       29.9964129
+      ],
+      [
+       31.4809909,
+       29.9963407
+      ]
+     ]
+    ]
+   },
+   "properties": {
+    "name": "Bare ground 17 (unlandscaped)",
+    "feature_type": "open_space"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       31.4809898,
+       29.9964129
+      ],
+      [
+       31.4811142,
+       29.9964143
+      ],
+      [
+       31.4811111,
+       29.9966128
+      ],
+      [
+       31.4809868,
+       29.9966114
+      ],
+      [
+       31.4809898,
+       29.9964129
+      ]
+     ]
+    ]
+   },
+   "properties": {
+    "name": "Bare ground 18 (unlandscaped)",
+    "feature_type": "open_space"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       31.4814873,
+       29.9964186
+      ],
+      [
+       31.481736,
+       29.9964215
+      ],
+      [
+       31.481733,
+       29.99662
+      ],
+      [
+       31.4814843,
+       29.9966171
+      ],
+      [
+       31.4814873,
+       29.9964186
+      ]
+     ]
+    ]
+   },
+   "properties": {
+    "name": "Bare ground 19 (unlandscaped)",
+    "feature_type": "open_space"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       31.4821091,
+       29.9964258
+      ],
+      [
+       31.4822335,
+       29.9964272
+      ],
+      [
+       31.4822305,
+       29.9966257
+      ],
+      [
+       31.4821061,
+       29.9966243
+      ],
+      [
+       31.4821091,
+       29.9964258
+      ]
+     ]
+    ]
+   },
+   "properties": {
+    "name": "Bare ground 20 (unlandscaped)",
+    "feature_type": "open_space"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       31.4828554,
+       29.9964344
+      ],
+      [
+       31.4829797,
+       29.9964358
+      ],
+      [
+       31.4829767,
+       29.9966343
+      ],
+      [
+       31.4828523,
+       29.9966329
+      ],
+      [
+       31.4828554,
+       29.9964344
+      ]
+     ]
+    ]
+   },
+   "properties": {
+    "name": "Bare ground 21 (unlandscaped)",
+    "feature_type": "open_space"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       31.4833528,
+       29.9964401
+      ],
+      [
+       31.4836016,
+       29.996443
+      ],
+      [
+       31.4835986,
+       29.9966415
+      ],
+      [
+       31.4833498,
+       29.9966386
+      ],
+      [
+       31.4833528,
+       29.9964401
+      ]
+     ]
+    ]
+   },
+   "properties": {
+    "name": "Bare ground 22 (unlandscaped)",
+    "feature_type": "open_space"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       31.4839747,
+       29.9964473
+      ],
+      [
+       31.4840162,
+       29.9964478
+      ],
+      [
+       31.4840131,
+       29.9966463
+      ],
+      [
+       31.4839717,
+       29.9966458
+      ],
+      [
+       31.4839747,
+       29.9964473
+      ]
+     ]
+    ]
+   },
+   "properties": {
+    "name": "Bare ground 23 (unlandscaped)",
+    "feature_type": "open_space"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       31.4808375,
+       29.9968803
+      ],
+      [
+       31.4808997,
+       29.9968811
+      ],
+      [
+       31.4808813,
+       29.9980899
+      ],
+      [
+       31.4808191,
+       29.9980892
+      ],
+      [
+       31.4808375,
+       29.9968803
+      ]
+     ]
+    ]
+   },
+   "properties": {
+    "name": "Bare ground 24 (unlandscaped)",
+    "feature_type": "open_space"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       31.4809813,
+       29.9969722
+      ],
+      [
+       31.4811056,
+       29.9969737
+      ],
+      [
+       31.4811026,
+       29.9971721
+      ],
+      [
+       31.4809782,
+       29.9971707
+      ],
+      [
+       31.4809813,
+       29.9969722
+      ]
+     ]
+    ]
+   },
+   "properties": {
+    "name": "Bare ground 25 (unlandscaped)",
+    "feature_type": "open_space"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       31.4814788,
+       29.996978
+      ],
+      [
+       31.4817275,
+       29.9969808
+      ],
+      [
+       31.4817245,
+       29.9971793
+      ],
+      [
+       31.4814757,
+       29.9971764
+      ],
+      [
+       31.4814788,
+       29.996978
+      ]
+     ]
+    ]
+   },
+   "properties": {
+    "name": "Bare ground 26 (unlandscaped)",
+    "feature_type": "open_space"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       31.4821006,
+       29.9969851
+      ],
+      [
+       31.4823494,
+       29.996988
+      ],
+      [
+       31.4823463,
+       29.9971865
+      ],
+      [
+       31.4820976,
+       29.9971836
+      ],
+      [
+       31.4821006,
+       29.9969851
+      ]
+     ]
+    ]
+   },
+   "properties": {
+    "name": "Bare ground 27 (unlandscaped)",
+    "feature_type": "open_space"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       31.4827225,
+       29.9969923
+      ],
+      [
+       31.4829712,
+       29.9969952
+      ],
+      [
+       31.4829682,
+       29.9971936
+      ],
+      [
+       31.4827195,
+       29.9971908
+      ],
+      [
+       31.4827225,
+       29.9969923
+      ]
+     ]
+    ]
+   },
+   "properties": {
+    "name": "Bare ground 28 (unlandscaped)",
+    "feature_type": "open_space"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       31.4833443,
+       29.9969995
+      ],
+      [
+       31.4835931,
+       29.9970023
+      ],
+      [
+       31.4835901,
+       29.9972008
+      ],
+      [
+       31.4833413,
+       29.9971979
+      ],
+      [
+       31.4833443,
+       29.9969995
+      ]
+     ]
+    ]
+   },
+   "properties": {
+    "name": "Bare ground 29 (unlandscaped)",
+    "feature_type": "open_space"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       31.4839662,
+       29.9970066
+      ],
+      [
+       31.4840077,
+       29.9970071
+      ],
+      [
+       31.4840046,
+       29.9972056
+      ],
+      [
+       31.4839632,
+       29.9972051
+      ],
+      [
+       31.4839662,
+       29.9970066
+      ]
+     ]
+    ]
+   },
+   "properties": {
+    "name": "Bare ground 30 (unlandscaped)",
+    "feature_type": "open_space"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       31.4809717,
+       29.9976037
+      ],
+      [
+       31.481096,
+       29.9976052
+      ],
+      [
+       31.481093,
+       29.9978036
+      ],
+      [
+       31.4809686,
+       29.9978022
+      ],
+      [
+       31.4809717,
+       29.9976037
+      ]
+     ]
+    ]
+   },
+   "properties": {
+    "name": "Bare ground 31 (unlandscaped)",
+    "feature_type": "open_space"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       31.4814691,
+       29.9976095
+      ],
+      [
+       31.4817179,
+       29.9976123
+      ],
+      [
+       31.4817149,
+       29.9978108
+      ],
+      [
+       31.4814661,
+       29.9978079
+      ],
+      [
+       31.4814691,
+       29.9976095
+      ]
+     ]
+    ]
+   },
+   "properties": {
+    "name": "Bare ground 32 (unlandscaped)",
+    "feature_type": "open_space"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       31.482091,
+       29.9976166
+      ],
+      [
+       31.4823398,
+       29.9976195
+      ],
+      [
+       31.4823367,
+       29.997818
+      ],
+      [
+       31.482088,
+       29.9978151
+      ],
+      [
+       31.482091,
+       29.9976166
+      ]
+     ]
+    ]
+   },
+   "properties": {
+    "name": "Bare ground 33 (unlandscaped)",
+    "feature_type": "open_space"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       31.4827129,
+       29.9976238
+      ],
+      [
+       31.4829616,
+       29.9976267
+      ],
+      [
+       31.4829586,
+       29.9978251
+      ],
+      [
+       31.4827099,
+       29.9978223
+      ],
+      [
+       31.4827129,
+       29.9976238
+      ]
+     ]
+    ]
+   },
+   "properties": {
+    "name": "Bare ground 34 (unlandscaped)",
+    "feature_type": "open_space"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       31.4833347,
+       29.997631
+      ],
+      [
+       31.4835835,
+       29.9976338
+      ],
+      [
+       31.4835805,
+       29.9978323
+      ],
+      [
+       31.4833317,
+       29.9978294
+      ],
+      [
+       31.4833347,
+       29.997631
+      ]
+     ]
+    ]
+   },
+   "properties": {
+    "name": "Bare ground 35 (unlandscaped)",
+    "feature_type": "open_space"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       31.4839566,
+       29.9976381
+      ],
+      [
+       31.4839981,
+       29.9976386
+      ],
+      [
+       31.483995,
+       29.9978371
+      ],
+      [
+       31.4839536,
+       29.9978366
+      ],
+      [
+       31.4839566,
+       29.9976381
+      ]
+     ]
+    ]
+   },
+   "properties": {
+    "name": "Bare ground 36 (unlandscaped)",
+    "feature_type": "open_space"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       31.4808191,
+       29.9980892
+      ],
+      [
+       31.4841358,
+       29.9981274
+      ],
+      [
+       31.4841349,
+       29.9981816
+      ],
+      [
+       31.4808183,
+       29.9981433
+      ],
+      [
+       31.4808191,
+       29.9980892
+      ]
+     ]
+    ]
+   },
+   "properties": {
+    "name": "Bare ground 37 (unlandscaped)",
+    "feature_type": "open_space"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       31.4829926,
+       29.9955878
+      ],
+      [
+       31.4840291,
+       29.9955998
+      ],
+      [
+       31.4840225,
+       29.9960328
+      ],
+      [
+       31.482986,
+       29.9960209
+      ],
+      [
+       31.4829926,
+       29.9955878
+      ]
+     ]
+    ]
+   },
+   "properties": {
+    "name": "Car park converted to garden",
+    "feature_type": "green_space"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       31.482986,
+       29.9960209
+      ],
+      [
+       31.4840225,
+       29.9960328
+      ],
+      [
+       31.4840184,
+       29.9963034
+      ],
+      [
+       31.4829819,
+       29.9962915
+      ],
+      [
+       31.482986,
+       29.9960209
+      ]
+     ]
+    ]
+   },
+   "properties": {
+    "name": "Reduced car park",
+    "feature_type": "parking"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     31.4811432,
+     29.9972312
+    ]
+   },
+   "properties": {
+    "name": "Walkway tree A1",
+    "feature_type": "tree",
+    "height_m": 7.0,
+    "canopy_radius_m": 4.0
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     31.4814127,
+     29.9972344
+    ]
+   },
+   "properties": {
+    "name": "Walkway tree A2",
+    "feature_type": "tree",
+    "height_m": 7.0,
+    "canopy_radius_m": 4.0
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     31.4816821,
+     29.9972375
+    ]
+   },
+   "properties": {
+    "name": "Walkway tree A3",
+    "feature_type": "tree",
+    "height_m": 7.0,
+    "canopy_radius_m": 4.0
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     31.4819516,
+     29.9972406
+    ]
+   },
+   "properties": {
+    "name": "Walkway tree A4",
+    "feature_type": "tree",
+    "height_m": 7.0,
+    "canopy_radius_m": 4.0
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     31.4822211,
+     29.9972437
+    ]
+   },
+   "properties": {
+    "name": "Walkway tree A5",
+    "feature_type": "tree",
+    "height_m": 7.0,
+    "canopy_radius_m": 4.0
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     31.4824906,
+     29.9972468
+    ]
+   },
+   "properties": {
+    "name": "Walkway tree A6",
+    "feature_type": "tree",
+    "height_m": 7.0,
+    "canopy_radius_m": 4.0
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     31.48276,
+     29.9972499
+    ]
+   },
+   "properties": {
+    "name": "Walkway tree A7",
+    "feature_type": "tree",
+    "height_m": 7.0,
+    "canopy_radius_m": 4.0
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     31.4830295,
+     29.997253
+    ]
+   },
+   "properties": {
+    "name": "Walkway tree A8",
+    "feature_type": "tree",
+    "height_m": 7.0,
+    "canopy_radius_m": 4.0
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     31.483299,
+     29.9972561
+    ]
+   },
+   "properties": {
+    "name": "Walkway tree A9",
+    "feature_type": "tree",
+    "height_m": 7.0,
+    "canopy_radius_m": 4.0
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     31.4835684,
+     29.9972592
+    ]
+   },
+   "properties": {
+    "name": "Walkway tree A10",
+    "feature_type": "tree",
+    "height_m": 7.0,
+    "canopy_radius_m": 4.0
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     31.4838379,
+     29.9972623
+    ]
+   },
+   "properties": {
+    "name": "Walkway tree A11",
+    "feature_type": "tree",
+    "height_m": 7.0,
+    "canopy_radius_m": 4.0
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     31.4811383,
+     29.9975515
+    ]
+   },
+   "properties": {
+    "name": "Walkway tree B1",
+    "feature_type": "tree",
+    "height_m": 7.0,
+    "canopy_radius_m": 4.0
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     31.4814078,
+     29.9975546
+    ]
+   },
+   "properties": {
+    "name": "Walkway tree B2",
+    "feature_type": "tree",
+    "height_m": 7.0,
+    "canopy_radius_m": 4.0
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     31.4816773,
+     29.9975577
+    ]
+   },
+   "properties": {
+    "name": "Walkway tree B3",
+    "feature_type": "tree",
+    "height_m": 7.0,
+    "canopy_radius_m": 4.0
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     31.4819467,
+     29.9975608
+    ]
+   },
+   "properties": {
+    "name": "Walkway tree B4",
+    "feature_type": "tree",
+    "height_m": 7.0,
+    "canopy_radius_m": 4.0
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     31.4822162,
+     29.9975639
+    ]
+   },
+   "properties": {
+    "name": "Walkway tree B5",
+    "feature_type": "tree",
+    "height_m": 7.0,
+    "canopy_radius_m": 4.0
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     31.4824857,
+     29.9975671
+    ]
+   },
+   "properties": {
+    "name": "Walkway tree B6",
+    "feature_type": "tree",
+    "height_m": 7.0,
+    "canopy_radius_m": 4.0
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     31.4827552,
+     29.9975702
+    ]
+   },
+   "properties": {
+    "name": "Walkway tree B7",
+    "feature_type": "tree",
+    "height_m": 7.0,
+    "canopy_radius_m": 4.0
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     31.4830246,
+     29.9975733
+    ]
+   },
+   "properties": {
+    "name": "Walkway tree B8",
+    "feature_type": "tree",
+    "height_m": 7.0,
+    "canopy_radius_m": 4.0
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     31.4832941,
+     29.9975764
+    ]
+   },
+   "properties": {
+    "name": "Walkway tree B9",
+    "feature_type": "tree",
+    "height_m": 7.0,
+    "canopy_radius_m": 4.0
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     31.4835636,
+     29.9975795
+    ]
+   },
+   "properties": {
+    "name": "Walkway tree B10",
+    "feature_type": "tree",
+    "height_m": 7.0,
+    "canopy_radius_m": 4.0
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     31.4838331,
+     29.9975826
+    ]
+   },
+   "properties": {
+    "name": "Walkway tree B11",
+    "feature_type": "tree",
+    "height_m": 7.0,
+    "canopy_radius_m": 4.0
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     31.4823175,
+     29.996356
+    ]
+   },
+   "properties": {
+    "name": "Plaza tree 1",
+    "feature_type": "tree",
+    "height_m": 7.0,
+    "canopy_radius_m": 4.0
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     31.4825455,
+     29.9963587
+    ]
+   },
+   "properties": {
+    "name": "Plaza tree 2",
+    "feature_type": "tree",
+    "height_m": 7.0,
+    "canopy_radius_m": 4.0
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     31.4827735,
+     29.9963613
+    ]
+   },
+   "properties": {
+    "name": "Plaza tree 3",
+    "feature_type": "tree",
+    "height_m": 7.0,
+    "canopy_radius_m": 4.0
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     31.4823142,
+     29.9965725
+    ]
+   },
+   "properties": {
+    "name": "Plaza tree 4",
+    "feature_type": "tree",
+    "height_m": 7.0,
+    "canopy_radius_m": 4.0
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     31.4825422,
+     29.9965752
+    ]
+   },
+   "properties": {
+    "name": "Plaza tree 5",
+    "feature_type": "tree",
+    "height_m": 7.0,
+    "canopy_radius_m": 4.0
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     31.4827703,
+     29.9965778
+    ]
+   },
+   "properties": {
+    "name": "Plaza tree 6",
+    "feature_type": "tree",
+    "height_m": 7.0,
+    "canopy_radius_m": 4.0
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       31.482275,
+       29.9964277
+      ],
+      [
+       31.4825237,
+       29.9964306
+      ],
+      [
+       31.4825226,
+       29.9965028
+      ],
+      [
+       31.4822739,
+       29.9964999
+      ],
+      [
+       31.482275,
+       29.9964277
+      ]
+     ]
+    ]
+   },
+   "properties": {
+    "name": "Plaza shade canopy west",
+    "feature_type": "shade_structure",
+    "height_m": 4.0
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       31.4825652,
+       29.9964311
+      ],
+      [
+       31.4828139,
+       29.9964339
+      ],
+      [
+       31.4828128,
+       29.9965061
+      ],
+      [
+       31.4825641,
+       29.9965032
+      ],
+      [
+       31.4825652,
+       29.9964311
+      ]
+     ]
+    ]
+   },
+   "properties": {
+    "name": "Plaza shade canopy east",
+    "feature_type": "shade_structure",
+    "height_m": 4.0
+   }
+  }
+ ]
+}

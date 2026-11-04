@@ -1,0 +1,205 @@
+{
+  "generated_at": "2026-11-04T16:50:23+00:00",
+  "method": "D3: compare the product's ERA5 climate baseline with NOAA GHCN-Daily weather stations.",
+  "era5_requests": [
+    {
+      "provider": "open_meteo_archive",
+      "url": "https://archive-api.open-meteo.com/v1/archive?latitude=28.083&longitude=30.733&start_date=2015-01-01&end_date=2019-12-31&daily=temperature_2m_max%2Ctemperature_2m_min%2Ctemperature_2m_mean%2Crelative_humidity_2m_mean%2Cwind_speed_10m_max%2Cprecipitation_sum%2Cshortwave_radiation_sum&timezone=auto&models=era5",
+      "status_code": 200,
+      "duration_ms": 1437,
+      "outcome": "success",
+      "attempt": 1,
+      "cache_hit": 0,
+      "message": "",
+      "at": "2026-11-04T16:50:22+00:00"
+    },
+    {
+      "provider": "open_meteo_archive",
+      "url": "https://archive-api.open-meteo.com/v1/archive?latitude=31.073&longitude=33.836&start_date=2001-01-01&end_date=2004-12-31&daily=temperature_2m_max%2Ctemperature_2m_min%2Ctemperature_2m_mean%2Crelative_humidity_2m_mean%2Cwind_speed_10m_max%2Cprecipitation_sum%2Cshortwave_radiation_sum&timezone=auto&models=era5",
+      "status_code": 200,
+      "duration_ms": 1391,
+      "outcome": "success",
+      "attempt": 1,
+      "cache_hit": 0,
+      "message": "",
+      "at": "2026-11-04T16:50:23+00:00"
+    }
+  ],
+  "stations": [
+    {
+      "station": {
+        "id": "EGM00062387",
+        "latitude": 28.083,
+        "longitude": 30.733,
+        "elevation_m": 40.0,
+        "name": "MINYA"
+      },
+      "setting": "Nile valley, inland (Minya)",
+      "period": [
+        "2015-01-01",
+        "2019-12-31"
+      ],
+      "era5_grid_point": {
+        "latitude": 28.0,
+        "longitude": 30.75,
+        "elevation_m": 45.0
+      },
+      "station_completeness": {
+        "tmax_c": 0.893,
+        "tmin_c": 0.91
+      },
+      "quality_flagged_values_excluded": 0,
+      "daily_tmax": {
+        "n_days": 1630,
+        "bias_c": 0.7,
+        "mae_c": 0.85,
+        "rmse_c": 1.06,
+        "pearson_r": 0.994
+      },
+      "daily_tmin": {
+        "n_days": 1661,
+        "bias_c": 2.17,
+        "mae_c": 2.18,
+        "rmse_c": 2.4,
+        "pearson_r": 0.989
+      },
+      "hot_season_months": [
+        6,
+        7,
+        8
+      ],
+      "hot_season_mean_tmax_c": {
+        "station": 37.22,
+        "era5": 38.09,
+        "difference": 0.87
+      },
+      "tmax_p90_c": {
+        "station": 38.51,
+        "era5": 39.3
+      },
+      "tmax_p95_c": {
+        "station": 39.85,
+        "era5": 40.6
+      },
+      "indices": {
+        "SU": {
+          "label": "Summer days (Tmax > 25 °C)",
+          "years_compared": 3,
+          "station_per_year": 228.7,
+          "era5_per_year": 264,
+          "difference": 35.3
+        },
+        "TR": {
+          "label": "Tropical nights (Tmin > 20 °C)",
+          "years_compared": 3,
+          "station_per_year": 132,
+          "era5_per_year": 170.7,
+          "difference": 38.7
+        },
+        "TX35": {
+          "label": "Very hot days (Tmax ≥ 35 °C)",
+          "years_compared": 3,
+          "station_per_year": 108.7,
+          "era5_per_year": 130,
+          "difference": 21.3
+        },
+        "TX40": {
+          "label": "Extremely hot days (Tmax ≥ 40 °C)",
+          "years_compared": 3,
+          "station_per_year": 17.7,
+          "era5_per_year": 26.3,
+          "difference": 8.7
+        }
+      }
+    },
+    {
+      "station": {
+        "id": "EGM00062337",
+        "latitude": 31.073,
+        "longitude": 33.836,
+        "elevation_m": 36.9,
+        "name": "EL ARISH INTL"
+      },
+      "setting": "Mediterranean coast (El Arish)",
+      "period": [
+        "2001-01-01",
+        "2004-12-31"
+      ],
+      "era5_grid_point": {
+        "latitude": 31.0,
+        "longitude": 33.75,
+        "elevation_m": 34.0
+      },
+      "station_completeness": {
+        "tmax_c": 0.938,
+        "tmin_c": 0.877
+      },
+      "quality_flagged_values_excluded": 2,
+      "daily_tmax": {
+        "n_days": 1371,
+        "bias_c": -0.69,
+        "mae_c": 0.92,
+        "rmse_c": 1.19,
+        "pearson_r": 0.987
+      },
+      "daily_tmin": {
+        "n_days": 1282,
+        "bias_c": 1.5,
+        "mae_c": 1.63,
+        "rmse_c": 1.95,
+        "pearson_r": 0.974
+      },
+      "hot_season_months": [
+        7,
+        8,
+        9
+      ],
+      "hot_season_mean_tmax_c": {
+        "station": 32.6,
+        "era5": 32.36,
+        "difference": -0.24
+      },
+      "tmax_p90_c": {
+        "station": 33.6,
+        "era5": 33.3
+      },
+      "tmax_p95_c": {
+        "station": 34.8,
+        "era5": 34.2
+      },
+      "indices": {
+        "SU": {
+          "label": "Summer days (Tmax > 25 °C)",
+          "years_compared": 4,
+          "station_per_year": 205.2,
+          "era5_per_year": 212.2,
+          "difference": 7.0
+        },
+        "TR": {
+          "label": "Tropical nights (Tmin > 20 °C)",
+          "years_compared": 0,
+          "note": "No year with >= 90 % complete data in both series."
+        },
+        "TX35": {
+          "label": "Very hot days (Tmax ≥ 35 °C)",
+          "years_compared": 4,
+          "station_per_year": 16.5,
+          "era5_per_year": 11.5,
+          "difference": -5.0
+        },
+        "TX40": {
+          "label": "Extremely hot days (Tmax ≥ 40 °C)",
+          "years_compared": 4,
+          "station_per_year": 2,
+          "era5_per_year": 1,
+          "difference": -1
+        }
+      }
+    }
+  ],
+  "interpretation_notes": [
+    "A station is a point; ERA5 is a ~25 km cell average, so a non-zero difference does not by itself mean either is wrong.",
+    "Day boundaries differ: Open-Meteo aggregates ERA5 by local calendar day; GHCN TMAX/TMIN follow the station's observation day.",
+    "Station values with a GHCN quality flag were excluded, not corrected."
+  ]
+}

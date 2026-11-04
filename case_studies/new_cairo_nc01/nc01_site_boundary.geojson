@@ -1,0 +1,38 @@
+{
+ "type": "FeatureCollection",
+ "features": [
+  {
+   "type": "Feature",
+   "properties": {
+    "name": "MOCK NC-01 site, New Cairo (9.6 ha)"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       31.4808595,
+       29.9954369
+      ],
+      [
+       31.4841761,
+       29.9954751
+      ],
+      [
+       31.4841349,
+       29.9981816
+      ],
+      [
+       31.4808183,
+       29.9981433
+      ],
+      [
+       31.4808595,
+       29.9954369
+      ]
+     ]
+    ]
+   }
+  }
+ ]
+}

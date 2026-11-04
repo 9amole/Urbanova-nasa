@@ -1,8 +1,115 @@
-# Verification record — pre-commit review, 1 Nov 2026
+# Verification record
+
+## I. Integration readiness (Phase C/D, engine) — 4 Nov 2026 (uncommitted, awaiting review)
+
+The Phase C decisions were taken ([DECISIONS.md](DECISIONS.md) §0). The data-science D items were carried out, and the analysis side is handed over as `urbanova.engine` ([HANDOFF.md](HANDOFF.md)).
+
+**Tests (actual runs, Windows 11, Python 3.11.9, offline with mocked providers):**
+
+* `pytest tests` → **153 passed** in about 30 s.
+* The new tests cover:
+  * `test_engine.py`, 25 cases: contract, 10 invalid-input cases, database-free path, fingerprint, D4 sharing, extraction, CLI, schema currency, GIS tags;
+  * `test_arabic.py`, 17 cases.
+* Three existing label assertions were changed to the confirmed state recorded by decision C1. Each still checks the "pending" wording when the confirmation is removed.
+
+**Clean install:**
+
+* A wheel built with `pip wheel .` and installed into a fresh virtual environment pulls in **no** FastAPI, Starlette, uvicorn or ReportLab.
+* Run from outside the repository, `urbanova-engine analyse examples/engine_request_sample.json` exits 0 and `urbanova-engine validate` reports the result valid.
+* The configuration loads from inside the installed package.
+* Not tested: Linux or macOS installs, and Python 3.12.
+
+**Live runs** (internet, fresh data directories):
+
+| Run | Result |
+|---|---|
+| Engine, `examples/engine_request_sample.json` (2 designs) | Exit 0 in 59 s; result valid. Provider log: Open-Meteo 1, Overpass 1, Planetary Computer Landsat 2 and Sentinel-2 2 successful requests for **both** designs together. All 34 site-level metrics identical across the designs. The comparison matches the app run of section R (green 9.06 → 13.57 %, open space 14.31 → 18.06 %, the same planning checks). 10 layer files present. |
+| Prototype app, `scripts/smoke.py` | Exit 0 in 95 s. Same metrics, findings and comparison as the engine. "Run all scenarios" now makes the same single set of provider requests (before: separate Planetary Computer downloads per scenario). |
+| `scripts/validate_climate_ghcn.py` | 2 stations; see [VALIDATION.md](VALIDATION.md) §1 |
+| `scripts/plausibility_satellite.py` | All 3 checks pass; see [VALIDATION.md](VALIDATION.md) §2 |
+| `scripts/validate_real_geometry.py` | 134 real OSM polygons; engine vs independent equal-area areas agree (< 0.005 points); see [VALIDATION.md](VALIDATION.md) §3 |
+
+**Fixed because of these checks:**
+
+* parks and parking in GIS exports (`leisure`, `amenity`, `natural` attributes) were left unclassified;
+* the feddan conversion note quoted the Arabic unit instead of naming it in English;
+* engine findings were not sorted by severity;
+* browsers kept the old stylesheet after an update. Asset links are now versioned (`?v=1.1.0`).
+
+**Version changes:**
+
+* Methods version bumped to `p1-methods-2026.11`, so runs made with earlier methods show as out of date.
+* Package version is now `1.1.0`.
+
+**UI** (review server on port 8001, live demo data):
+
+* the Results, Inputs, Planning rules, Readiness, Scenarios, Compare and Report tabs render;
+* source labels show the recorded confirmation;
+* the climate caveat is present;
+* the page fits its width once the current stylesheet is loaded;
+* the only console error is the expected 401 from before sign-in.
+
+**Still not verified:**
+
+* a real project (D2);
+* OCR and scanned pages (decision C4: not in Phase 1);
+* commercial use (decision C1);
+* the provisional thresholds (decision C2);
+* production deployment, load, security hardening and accessibility of the product UI (backend team).
+
+---
+
+## R. Remediation Phase A/B — 4 Nov 2026 (uncommitted, awaiting review)
+
+Code and documentation changes for remediation items A1–A6 and B1–B6. Nothing was committed, deployed or published.
+
+**Tests (actual runs, Windows 11, Python 3.11.9, offline with mocked providers):**
+
+* `pytest tests/test_remediation.py` → **46 passed**. These are the new regression tests for A1–A6 and B1–B5.
+* `pytest tests` → **111 passed**. That is 58 existing tests, 7 cases of the earlier parking-layer test, and the 46 new tests.
+* No existing test was weakened. One existing assertion (`test_review_fixes.py`, approved-route label) was extended to require the new "supervisor confirmation pending" wording.
+
+**Live sample workflow** (`scripts/smoke.py`, synthetic samples, live Open-Meteo, Overpass and Planetary Computer):
+
+* Run on the committed code and on the working tree, each into a fresh data directory. Both exited 0 (93 s and 111 s).
+* Differences in the transcripts:
+
+| Item | Before | After | Cause |
+|---|---|---|---|
+| Alternative open-space proportion | 18.82 % | 18.06 % | A2. The alternative places 6 tree canopies of 50.1 m² each (300.6 m², 0.75 % of the site) inside the paved plaza. They were counted as both plaza and green space; they are now counted once. Baseline unchanged at 14.31 % (no overlap). |
+| "Frequent very hot days" finding (TX35 = 67 days/yr) | high | moderate (PROVISIONAL, capped from high) | B2. The TX35 bands are provisional and not approved. |
+| Baseline site context (OSM) | unavailable (Overpass http_error ×3) | partial | Not a code change. Overpass was flaky during both runs (see FR-40 in the traceability table). |
+| PDF size | 203,957 B | 209,826 B | B3. Added sections. |
+
+* Unchanged: every other metric, the planning checks (the same single failure, green space 9.06 % < 20 %), the comparison outcome directions, the costs, the report label (*partial*) and the objective answer.
+* No planning check flipped.
+* A rasterio `NotGeoreferencedWarning` was printed once in the after run. It comes from `providers/satellite.py`, which is unchanged, and the LST values were identical in both runs. Its cause was not investigated.
+
+**PDF report:** the report generated in the live run contains all 14 headings of `report.SECTIONS` in its extracted text, plus "Affected area: Regional…", "Capped at moderate", "supervisor confirmation pending", "Analysis methods version" and "never as zero".
+
+**UI**, checked in the browser pane on a review server (port 8001, scratch data directory):
+
+* **DXF units:** a unitless DXF shows the units warning and the per-file "is in metres — confirm units" button, plus the note "Entities not used as plan geometry: 1 TEXT". Confirming removes the warning. Layer-only classification gives building, parking and green space.
+* **Re-upload:** the re-upload selector appears once plan features exist. Submitting without a choice is refused with an explanation.
+* **Results:**
+  * the climate card reads "MODERATE (PROVISIONAL) · capped from high" with "Affected area: Regional (~25 km ERA5 grid cell…)";
+  * site findings show "Affected area: Site boundary";
+  * the source status reads "Approved by Project owner (development session) on 2026-11-01 — supervisor confirmation pending; commercial-use terms unverified", with an amber badge.
+* **Compare, with two scenarios:** the scoring shows the small-set warning and "value 13.57 %; +4.51 vs baseline" under the score.
+* **Layout fix found during the check:** long source-status badges overflowed the provenance table (1,408 px on a 1,009 px page, also before this change). Badges in table cells now wrap. A cached stylesheet needs Ctrl+F5.
+* **Not checked in the UI:** clicking "Create baseline" while units are unconfirmed. This is covered by the API test only, because the button opens a native confirm dialog.
+
+**Still not verified:** anything listed in §5 below. In particular, no real planning documents, CAD exports or real projects were used. Every result above comes from synthetic samples and is not validation.
+
+---
+
+# Pre-commit review, 1 Nov 2026 (historical)
+
+Test counts in the sections below are those of their date: 56, then 57, then 58 after the basemap fix. The current count is in section R.
 
 ## 0. Update — satellite route approved (1 Nov 2026)
 
-The project owner approved the Microsoft Planetary Computer access route for Landsat C2 L2 and Sentinel-2 L2A. The approval is recorded in `config/providers.json`; supervisor confirmation is still recommended.
+The project owner approved the Microsoft Planetary Computer access route for Landsat C2 L2 and Sentinel-2 L2A. The approval is recorded in `urbanova/config/providers.json`; supervisor confirmation is still recommended.
 
 * **Tests:** `pytest` → **57 passed**. The gating tests now mark a provider unapproved explicitly, and a new test checks that the recorded approval enables the route and shows in provenance.
 * **Clean live demo:** all seven modules ran for both scenarios in 70 s.

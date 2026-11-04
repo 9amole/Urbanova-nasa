@@ -38,6 +38,7 @@ th { background: #f0f2f5; font-size: 13px; }
 .tabs a { padding: 8px 12px; text-decoration: none; color: var(--muted); border-radius: 6px 6px 0 0; font-weight: 600; font-size: 14px; }
 .tabs a[aria-current=page] { background: var(--panel); color: var(--ink); border: 1px solid var(--line); border-bottom-color: var(--panel); margin-bottom: -2px; }
 .badge { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 12px; font-weight: 600; border: 1px solid transparent; white-space: nowrap; }
+td .badge { white-space: normal; } /* long source-status labels wrap instead of widening tables */
 .b-ok { background: var(--ok-bg); color: var(--ok); } .b-warn { background: var(--warn-bg); color: var(--warn); } .b-bad { background: var(--bad-bg); color: var(--bad); }
 .b-info { background: var(--info-bg); color: var(--info); } .b-mute { background: #eef0f3; color: #4a5462; }
 .k-observed { background: #e6f2ff; color: #0b4f8a; } .k-reanalysis { background: #ede7f6; color: #4a2a86; } .k-calculated { background: #e7f6ee; color: #0b6e4f; }

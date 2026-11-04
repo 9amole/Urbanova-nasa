@@ -149,6 +149,42 @@ def _img_tag(path: str | None, alt: str) -> str:
     return f'<img src="data:image/png;base64,{data}" alt="{_e(alt)}" style="max-width:100%">'
 
 
+# One list of section titles for the HTML and PDF reports, covering FR-33 items 1-15.
+SECTIONS = [
+    "1. Project and site", "2. Objectives", "3. Inputs and verification status", "4. Analyses run", "5. Data sources",
+    "6. Metrics", "7. Findings", "8. Recommendations", "9. Planning checks", "10. Scenario comparison and costs",
+    "11. Assumptions, limitations and uncertainty", "12. Data-quality issues and unavailable analyses", "13. Methodology",
+    "14. Reproducibility record",
+]
+
+
+def _assumptions(run: dict, ms: dict) -> list[str]:
+    """Assumptions and limitations stated identically in the HTML and PDF reports."""
+    out = sorted({lim for st in ms.values() for lim in (st.get("limitations") or [])})
+    cfg = run.get("configuration") or {}
+    if cfg:
+        settings_txt = ", ".join(f"{k}={v}" for k, v in sorted(cfg.items()) if k != "modules")
+        out.append(f"Run settings used as stated assumptions: {settings_txt}." if settings_txt else "Run settings: defaults.")
+    out.append("Findings marked PROVISIONAL THRESHOLD use severity bands that have not been approved by the AI/Analysis team; they are "
+               "not standards or legal limits, and their severity is capped at moderate until approved.")
+    out.append("Regional climate statistics describe the reanalysis grid cell (~25 km), not conditions within the site.")
+    out.append("Unknown, unavailable, blocked and not-applicable values are shown as such and never as zero.")
+    return out
+
+
+def _methodology(run: dict, bundle: dict) -> list[tuple[str, list[str]]]:
+    """Per analysis, the distinct calculation methods recorded on its metrics."""
+    out = []
+    for mod in (run.get("module_status") or {}):
+        methods = []
+        for m in bundle["metrics"]:
+            if m["module"] == mod and m.get("method") and m["method"] not in methods:
+                methods.append(m["method"])
+        if methods:
+            out.append((ANALYSES[mod], methods))
+    return out
+
+
 def _html(project, run, bundle, scenario, files_, rules, comparison, summary, map_png, clim_png) -> str:
     ms = run.get("module_status") or {}
     rows = []
@@ -156,7 +192,7 @@ def _html(project, run, bundle, scenario, files_, rules, comparison, summary, ma
     sec.append(f"<h1>URBANOVA analysis report — {_e(project['name'])}</h1>")
     banner = "ok" if summary["complete"] else "warn"
     sec.append(f'<p class="banner {banner}"><strong>Report status: {_e(summary["label"])}.</strong> URBANOVA is a decision-support tool; this report is not a statutory approval, engineering design or professional sign-off.</p>')
-    sec.append("<h2>1. Project and site</h2><table>")
+    sec.append("<h2>" + SECTIONS[0] + "</h2><table>")
     for k, v in (("Project ID", project["id"]), ("Type", project.get("project_type") or "not stated"), ("Location", f"{project['latitude']:.5f}, {project['longitude']:.5f} (WGS 84)"),
                  ("Country / address", " / ".join(x for x in (project.get("country"), project.get("city_or_address")) if x) or "not stated"),
                  ("Site boundary", "supplied" if project.get("boundary") else "not supplied — point-buffer statistics"),
@@ -167,20 +203,20 @@ def _html(project, run, bundle, scenario, files_, rules, comparison, summary, ma
         sec.append(f"<tr><th>{_e(k)}</th><td>{_e(v)}</td></tr>")
     sec.append("</table>")
     sec.append(_img_tag(map_png, "Map of site boundary and design features"))
-    sec.append("<h2>2. Objectives</h2><ul>")
+    sec.append("<h2>" + SECTIONS[1] + "</h2><ul>")
     for o in bundle["objectives"]:
         status = ("cannot be answered with the available data" if not o["answerable"]
                   else "partly answered — some evidence unavailable" if o.get("not_available") else "answered with available evidence")
         extra = "" if not o.get("not_available") else " — missing: " + "; ".join(o["not_available"])
         sec.append(f"<li>{_e(o['question'])} <em>({_e(status)})</em>{_e(extra)}</li>")
     sec.append("</ul>")
-    sec.append("<h2>3. Inputs and verification status</h2><table><tr><th>File</th><th>Category</th><th>Detected type</th><th>Status</th><th>SHA-256</th></tr>")
+    sec.append("<h2>" + SECTIONS[2] + "</h2><table><tr><th>File</th><th>Category</th><th>Detected type</th><th>Status</th><th>SHA-256</th></tr>")
     for f in files_:
         sec.append(f"<tr><td>{_e(f['original_filename'])}</td><td>{_e(f['category'])}</td><td>{_e(f['detected_type'])}</td><td>{_e(f['status'])}</td><td><code>{_e(f['checksum'][:16])}…</code></td></tr>")
     if not files_:
         sec.append('<tr><td colspan="5">No files uploaded (coordinate-only project).</td></tr>')
     sec.append("</table>")
-    sec.append("<h2>4. Analyses run</h2><table><tr><th>Analysis</th><th>Status</th><th>Notes</th></tr>")
+    sec.append("<h2>" + SECTIONS[3] + "</h2><table><tr><th>Analysis</th><th>Status</th><th>Notes</th></tr>")
     for mod, st in ms.items():
         notes = st.get("reason") or "; ".join(st.get("warnings") or [])
         stale = bundle["run"]["stale_modules"].get(mod)
@@ -188,7 +224,7 @@ def _html(project, run, bundle, scenario, files_, rules, comparison, summary, ma
             notes += f" OUT OF DATE: inputs changed since this run ({', '.join(stale)})."
         sec.append(f"<tr><td>{_e(st['label'])}</td><td class='st-{_e(st['status'])}'>{_e(STATUS_LABEL.get(st['status'], st['status']))}</td><td>{_e(notes)}</td></tr>")
     sec.append("</table>")
-    sec.append("<h2>5. Data sources</h2><table><tr><th>Dataset</th><th>Source</th><th>Nature</th><th>Coverage</th><th>Resolution</th><th>Retrieved</th><th>Licence / attribution</th><th>Source status</th></tr>")
+    sec.append("<h2>" + SECTIONS[4] + "</h2><table><tr><th>Dataset</th><th>Source</th><th>Nature</th><th>Coverage</th><th>Resolution</th><th>Retrieved</th><th>Licence / attribution</th><th>Source status</th></tr>")
     for d in bundle["datasets"]:
         if not d:
             continue
@@ -197,7 +233,7 @@ def _html(project, run, bundle, scenario, files_, rules, comparison, summary, ma
         sec.append(f"<tr><td>{_e(d['dataset_type'])}<br><code>{_e(d['id'])}</code></td><td>{_e(d['source_id'])}</td><td>{_e(d.get('data_nature'))}</td><td>{_e(cov_txt)}</td><td>{_e(d.get('spatial_resolution'))}</td><td>{_e(d['created_at'])}</td><td>{_e(d.get('license'))}<br>{_e(d.get('attribution'))}</td><td>{_e(d.get('approval_label'))}; usage: {_e(d.get('usage_context'))}</td></tr>")
     sec.append("</table>")
     sec.append(_img_tag(clim_png, "Monthly climatology chart"))
-    sec.append("<h2>6. Metrics</h2><p>Kind of value: " + "; ".join(f"<b>{_e(v)}</b>" for v in OUTPUT_KIND_LABELS.values()) + ".</p>")
+    sec.append("<h2>" + SECTIONS[5] + "</h2><p>Kind of value: " + "; ".join(f"<b>{_e(v)}</b>" for v in OUTPUT_KIND_LABELS.values()) + ".</p>")
     for mod in ms:
         mm = [m for m in bundle["metrics"] if m["module"] == mod]
         if not mm:
@@ -206,22 +242,23 @@ def _html(project, run, bundle, scenario, files_, rules, comparison, summary, ma
         for m in mm:
             sec.append(f"<tr><td>{_e(m['label'])}</td><td>{_fmt(m)}</td><td>{_e(OUTPUT_KIND_LABELS.get(m['output_kind']))}</td><td>{_e(m['method'])}</td></tr>")
         sec.append("</table>")
-    sec.append("<h2>7. Findings</h2>")
+    sec.append("<h2>" + SECTIONS[6] + "</h2>")
     concerns = [f for f in bundle["findings"] if f["classification"] != "data_quality_issue"]
     if not concerns:
         sec.append("<p>No rule-based environmental or planning findings were triggered by the available evidence. This does not mean the site has no issues — see the analyses that could not run.</p>")
     for f in concerns:
         sec.append(f"<div class='finding sev-{_e(f['severity'])}'><h3>[{_e(f['severity'].upper())}]{' [PROVISIONAL THRESHOLD — NOT APPROVED]' if (f.get('threshold') or {}).get('status') == 'provisional_not_approved' else ''} {_e(f['title'])}</h3><p>{_e(f['summary'])}</p>"
-                   f"<p><b>Classification:</b> {_e(f['classification'].replace('_', ' '))} · <b>Confidence:</b> {_e(f['confidence'])} · <b>Rule:</b> {_e(f['severity_rule'])}</p>"
+                   + (f"<p><b>Affected area:</b> {_e(f['affected_area'])}</p>" if f.get("affected_area") else "")
+                   + f"<p><b>Classification:</b> {_e(f['classification'].replace('_', ' '))} · <b>Confidence:</b> {_e(f['confidence'])} · <b>Rule:</b> {_e(f['severity_rule'])}</p>"
                    f"<ul>{''.join('<li>' + _e(x) + '</li>' for x in f.get('limitations') or [])}</ul></div>")
-    sec.append("<h2>8. Recommendations</h2>")
+    sec.append("<h2>" + SECTIONS[7] + "</h2>")
     for r in bundle["recommendations"]:
         sec.append(f"<div class='rec'><h3>{_e(r['title'])}</h3><p><b>Problem:</b> {_e(r['problem'])}</p><p><b>Intervention:</b> {_e(r['intervention'])}</p>"
                    f"<p><b>Expected direction (not quantified):</b> {_e(r['expected_direction'])}</p><p><b>Trade-offs:</b> {_e('; '.join(r['tradeoffs']))}</p>"
                    f"<p><b>How to evaluate:</b> {_e(r['evaluation_method'])}</p><p><b>Review status:</b> {_e(r['review_status'])}</p></div>")
     if not bundle["recommendations"]:
         sec.append("<p>No recommendations (no supporting findings).</p>")
-    sec.append("<h2>9. Planning checks</h2>")
+    sec.append("<h2>" + SECTIONS[8] + "</h2>")
     checks = (ms.get("planning_compliance", {}).get("details") or {}).get("checks") or []
     if not checks:
         sec.append(f"<p><b>Not assessed.</b> {_e(ms.get('planning_compliance', {}).get('reason') or 'Planning compliance was not part of this run.')}</p>")
@@ -235,7 +272,7 @@ def _html(project, run, bundle, scenario, files_, rules, comparison, summary, ma
     for r in rules:
         sec.append(f"<tr><td>{_e(r['rule_type'])}</td><td>{_e(r['status'])}</td><td>{_e(r['value'] if r['value'] is not None else r['value_text'])}</td><td>{_e((r['exact_text'] or '')[:220])} ({_e(r['document_name'])}, p.{_e(r['page'])})</td></tr>")
     sec.append("</table>")
-    sec.append("<h2>10. Scenario comparison and costs</h2>")
+    sec.append("<h2>" + SECTIONS[9] + "</h2>")
     if comparison and comparison["result"].get("comparable"):
         res = comparison["result"]
         names = comparison.get("scenario_names") or {}
@@ -255,18 +292,20 @@ def _html(project, run, bundle, scenario, files_, rules, comparison, summary, ma
         sec.append("<p><b>Comparison not valid:</b> " + _e(" ".join(comparison["result"].get("issues", []))) + "</p>")
     else:
         sec.append("<p>No scenario comparison is included in this report.</p>")
-    sec.append("<h2>11. Assumptions, limitations and uncertainty</h2><ul>")
-    lims = sorted({lim for st in ms.values() for lim in (st.get("limitations") or [])})
-    for lim in lims:
+    sec.append(f"<h2>{SECTIONS[10]}</h2><ul>")
+    for lim in _assumptions(run, ms):
         sec.append(f"<li>{_e(lim)}</li>")
-    sec.append("<li>Findings marked PROVISIONAL THRESHOLD use severity bands that have not been approved by the AI/Analysis team; they are not standards or legal limits.</li>")
-    sec.append("<li>Unknown, unavailable, blocked and not-applicable values are shown as such and never as zero.</li></ul>")
-    sec.append("<h2>12. Data-quality issues and unavailable analyses</h2><ul>")
-    for f in bundle["findings"]:
-        if f["classification"] == "data_quality_issue":
-            sec.append(f"<li><b>{_e(f['title'])}</b> — {_e(f['summary'])}</li>")
-    sec.append("</ul><h2>13. Methodology</h2><p>See docs/METHODOLOGY.md in the project repository for calculation details. Each metric above states its method; every dataset is listed with its ID for traceability.</p>")
-    sec.append(f"<h2>14. Reproducibility record</h2><pre>{_e(json.dumps({'run_id': run['id'], 'configuration': run['configuration'], 'fingerprint': run['fingerprint'], 'datasets': run.get('input_dataset_ids')}, indent=1))}</pre>")
+    sec.append(f"</ul><h2>{SECTIONS[11]}</h2><ul>")
+    dq = [f for f in bundle["findings"] if f["classification"] == "data_quality_issue"]
+    for f in dq:
+        sec.append(f"<li><b>{_e(f['title'])}</b> — {_e(f['summary'])}</li>")
+    if not dq:
+        sec.append("<li>None recorded for this run.</li>")
+    sec.append(f"</ul><h2>{SECTIONS[12]}</h2><p>Analysis methods version {_e(run['analysis_version'])}. The calculation recorded for each metric, by analysis:</p>")
+    for label, methods in _methodology(run, bundle):
+        sec.append(f"<h3>{_e(label)}</h3><ul>" + "".join(f"<li>{_e(x)}</li>" for x in methods) + "</ul>")
+    sec.append("<p>Full descriptions, data sources and thresholds: docs/METHODOLOGY.md and urbanova/config/rules.json in the project repository.</p>")
+    sec.append(f"<h2>{SECTIONS[13]}</h2><pre>{_e(json.dumps({'run_id': run['id'], 'configuration': run['configuration'], 'fingerprint': run['fingerprint'], 'datasets': run.get('input_dataset_ids')}, indent=1))}</pre>")
     css = """body{font-family:system-ui,Segoe UI,Arial,sans-serif;max-width:960px;margin:24px auto;padding:0 16px;color:#1d1d1d;line-height:1.45}
 table{border-collapse:collapse;width:100%;margin:8px 0 16px;font-size:13px}th,td{border:1px solid #ccc;padding:5px 7px;text-align:left;vertical-align:top}th{background:#f2f2f2}
 .banner{padding:10px 12px;border-radius:6px}.banner.ok{background:#e8f5e9}.banner.warn{background:#fff3e0;border:1px solid #f0a020}
@@ -317,47 +356,89 @@ def _pdf(path: Path, project, run, bundle, scenario, files_, rules, comparison, 
         return t
 
     ms = run.get("module_status") or {}
-    story += [Paragraph("Analyses run", ss["Heading2"]),
+    h = lambda i: Paragraph(SECTIONS[i], ss["Heading2"])
+    bullet = lambda t: Paragraph(f"• {_e(t)}", small)
+    story.insert(3, h(0))
+    story.insert(4, table([["Item", "Value"]] + [
+        ["Project", f"{project['name']} ({project['id']})"], ["Type", project.get("project_type") or "not stated"],
+        ["Location", f"{project['latitude']:.5f}, {project['longitude']:.5f} (WGS 84)"],
+        ["Site boundary", "supplied" if project.get("boundary") else "not supplied — point-buffer statistics"],
+        ["Location confirmed", project.get("location_confirmed_at") or "no"],
+        ["Scenario analysed", f"{scenario['name']} ({scenario['kind']})" if scenario else "none — site context only"],
+        ["Software / methods", f"{__version__} / {run['analysis_version']}"],
+        ["Data-licence context", "Non-commercial evaluation prototype" if settings.usage_context != "commercial" else "Commercial"]], [4.5 * cm, 12.7 * cm]))
+    story.append(h(1))
+    for o in bundle["objectives"]:
+        status = ("cannot be answered with the available data" if not o["answerable"]
+                  else "partly answered — some evidence unavailable" if o.get("not_available") else "answered with available evidence")
+        story.append(bullet(f"{o['question']} ({status})" + ("" if not o.get("not_available") else " — missing: " + "; ".join(o["not_available"]))))
+    story.append(h(2))
+    story.append(table([["File", "Category", "Detected type", "Status"]] + [[f["original_filename"], f["category"], f["detected_type"], f["status"]] for f in files_]
+                       if files_ else [["File"], ["No files uploaded (coordinate-only project)."]], [6 * cm, 3.5 * cm, 3 * cm, 4.7 * cm] if files_ else [17.2 * cm]))
+    story += [h(3),
               table([["Analysis", "Status", "Notes"]] + [[st["label"], STATUS_LABEL.get(st["status"], st["status"]), (st.get("reason") or "; ".join(st.get("warnings") or []))[:300]] for st in ms.values()], [6 * cm, 3.2 * cm, 8 * cm])]
-    story += [Paragraph("Data sources", ss["Heading2"]),
+    story += [h(4),
               table([["Dataset", "Source", "Nature", "Licence / attribution", "Source status"]] + [[f"{d['dataset_type']} ({d['id']})", d["source_id"], d.get("data_nature") or "", f"{d.get('license') or ''} — {d.get('attribution') or ''}", d.get("approval_label") or ""] for d in bundle["datasets"] if d],
                     [3.4 * cm, 2.8 * cm, 1.8 * cm, 5 * cm, 4.2 * cm])]
     if clim_png:
         story.append(Image(clim_png, width=16 * cm, height=6.9 * cm, kind="proportional"))
-    story.append(Paragraph("Metrics", ss["Heading2"]))
+    story.append(h(5))
     rows = [["Analysis", "Metric", "Value", "Kind"]]
     for m in bundle["metrics"]:
         val = f"{m['value']:,.4g} {m['unit'] or ''}" if m["state"] == "available" else f"{m['state']}: {m['reason']}"
         rows.append([ANALYSES[m["module"]], m["label"], val, OUTPUT_KIND_LABELS.get(m["output_kind"], "")])
     story.append(table(rows, [3.4 * cm, 6.2 * cm, 4.6 * cm, 3 * cm]))
-    story.append(Paragraph("Findings", ss["Heading2"]))
-    for f in bundle["findings"]:
+    story.append(h(6))
+    concerns = [f for f in bundle["findings"] if f["classification"] != "data_quality_issue"]
+    if not concerns:
+        story.append(Paragraph("No rule-based environmental or planning findings were triggered by the available evidence. This does not mean the site has no issues.", small))
+    for f in concerns:
         prov = " [PROVISIONAL THRESHOLD — NOT APPROVED]" if (f.get("threshold") or {}).get("status") == "provisional_not_approved" else ""
-        story.append(Paragraph(f"<b>[{_e(f['severity'].upper())}]{prov} {_e(f['title'])}</b> — {_e(f['summary'])} <i>({_e(f['classification'].replace('_', ' '))}; {_e(f['severity_rule'])})</i>", small))
+        area = f" Affected area: {_e(f['affected_area'])}." if f.get("affected_area") else ""
+        story.append(Paragraph(f"<b>[{_e(f['severity'].upper())}]{prov} {_e(f['title'])}</b> — {_e(f['summary'])}{area} <i>({_e(f['classification'].replace('_', ' '))}; {_e(f['severity_rule'])})</i>", small))
         for lim in f.get("limitations") or []:
             story.append(Paragraph(f"&nbsp;&nbsp;• {_e(lim)}", small))
-    story.append(Paragraph("Recommendations", ss["Heading2"]))
+    story.append(h(7))
     for r in bundle["recommendations"]:
         story.append(Paragraph(f"<b>{_e(r['title'])}</b> — {_e(r['intervention'])} <i>Expected direction: {_e(r['expected_direction'])}</i> Evaluate by: {_e(r['evaluation_method'])}", small))
-    story.append(Paragraph("Planning checks", ss["Heading2"]))
+    if not bundle["recommendations"]:
+        story.append(Paragraph("No recommendations (no supporting findings).", small))
+    story.append(h(8))
     checks = (ms.get("planning_compliance", {}).get("details") or {}).get("checks") or []
     if checks:
         story.append(table([["Rule", "Limit", "Measured", "Result"]] + [[c["label"], f"{c['operator']} {c['limit']} {c['unit'] or ''}", str(c.get("measured", "—")), c.get("label_result") or c.get("reason")] for c in checks], [4.5 * cm, 3 * cm, 2.5 * cm, 7.2 * cm]))
     else:
         story.append(Paragraph("Not assessed — " + _e(ms.get("planning_compliance", {}).get("reason") or "not part of this run."), small))
+    story.append(h(9))
     if comparison and comparison["result"].get("comparable"):
         names = comparison.get("scenario_names") or {}
-        story.append(Paragraph("Scenario comparison", ss["Heading2"]))
         story.append(Paragraph(_e(comparison["result"]["statement"] + " " + comparison["result"]["direction_note"]), small))
-        story.append(table([["Alternative", "Metric", "Baseline", "Alternative", "Outcome"]] + [[names.get(r["alternative_id"], ""), r["label"], str(r["baseline"].get("value", r["baseline"].get("state"))), str(r["alternative"].get("value", r["alternative"].get("state"))), r["outcome"]] for r in comparison["result"]["rows"]],
-                           [3 * cm, 6 * cm, 2.6 * cm, 2.6 * cm, 3 * cm]))
+        story.append(table([["Alternative", "Metric", "Baseline", "Alternative", "Difference", "Outcome"]] + [[names.get(r["alternative_id"], ""), r["label"], str(r["baseline"].get("value", r["baseline"].get("state"))), str(r["alternative"].get("value", r["alternative"].get("state"))), str(r.get("difference", "—")), r["outcome"]] for r in comparison["result"]["rows"]],
+                           [2.8 * cm, 5.2 * cm, 2.3 * cm, 2.3 * cm, 2 * cm, 2.6 * cm]))
         for aid, c in comparison["result"]["costs"].items():
             story.append(Paragraph(f"Indicative cost — {_e(names.get(aid, aid))}: status {_e(c['status'])}; totals {_e(c['totals_by_currency'] or 'none')}. {_e(c['label'])}", small))
-    story.append(Paragraph("Limitations and assumptions", ss["Heading2"]))
-    for lim in sorted({lim for st in ms.values() for lim in (st.get("limitations") or [])}):
-        story.append(Paragraph(f"• {_e(lim)}", small))
-    story.append(Paragraph("Reproducibility", ss["Heading2"]))
-    story.append(Paragraph(_e(json.dumps({"run": run["id"], "analysis_version": run["analysis_version"], "configuration": run["configuration"], "datasets": run.get("input_dataset_ids")})), small))
+    elif comparison:
+        story.append(Paragraph("Comparison not valid: " + _e(" ".join(comparison["result"].get("issues", []))), small))
+    else:
+        story.append(Paragraph("No scenario comparison is included in this report.", small))
+    story.append(h(10))
+    for lim in _assumptions(run, ms):
+        story.append(bullet(lim))
+    story.append(h(11))
+    dq = [f for f in bundle["findings"] if f["classification"] == "data_quality_issue"]
+    for f in dq:
+        story.append(bullet(f"{f['title']} — {f['summary']}"))
+    if not dq:
+        story.append(bullet("None recorded for this run."))
+    story.append(h(12))
+    story.append(Paragraph(f"Analysis methods version {_e(run['analysis_version'])}. The calculation recorded for each metric, by analysis:", small))
+    for label, methods in _methodology(run, bundle):
+        story.append(Paragraph(f"<b>{_e(label)}</b>", small))
+        for x in methods:
+            story.append(bullet(x))
+    story.append(Paragraph("Full descriptions, data sources and thresholds: docs/METHODOLOGY.md and urbanova/config/rules.json in the project repository.", small))
+    story.append(h(13))
+    story.append(Paragraph(_e(json.dumps({"run": run["id"], "analysis_version": run["analysis_version"], "configuration": run["configuration"], "fingerprint": run.get("fingerprint"), "datasets": run.get("input_dataset_ids")})), small))
     SimpleDocTemplate(str(path), pagesize=A4, leftMargin=1.6 * cm, rightMargin=1.6 * cm, topMargin=1.5 * cm, bottomMargin=1.5 * cm,
                       title=f"URBANOVA report {project['name']}").build(story)
 
@@ -379,7 +460,7 @@ def export_zip(project: dict, run: dict) -> bytes:
         if scenario:
             z.writestr("design_features.geojson", json.dumps(scenario["features"]))
         z.writestr("findings.geojson", json.dumps({"type": "FeatureCollection", "features": [
-            {"type": "Feature", "geometry": f.get("geometry"), "properties": {k: f[k] for k in ("id", "title", "severity", "classification", "rule_id", "summary")}} for f in bundle["findings"]]}))
+            {"type": "Feature", "geometry": f.get("geometry"), "properties": {k: f.get(k) for k in ("id", "title", "severity", "classification", "rule_id", "summary", "affected_area")}} for f in bundle["findings"]]}))
         for lay in db.select("layers", "run_id = ?", [run["id"]]):
             tif = (lay.get("meta") or {}).get("geotiff")
             if tif and Path(tif).exists():

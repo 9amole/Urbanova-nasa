@@ -280,6 +280,7 @@ async function tabInputs(el, data) {
     <div style="flex:1;min-width:220px"><label for="up-cat">What are you uploading?</label><select id="up-cat">${Object.entries(cats).map(([k, v]) => `<option value="${k}">${esc(v.label)} (${v.types.join(", ").toUpperCase()})</option>`).join("")}</select></div>
     <div style="flex:1;min-width:220px"><label for="up-file">File <span class="hint">max ${state.meta.max_upload_mb} MB</span></label><input id="up-file" type="file" required></div>
     <div style="width:180px" id="up-epsg-wrap"><label for="up-epsg">EPSG code <span class="hint">DXF, or projected GeoJSON</span></label><input id="up-epsg" type="text" placeholder="e.g. 32636"></div>
+    ${active.length ? `<div style="width:240px" id="up-mode-wrap"><label for="up-mode">This project already has ${active.length} plan feature(s) *</label><select id="up-mode"><option value="">Choose…</option><option value="replace">Replace them (kept in history)</option><option value="add">Add the new features alongside</option></select></div>` : ""}
     <div><button class="primary" type="submit">Upload</button></div></div>
     <div id="up-raster" hidden class="row"><div style="flex:1"><label for="up-src">Source *</label><input id="up-src" type="text"></div><div style="flex:1"><label for="up-var">Variable *</label><input id="up-var" type="text" placeholder="e.g. lst"></div>
      <div style="flex:1"><label for="up-unit">Unit *</label><input id="up-unit" type="text" placeholder="e.g. °C"></div><div style="flex:1"><label for="up-lic">Licence</label><input id="up-lic" type="text"></div><div style="flex:1"><label for="up-date">Observation date</label><input id="up-date" type="date"></div></div>
@@ -296,6 +297,8 @@ async function tabInputs(el, data) {
    ${q.needs_review.length ? `<div class="alert warn">${q.needs_review.length} feature(s) need review (dashed on the map).</div>` : ""}
    ${q.unclassified.length ? `<div class="alert warn">${q.unclassified.length} feature(s) are unclassified and will not count towards any indicator.</div>` : ""}
    ${q.building_overlaps.length ? `<div class="alert warn">${q.building_overlaps.length} pair(s) of overlapping buildings found; overlapping area is not double counted.</div>` : ""}
+   ${q.units_unconfirmed.length ? `<div class="alert bad">${q.units_unconfirmed.length} feature(s) come from a DXF drawing that does not declare its units, so the scale is unresolved. Areas are not used and the baseline cannot be created until you confirm the units.
+     ${canEdit ? [...new Set(active.filter((f) => f.attributes?.units_unconfirmed).map((f) => f.file_id))].map((fid) => `<button class="small conf-units" data-fid="${fid}">The drawing ${esc(filesList.find((x) => x.id === fid)?.original_filename || "")} is in metres — confirm units</button>`).join(" ") : ""}</div>` : ""}
    ${q.boundary_conflict ? `<div class="alert warn">${esc(q.boundary_conflict.message)}</div>` : ""}
    ${q.buildings_without_height.length ? `<div class="alert info">${q.buildings_without_height.length} building(s) have no height. Footprint metrics still work, but building-cast shade cannot be calculated for them. Heights are never inferred from footprints.</div>` : ""}
    <div class="grid"><div id="in-map" class="map"></div><div style="max-height:440px;overflow:auto"><table><thead><tr><th>ID</th><th>Type</th><th>Height m</th><th>Floors</th><th>Review</th><th></th></tr></thead><tbody>
@@ -329,6 +332,7 @@ async function tabInputs(el, data) {
       document.getElementById("up-cap").textContent = Object.entries(c.capabilities).map(([t, d]) => `${t.toUpperCase()}: ${d}`).join("  ·  ");
       document.getElementById("up-epsg-wrap").hidden = cat.value !== "urban_plan";
       document.getElementById("up-raster").hidden = cat.value !== "supplementary_raster";
+      const mw = document.getElementById("up-mode-wrap"); if (mw) mw.hidden = cat.value !== "urban_plan";
     };
     cat.onchange = sync; sync();
     upForm.onsubmit = async (e) => {
@@ -338,6 +342,8 @@ async function tabInputs(el, data) {
       fd.append("file", document.getElementById("up-file").files[0]);
       fd.append("category", cat.value);
       const epsg = document.getElementById("up-epsg").value.trim(); if (epsg && cat.value === "urban_plan") fd.append("epsg", epsg);
+      const mode = document.getElementById("up-mode");
+      if (mode && cat.value === "urban_plan") { if (!mode.value) { errEl.textContent = "Choose whether the new plan replaces the existing features or is added to them."; return; } fd.append("plan_mode", mode.value); }
       if (cat.value === "supplementary_raster") { [["source", "up-src"], ["variable", "up-var"], ["unit", "up-unit"], ["license", "up-lic"], ["observation_date", "up-date"]].forEach(([k, id]) => fd.append(k, document.getElementById(id).value)); }
       const btn = upForm.querySelector("button[type=submit]"); btn.disabled = true; btn.textContent = "Uploading…";
       try {
@@ -360,6 +366,11 @@ async function tabInputs(el, data) {
     if (!Object.keys(changes).length) changes.review_status = "reviewed";
     await api(`/features/${f.id}`, { method: "PATCH", body: changes });
     notify("Feature saved and marked reviewed.", "ok"); route();
+  }, b)));
+  el.querySelectorAll(".conf-units").forEach((b) => (b.onclick = () => guarded(async () => {
+    if (!confirm("Confirm that this drawing's coordinates are in metres? Areas will then be calculated from it.")) return;
+    const r = await api(`/files/${b.dataset.fid}/confirm-units`, { method: "POST" });
+    notify(`Units confirmed as metres for ${r.confirmed} feature(s).`, "ok"); route();
   }, b)));
   const mk = document.getElementById("mk-base");
   if (mk) mk.onclick = () => guarded(async () => {
@@ -586,8 +597,8 @@ async function tabResults(el, data, runId) {
    <p class="hint">Colours of value kinds: ${Object.keys(KIND).map(kindBadge).join(" ")}</p></div></div></section>
   <section class="panel"><h2>Findings (${concerns.length})</h2>
    ${concerns.length ? "" : `<p>No rule-based findings were triggered by the available evidence. This is not proof that the site has no issues — check the analyses that could not run.</p>`}
-   ${concerns.map((f) => `<div class="panel"><h3><span class="badge sev-${esc(f.severity)}">${esc(f.severity.toUpperCase())}</span> ${f.threshold?.status === "provisional_not_approved" ? badge(["Provisional threshold — not approved", "b-warn"]) : ""} ${esc(f.title)}</h3>
-     <p>${esc(f.summary)}</p><p class="muted">${esc(f.classification.replace(/_/g, " "))} · confidence: ${esc(f.confidence)} · ${esc(f.severity_rule)}</p>
+   ${concerns.map((f) => { const prov = f.threshold?.status === "provisional_not_approved"; return `<div class="panel"><h3><span class="badge sev-${esc(f.severity)}">${esc(f.severity.toUpperCase())}${prov ? " (PROVISIONAL)" : ""}</span> ${prov ? badge([f.threshold.severity_capped ? `Provisional threshold — not approved; capped from ${f.threshold.band_level}` : "Provisional threshold — not approved", "b-warn"]) : ""} ${esc(f.title)}</h3>
+     ${f.affected_area ? `<p class="muted">Affected area: <strong>${esc(f.affected_area)}</strong></p>` : ""}<p>${esc(f.summary)}</p><p class="muted">${esc(f.classification.replace(/_/g, " "))} · confidence: ${esc(f.confidence)} · ${esc(f.severity_rule)}</p>
      <details><summary>Evidence, sources and limitations</summary><ul>${(f.evidence || []).map((e) => `<li>${esc(e.label || e.metric || "")}: ${e.value !== undefined ? `${fmt(e.value, 3)} ${esc(e.unit || "")}` : esc(e.reason || "")} ${e.output_kind ? kindBadge(e.output_kind) : ""} <span class="muted">${esc(e.method || e.rule_text || "")}</span></li>`).join("")}</ul>
        <p><strong>Threshold:</strong> ${esc(f.threshold?.justification || JSON.stringify(f.threshold || "") )}</p><ul>${(f.limitations || []).map((x) => `<li>${esc(x)}</li>`).join("")}</ul>
        <p><strong>Sources:</strong> ${(f.sources || []).map((s) => esc(s.text || s.dataset_id || (s.dates || []).join(", ") || s.document || JSON.stringify(s.value || ""))).join("; ") || "—"}</p></details>
@@ -596,7 +607,7 @@ async function tabResults(el, data, runId) {
        <p>${esc(r.intervention)}</p><p><em>Expected direction (not quantified):</em> ${esc(r.expected_direction)}</p>
        <details><summary>Inputs, trade-offs, how to evaluate</summary><p><strong>Requires:</strong> ${esc(r.required_inputs.join("; ") || "—")}</p><p><strong>Trade-offs:</strong> ${esc(r.tradeoffs.join("; ") || "—")}</p><p><strong>Evaluate:</strong> ${esc(r.evaluation_method)}</p></details>
        ${p.role !== "viewer" ? `<p><button class="small rv" data-rec="${r.id}" data-s="accepted">Acceptable for project</button> <button class="small rv" data-rec="${r.id}" data-s="rejected">Not acceptable</button> <button class="small rv" data-rec="${r.id}" data-s="flagged_incorrect">Flag as incorrect</button></p>` : ""}</div>`).join("")}
-   </div>`).join("")}</section>
+   </div>`; }).join("")}</section>
   ${climate ? `<section class="panel"><h2>Climate baseline (${esc(ms.climate_baseline.details.period.start_year)}–${esc(ms.climate_baseline.details.period.end_year)})</h2>
     <p class="hint">${esc(ms.climate_baseline.details.provider_name)} — grid point ${fmt(ms.climate_baseline.details.grid_point.latitude, 3)}, ${fmt(ms.climate_baseline.details.grid_point.longitude, 3)}. ${esc(ms.climate_baseline.details.attribution)}</p>
     ${climateChart(climate)}</section>` : ""}
@@ -613,7 +624,7 @@ async function tabResults(el, data, runId) {
    <div id="ask-out" aria-live="polite"></div><p class="hint">Answers are assembled only from this run's stored results — no generative AI is used, and nothing is invented.</p></section>
   <section class="panel"><h2>Datasets and provenance</h2><table><thead><tr><th>Dataset</th><th>Source</th><th>Nature</th><th>Coverage</th><th>Licence / attribution</th><th>Source status</th></tr></thead><tbody>
    ${b.datasets.filter(Boolean).map((d) => `<tr><td class="mono">${esc(d.id)}<div>${esc(d.dataset_type)}</div></td><td>${esc(d.source_id)}<div class="muted">${esc(d.spatial_resolution || "")}</div></td><td>${esc(d.data_nature)}</td>
-     <td class="mono">${esc(d.time_coverage?.start ? `${d.time_coverage.start} – ${d.time_coverage.end}` : (d.time_coverage?.scenes || []).map((x) => x.slice(0, 10)).join(", ") || d.time_coverage?.osm_snapshot || "")}</td><td>${esc(d.license || "")}<div class="muted">${esc(d.attribution || "")}</div></td><td>${badge([d.approval_label || "unknown", d.approval_status === "approved" || d.approval_status === "fr_required" ? "b-ok" : "b-warn"])}<div class="muted">usage: ${esc(d.usage_context || "")}</div></td></tr>`).join("") || `<tr><td colspan="6">No external datasets in this run.</td></tr>`}</tbody></table>
+     <td class="mono">${esc(d.time_coverage?.start ? `${d.time_coverage.start} – ${d.time_coverage.end}` : (d.time_coverage?.scenes || []).map((x) => x.slice(0, 10)).join(", ") || d.time_coverage?.osm_snapshot || "")}</td><td>${esc(d.license || "")}<div class="muted">${esc(d.attribution || "")}</div></td><td>${badge([d.approval_label || "unknown", (["approved", "fr_recommended"].includes(d.approval_status) && d.terms_confirmed) || d.approval_status === "fr_required" ? "b-ok" : "b-warn"])}<div class="muted">usage: ${esc(d.usage_context || "")}</div></td></tr>`).join("") || `<tr><td colspan="6">No external datasets in this run.</td></tr>`}</tbody></table>
    <details><summary>Run configuration and fingerprint</summary><pre class="mono">${esc(JSON.stringify({ configuration: run.configuration, fingerprint: run.fingerprint, analysis_version: run.analysis_version, software_version: run.software_version }, null, 1))}</pre></details></section>`;
   document.getElementById("rs-run").onchange = (e) => (location.hash = `#/p/${pid}/results/${e.target.value}`);
   // map with toggleable layers
@@ -724,8 +735,8 @@ function renderComparison(box, c, pid) {
      <table><tr><th>Item</th><th>Quantity</th><th>Rate</th><th>Subtotal</th><th>Source</th></tr>${cst.lines.map((l) => `<tr><td>${esc(l.label)}</td><td>${fmt(l.quantity, 1)} ${esc(l.unit)}</td><td>${l.rate !== undefined ? `${fmt(l.rate)} ${esc(l.currency)}` : '<span class="state">price required</span>'}</td><td>${l.subtotal !== undefined ? `${fmt(l.subtotal)} ${esc(l.currency)}` : "—"}</td><td>${esc(l.rate_source || l.note)}</td></tr>`).join("") || `<tr><td colspan="5">No quantity differences.</td></tr>`}</table>
      <p>Totals: ${Object.entries(cst.totals_by_currency).map(([k, v2]) => `${fmt(v2)} ${esc(k)}`).join(", ") || "none"}. ${cst.warnings.map(esc).join(" ")}</p><p class="muted">Excluded: ${cst.exclusions.map(esc).join("; ")}</p>`).join("")}
    <h3>Site conditions (same for all scenarios)</h3><p class="muted">${esc(r.site_conditions_note)}</p>
-   ${r.ranking ? `<h3>Weighted scoring</h3><p class="hint">${esc(r.ranking.method)} ${esc(r.ranking.caveat)}</p><table><tr><th>Scenario</th><th>Score</th><th>Weight coverage</th>${r.ranking.criteria.map((cr) => `<th>${esc(cr.metric)} (w=${cr.weight})</th>`).join("")}</tr>
-     ${Object.entries(r.ranking.aggregate).map(([sid, a]) => `<tr><td>${esc(a.name)}</td><td>${a.score === null ? "—" : fmt(a.score, 3)}</td><td>${fmt(a.weight_coverage * 100, 0)}%</td>${r.ranking.criteria.map((cr) => `<td>${cr.scores[sid] === undefined ? '<span class="state">missing</span>' : fmt(cr.scores[sid], 2)}</td>`).join("")}</tr>`).join("")}</table>${r.ranking.notes.map((n) => `<div class="alert warn">${esc(n)}</div>`).join("")}` : ""}
+   ${r.ranking ? `<h3>Weighted scoring</h3><p class="hint">${esc(r.ranking.method)} ${esc(r.ranking.caveat)}</p>${r.ranking.small_set_warning ? `<div class="alert warn">${esc(r.ranking.small_set_warning)}</div>` : ""}<table><tr><th>Scenario</th><th>Score</th><th>Weight coverage</th>${r.ranking.criteria.map((cr) => `<th>${esc(cr.metric)} (w=${cr.weight})</th>`).join("")}</tr>
+     ${Object.entries(r.ranking.aggregate).map(([sid, a]) => `<tr><td>${esc(a.name)}</td><td>${a.score === null ? "—" : fmt(a.score, 3)}</td><td>${fmt(a.weight_coverage * 100, 0)}%</td>${r.ranking.criteria.map((cr) => `<td>${cr.scores[sid] === undefined ? '<span class="state">missing</span>' : `${fmt(cr.scores[sid], 2)}${cr.values ? `<div class="muted">value ${fmt(cr.values[sid], 2)} ${esc(cr.unit || "")}${cr.difference_vs_baseline?.[sid] ? `; ${cr.difference_vs_baseline[sid] > 0 ? "+" : ""}${fmt(cr.difference_vs_baseline[sid], 2)} vs baseline` : ""}</div>` : ""}`}</td>`).join("")}</tr>`).join("")}</table>${r.ranking.notes.map((n) => `<div class="alert warn">${esc(n)}</div>`).join("")}` : ""}
    <p class="hint">Comparison saved. Include it in a report on the Report tab (choose the baseline or alternative run used here).</p>`;
 }
 

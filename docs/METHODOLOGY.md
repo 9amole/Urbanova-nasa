@@ -1,4 +1,4 @@
-# Methodology (analysis version `p1-methods-2026.10`)
+# Methodology (analysis version `p1-methods-2026.11`)
 
 All vector data is stored in WGS 84. Areas and distances are computed in the project's local UTM zone (`EPSG:326xx/327xx`, chosen from the coordinates). Every metric records a **state** (`available`, `unknown`, `unavailable`, `invalid`, `blocked`, `not_applicable`) and an **output kind** (observed, reanalysis, calculated, classified, modelled, user-provided). Non-available values never carry a number.
 
@@ -12,7 +12,7 @@ All vector data is stored in WGS 84. Areas and distances are computed in the pro
 Overpass `way` features with `building`, `highway`, green `leisure/landuse/natural` tags and water, clipped to a 500 m buffer around the site. Shares are of the study-area area. Completeness warnings are always shown.
 
 ## Urban-form indicators (FR-16)
-Features of each class are unioned (no double counting) and clipped to the site boundary. BCR = footprint ÷ area basis × 100 (area basis = boundary, or the verified document plot area if chosen). Green = green-space polygons + tree canopies with a stated radius. Hard surface = road + parking polygons. Open space = designated open space + green. Setback = minimum distance from a building edge to the boundary line. FAR = Σ(footprint × floors) ÷ area basis, only when floors are known for all buildings. Heights are never inferred.
+Features of each class are unioned (no double counting) and clipped to the site boundary. BCR = footprint ÷ area basis × 100 (area basis = boundary, or the verified document plot area if chosen). Green = green-space polygons + tree canopies with a stated radius. Hard surface = road + parking polygons. Open space = the union of designated open-space and green polygons, so an overlap (for example a tree canopy over a plaza) is counted once. Setback = minimum distance from a building edge to the boundary line. FAR = Σ(footprint × floors) ÷ area basis, only when floors are known for all buildings. Heights are never inferred.
 
 ## Land surface temperature (FR-18)
 1. STAC search `landsat-c2-l2`, platforms landsat-8/9, scene cloud < 40 %, last 3 complete years; keep scenes in the hot months.
@@ -25,7 +25,7 @@ Features of each class are unioned (no double counting) and clipped to the site 
 8. If the site covers fewer than 9 native 100 m thermal pixels, the module is marked partial with a mixed-pixel warning.
 9. Where NDVI was also computed, mean NDVI of hottest-decile pixels vs the rest is reported as co-location only (not causation).
 
-**Access:** this module calls the Planetary Computer mirror only after that route is approved in `config/providers.json`; otherwise it reports *blocked*.
+**Access:** this module calls the Planetary Computer mirror only after that route is approved in `urbanova/config/providers.json`; otherwise it reports *blocked*.
 
 ## Vegetation (FR-20)
 Blocked until the Planetary Computer access route is approved (same as LST).
@@ -38,7 +38,7 @@ NOAA/Spencer solar declination; elevation and azimuth at true solar time (no tim
 Only user-verified rules. Ratio checks (coverage, green, open space, FAR) are *not assessed* while plot areas conflict in the document, or when the verified plot area differs from the boundary area by > 5 % and the user has not chosen the basis. Results are labelled "passes the configured geometric check", never "approved".
 
 ## Findings and recommendations (FR-22/23)
-Configured in `config/rules.json` with metric, severity bands, status (`standard` / `provisional_not_approved`; provisional findings are labelled "PROVISIONAL THRESHOLD — NOT APPROVED" in the UI and reports), justification and limitation. A verified-rule failure is rated high. Modules that are blocked/unavailable/failed produce data-quality findings. Recommendation templates (`config/recommendations.json`) state only the expected direction of impact.
+Configured in `urbanova/config/rules.json` with metric, severity bands, status (`standard` / `provisional_not_approved`; provisional findings are labelled "PROVISIONAL THRESHOLD — NOT APPROVED" in the UI and reports), justification and limitation. A provisional threshold never produces "high": the severity is capped at "moderate" while the threshold is unapproved, and the band it falls in is shown with it. Each finding states its affected area; climate findings describe the ~25 km reanalysis grid cell and are not drawn on the site. A verified-rule failure is rated high. Modules that are blocked/unavailable/failed produce data-quality findings. Recommendation templates (`urbanova/config/recommendations.json`) state only the expected direction of impact.
 
 ## Comparison (FR-26/27)
 Requires the latest successful run of each scenario, identical comparable settings and analysis version, and no design change since the run. Only design-dependent metrics are compared; units and method text must match. Optional scoring: min–max normalisation across compared scenarios using the user's weights; missing criteria are excluded (never 0); no ranking without weights.

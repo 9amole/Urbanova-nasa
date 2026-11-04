@@ -1,0 +1,47 @@
+{
+  "generated_at": "2026-11-04T16:57:07+00:00",
+  "method": "D2 (partial): run real-world geometry through the full engine path and check the areas independently.",
+  "site": {
+    "latitude": 30.037,
+    "longitude": 31.232,
+    "size_m": 400,
+    "osm_snapshot": "2026-11-04T16:53:35Z"
+  },
+  "input": {
+    "features": 134,
+    "vertices": 1516
+  },
+  "extract_plan": {
+    "by_type": {
+      "building": 129,
+      "green_space": 4,
+      "unclassified": 1
+    },
+    "needs_review": 1,
+    "building_overlaps": 1,
+    "outside_site": 6,
+    "seconds": 0.11
+  },
+  "analyse": {
+    "status": "partially_succeeded",
+    "urban_form": "partial",
+    "warnings": [
+      "Site & urban-form indicators (coverage, green space): 12735 m² of building footprint lies outside the site boundary and is excluded from site ratios."
+    ],
+    "seconds": 0.12,
+    "engine": {
+      "building_coverage_ratio_pct": 35.31,
+      "green_space_pct": 4.56
+    },
+    "building_count": 129.0
+  },
+  "independent_equal_area": {
+    "building_coverage_ratio_pct": 35.31,
+    "green_space_pct": 4.56
+  },
+  "engine_minus_independent_pct_points": {
+    "building_coverage_ratio_pct": 0.0,
+    "green_space_pct": 0.0
+  },
+  "pass": true
+}
