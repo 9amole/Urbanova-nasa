@@ -106,14 +106,32 @@ def test_basis_values_match_the_code():
         assert (f["status"] == "provisional_not_approved") == basis.is_provisional(f"finding.{f['id']}"), f["id"]
 
 
+def _lst(pct, diff_k=2.0):
+    return [_metric("lst_site_percentile_in_surroundings", "surface_heat", pct, "percentile"),
+            _metric("lst_site_minus_surroundings_k", "surface_heat", diff_k, "K")]
+
+
 def test_provisional_rules_are_capped_and_statistical_ones_are_not(env):
     project = {"id": "p", "boundary": _local_box_wgs(0, 0, 100, 100)}
-    [f], _ = _generate([_metric("lst_site_percentile_in_surroundings", "surface_heat", 99.0, "percentile")], project)
+    [f], _ = _generate(_lst(99.0), project)
     assert f["rule_id"] == "HEAT-LST-01" and f["severity"] == "high" and not f["threshold"]["severity_capped"]
     assert f["threshold"]["status"] == "statistical" and f["threshold"]["basis"]["references"] == ["R-6"]
-    [g], _ = _generate([_metric("lst_site_percentile_in_surroundings", "surface_heat", 92.0, "percentile")], project)
+    assert any("at least 1 K (a PROVISIONAL minimum" in x for x in f["limitations"])
+    [g], _ = _generate(_lst(92.0), project)
     assert g["severity"] == "moderate"
-    assert not _generate([_metric("lst_site_percentile_in_surroundings", "surface_heat", 60.0, "percentile")], project)[0]
+    assert not _generate(_lst(60.0), project)[0]
+
+
+def test_a_small_difference_is_not_reported_however_unusual(env):
+    from urbanova import basis
+    from urbanova.settings import load_config
+
+    project = {"id": "p", "boundary": _local_box_wgs(0, 0, 100, 100)}
+    assert not _generate(_lst(99.0, diff_k=0.37), project)[0]  # the sample site: 95th percentile but only 0.37 K
+    assert not _generate(_lst(99.0)[:1], project)[0]  # no measured difference → no finding
+    rule = next(r for r in load_config("rules.json")["findings"] if r["id"] == "HEAT-LST-01")
+    assert basis.get(rule["min_effect"]["basis"])["value"] == rule["min_effect"]["min"]
+    assert basis.is_provisional(rule["min_effect"]["basis"])
 
 
 def test_report_lists_values_used_with_their_basis(client, auth):
@@ -219,7 +237,7 @@ def test_uniform_field_gives_the_middle_and_no_finding(env):
     pos = site_position(*_field(0.0, 0.0))
     assert pos["percentile"] == 50 and pos["z"] is None
     project = {"id": "p", "boundary": _local_box_wgs(0, 0, 100, 100)}
-    assert not _generate([_metric("lst_site_percentile_in_surroundings", "surface_heat", pos["percentile"], "percentile")], project)[0]
+    assert not _generate(_lst(pos["percentile"]), project)[0]
 
 
 def test_blocks_with_missing_pixels_are_not_used():
@@ -309,7 +327,7 @@ def test_tx90p_with_an_empty_calendar_window_is_unavailable_not_a_crash():
 
 def test_existing_land_findings_are_context_without_design_recommendations(env):
     project = {"id": "p", "boundary": _local_box_wgs(0, 0, 100, 100)}
-    [f], recs = _generate([_metric("lst_site_percentile_in_surroundings", "surface_heat", 99.0, "percentile")], project)
+    [f], recs = _generate(_lst(99.0), project)
     assert recs == [] and any("decision S-8" in x for x in f["limitations"])
     # A design finding still gets its recommendations.
     _, recs2 = _generate([_metric("solar_open_space_exposed_pct_1500", "solar_shade", 95.0, "%", condition="design")], project)

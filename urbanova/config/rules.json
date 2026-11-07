@@ -22,6 +22,7 @@
       "id": "HEAT-LST-01", "category": "heat", "classification": "potential_environmental_concern",
       "title": "Site surfaces observed warmer than their surroundings",
       "metric": "lst_site_percentile_in_surroundings", "applies_to": "any",
+      "min_effect": {"metric": "lst_site_minus_surroundings_k", "min": 1.0, "basis": "finding.HEAT-LST-01.min_effect"},
       "severity": [{"min": 95, "level": "high"}, {"min": 90, "level": "moderate"}],
       "status": "statistical",
       "justification": "Where the site's mean surface temperature sits among the surrounding 90 m blocks (close to the 100 m native thermal resolution). Above the 95th or 90th percentile of the surroundings corresponds to the conventional one-sided 5 % or 10 % level: the site is unusually warm for its area.",

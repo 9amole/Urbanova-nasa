@@ -260,6 +260,20 @@
    "approved_on": "2026-11-07"
   },
   {
+   "id": "finding.HEAT-LST-01.min_effect",
+   "value": 1.0,
+   "unit": "K",
+   "used_in": "findings",
+   "basis_type": "project_choice",
+   "references": [
+    "R-8"
+   ],
+   "applicability": "Minimum site − surroundings difference (medians) before HEAT-LST-01 is reported, so a statistically unusual but physically small difference is not flagged",
+   "reason": "About the size of the uncertainty of Landsat surface temperature; a smaller difference is not a meaningful heat signal. To be confirmed by a supervisor",
+   "approved_by": null,
+   "approved_on": null
+  },
+  {
    "id": "finding.HEAT-LST-02",
    "value": [
     40,

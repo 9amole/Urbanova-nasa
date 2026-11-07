@@ -88,6 +88,10 @@ def generate(run: dict, project: dict, module_results: dict[str, dict], metric_r
         band = _band(rule, m["value"])
         if not band:
             continue
+        gate = rule.get("min_effect")
+        effect = by_name.get(gate["metric"]) if gate else None
+        if gate and (not effect or effect["state"] != V.AVAILABLE or effect["value"] < gate["min"]):
+            continue  # statistically unusual but too small (or unmeasured) to be a meaningful difference
         mod = module_of[rule["metric"]]
         conf, conf_why = _confidence(module_results[mod]["status"], m)
         rule_basis = basis.get(f"finding.{rule['id']}")
@@ -118,6 +122,9 @@ def generate(run: dict, project: dict, module_results: dict[str, dict], metric_r
         else:
             rating = f"rated {level} by {'PROVISIONAL ' if provisional else ''}rule {rule['id']}{' (not approved)' if provisional else ''}"
         limitations = [rule["limitation"], conf_why]
+        if gate:
+            limitations.append(f"Reported only because the difference ({effect['value']:g} {effect['unit']}) is at least {gate['min']:g} {effect['unit']}"
+                               + (" (a PROVISIONAL minimum, not yet approved)." if basis.is_provisional(gate["basis"]) else "."))
         if provisional:
             limitations.append("The severity threshold is PROVISIONAL and has not been approved; the AI/Analysis team must confirm or replace it before the finding is relied on.")
         if capped:
