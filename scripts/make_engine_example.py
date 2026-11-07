@@ -27,7 +27,7 @@ def main() -> Path:
                   "price_date": r["price_date"], "source": r["source"], "region": r.get("region") or None} for r in csv.DictReader(fh)]
     doc = "sample_planning_conditions.pdf (SYNTHETIC)"
     request = {
-        "contract_version": "1.0",
+        "contract_version": "1.1",
         "request_id": "example-synthetic-site",
         "site": {"latitude": 30.12, "longitude": 31.85, "boundary": boundary},
         "objectives": ["main_concerns", "surface_heat", "vegetation", "shade", "planning_compliance", "compare_alternatives"],

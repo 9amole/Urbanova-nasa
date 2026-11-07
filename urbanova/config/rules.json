@@ -21,11 +21,11 @@
     {
       "id": "HEAT-LST-01", "category": "heat", "classification": "potential_environmental_concern",
       "title": "Site surfaces observed warmer than their surroundings",
-      "metric": "lst_site_minus_surroundings_k", "applies_to": "any",
-      "severity": [{"min": 4, "level": "high"}, {"min": 2, "level": "moderate"}],
-      "status": "provisional_not_approved",
-      "justification": "Relative comparison of median land surface temperature inside the site with the surrounding ring (no recognised absolute threshold exists). The 2 K / 4 K bands are provisional and must be confirmed by the AI/Analysis team.",
-      "limitation": "Landsat LST is the temperature of observed surfaces at ~10:30 local solar time on clear days (thermal band native resolution 100 m). It is not air temperature or pedestrian comfort, and warmer surfaces do not prove that any building causes heating.",
+      "metric": "lst_site_percentile_in_surroundings", "applies_to": "any",
+      "severity": [{"min": 95, "level": "high"}, {"min": 90, "level": "moderate"}],
+      "status": "statistical",
+      "justification": "Where the site's mean surface temperature sits among the surrounding 90 m blocks (close to the 100 m native thermal resolution). Above the 95th or 90th percentile of the surroundings corresponds to the conventional one-sided 5 % or 10 % level: the site is unusually warm for its area.",
+      "limitation": "Landsat LST is the temperature of observed surfaces at ~10:30 local solar time on clear days (thermal band native resolution 100 m). It is not air temperature or pedestrian comfort, and warmer surfaces do not prove that any building causes heating. Neighbouring blocks are spatially correlated, so the percentile is a position, not an exact p-value.",
       "recommendation_keys": ["add_vegetation", "reduce_hard_surface", "shade_public_space"]
     },
     {

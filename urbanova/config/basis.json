@@ -1,0 +1,470 @@
+{
+ "_comment": "Basis record for every threshold, band, coefficient and default the analysis uses (PHASE2_SPEC §3.1). basis_type: standard | regulatory | literature | statistical | project_choice | provisional. A provisional value, or a project_choice without approved_by, is labelled PROVISIONAL and its severity is capped at moderate. References are ids in PHASE2_SPEC §12.",
+ "version": "2026.11-s1",
+ "values": [
+  {
+   "id": "climate.SU",
+   "value": 25,
+   "unit": "°C",
+   "used_in": "climate_baseline",
+   "basis_type": "standard",
+   "references": [
+    "R-1 (ETCCDI index SU)"
+   ],
+   "applicability": "Global; daily maximum air temperature > 25 °C",
+   "approved_by": null,
+   "approved_on": null
+  },
+  {
+   "id": "climate.TR",
+   "value": 20,
+   "unit": "°C",
+   "used_in": "climate_baseline",
+   "basis_type": "standard",
+   "references": [
+    "R-1 (ETCCDI index TR)"
+   ],
+   "applicability": "Global; daily minimum air temperature > 20 °C. ERA5 Tmin is warm-biased at the checked Egyptian stations (VALIDATION §1)",
+   "approved_by": null,
+   "approved_on": null
+  },
+  {
+   "id": "climate.TX35",
+   "value": 35,
+   "unit": "°C",
+   "used_in": "climate_baseline",
+   "basis_type": "provisional",
+   "references": [],
+   "applicability": "Context only",
+   "reason": "Used by several national services as a 'very hot day' marker; not an international standard",
+   "approved_by": null,
+   "approved_on": null
+  },
+  {
+   "id": "climate.TX40",
+   "value": 40,
+   "unit": "°C",
+   "used_in": "climate_baseline",
+   "basis_type": "provisional",
+   "references": [],
+   "applicability": "Context only",
+   "reason": "Project default extreme marker",
+   "approved_by": null,
+   "approved_on": null
+  },
+  {
+   "id": "climate.TX90p",
+   "value": {
+    "percentile": 90,
+    "base_period": "1961–1990",
+    "window_days": 5
+   },
+   "unit": null,
+   "used_in": "climate_baseline",
+   "basis_type": "standard",
+   "references": [
+    "R-1 (ETCCDI index TX90p)"
+   ],
+   "applicability": "Global; analysis years outside the base period, so no bootstrap is needed",
+   "approved_by": null,
+   "approved_on": null
+  },
+  {
+   "id": "climate.max_missing_fraction",
+   "value": 0.1,
+   "unit": "fraction",
+   "used_in": "climate_baseline",
+   "basis_type": "project_choice",
+   "references": [],
+   "applicability": "A year counts only if at most 10 % of its days are missing",
+   "reason": "Common completeness rule for annual index counts",
+   "approved_by": null,
+   "approved_on": null
+  },
+  {
+   "id": "vegetation.ndvi_threshold",
+   "value": 0.2,
+   "unit": "NDVI",
+   "used_in": "vegetation",
+   "basis_type": "literature",
+   "references": [
+    "R-10 (NDVI < 0.2 bare soil)",
+    "R-9"
+   ],
+   "applicability": "Sentinel-2 surface reflectance; separates bare or built surfaces from sparse vegetation",
+   "approved_by": null,
+   "approved_on": null
+  },
+  {
+   "id": "vegetation.s2_offset",
+   "value": {
+    "offset": 1000,
+    "from_baseline": "04.00"
+   },
+   "unit": "DN",
+   "used_in": "vegetation",
+   "basis_type": "standard",
+   "references": [
+    "ESA Sentinel-2 L2A product specification"
+   ],
+   "applicability": "Sentinel-2 L2A from processing baseline 04.00",
+   "approved_by": null,
+   "approved_on": null
+  },
+  {
+   "id": "vegetation.scl_mask",
+   "value": [
+    0,
+    1,
+    3,
+    8,
+    9,
+    10,
+    11
+   ],
+   "unit": "SCL class",
+   "used_in": "vegetation",
+   "basis_type": "standard",
+   "references": [
+    "ESA Sentinel-2 L2A scene classification"
+   ],
+   "applicability": "Masks no-data, saturated, cloud shadow, cloud, cirrus and snow",
+   "approved_by": null,
+   "approved_on": null
+  },
+  {
+   "id": "surface_heat.st_scale_offset",
+   "value": {
+    "scale": 0.00341802,
+    "offset_k": 149.0
+   },
+   "unit": null,
+   "used_in": "surface_heat",
+   "basis_type": "standard",
+   "references": [
+    "R-8"
+   ],
+   "applicability": "Landsat Collection 2 Level-2 ST_B10",
+   "approved_by": null,
+   "approved_on": null
+  },
+  {
+   "id": "surface_heat.qa_mask_bits",
+   "value": "0b11111",
+   "unit": "QA_PIXEL bits",
+   "used_in": "surface_heat",
+   "basis_type": "standard",
+   "references": [
+    "USGS Landsat 8-9 C2 L2 product guide (QA_PIXEL)"
+   ],
+   "applicability": "Fill, dilated cloud, cirrus, cloud, cloud shadow",
+   "approved_by": null,
+   "approved_on": null
+  },
+  {
+   "id": "surface_heat.valid_range_c",
+   "value": [
+    -30,
+    80
+   ],
+   "unit": "°C",
+   "used_in": "surface_heat",
+   "basis_type": "project_choice",
+   "references": [],
+   "applicability": "Physically plausible land surface temperatures",
+   "reason": "Removes residual retrieval artefacts",
+   "approved_by": null,
+   "approved_on": null
+  },
+  {
+   "id": "surface_heat.ring_gap_m",
+   "value": 60,
+   "unit": "m",
+   "used_in": "surface_heat",
+   "basis_type": "project_choice",
+   "references": [],
+   "applicability": "Gap between the site and the comparison ring",
+   "reason": "Two 30 m pixels, so ring pixels do not overlap the site edge",
+   "approved_by": null,
+   "approved_on": null
+  },
+  {
+   "id": "surface_heat.block_size_m",
+   "value": 90,
+   "unit": "m",
+   "used_in": "surface_heat",
+   "basis_type": "statistical",
+   "references": [
+    "R-6",
+    "R-8 (thermal band native 100 m)"
+   ],
+   "applicability": "3 × 3 blocks of the 30 m product approximate the native ~100 m thermal resolution, so blocks are close to independent observations",
+   "approved_by": null,
+   "approved_on": null
+  },
+  {
+   "id": "surface_heat.min_ring_blocks",
+   "value": 10,
+   "unit": "blocks",
+   "used_in": "surface_heat",
+   "basis_type": "project_choice",
+   "references": [],
+   "applicability": "Minimum surrounding blocks for the percentile",
+   "reason": "Below 10 blocks a percentile is too coarse to interpret",
+   "approved_by": null,
+   "approved_on": null
+  },
+  {
+   "id": "surface_heat.hottest_decile",
+   "value": 90,
+   "unit": "percentile",
+   "used_in": "surface_heat",
+   "basis_type": "statistical",
+   "references": [],
+   "applicability": "By construction 10 % of study-area pixels lie in the top decile",
+   "approved_by": null,
+   "approved_on": null
+  },
+  {
+   "id": "finding.HEAT-CLIM-01",
+   "value": [
+    60,
+    20,
+    1
+   ],
+   "unit": "days/year",
+   "used_in": "findings",
+   "basis_type": "provisional",
+   "references": [
+    "R-1"
+   ],
+   "applicability": "Regional climate context",
+   "reason": "Severity bands for TX35 days are a provisional project default",
+   "approved_by": null,
+   "approved_on": null
+  },
+  {
+   "id": "finding.HEAT-LST-01",
+   "value": [
+    95,
+    90
+   ],
+   "unit": "percentile",
+   "used_in": "findings",
+   "basis_type": "statistical",
+   "references": [
+    "R-6"
+   ],
+   "applicability": "Site mean surface temperature against surrounding 90 m blocks; 95th and 90th percentiles are the conventional one-sided 5 % and 10 % levels",
+   "approved_by": "Data science lead",
+   "approved_on": "2026-11-07"
+  },
+  {
+   "id": "finding.HEAT-LST-02",
+   "value": [
+    40,
+    20
+   ],
+   "unit": "%",
+   "used_in": "findings",
+   "basis_type": "project_choice",
+   "references": [],
+   "applicability": "Share of the site in the study area's hottest decile",
+   "reason": "20 % is twice the 10 % expected by construction",
+   "approved_by": null,
+   "approved_on": null
+  },
+  {
+   "id": "finding.VEG-NDVI-01",
+   "value": [
+    10,
+    25
+   ],
+   "unit": "%",
+   "used_in": "findings",
+   "basis_type": "project_choice",
+   "references": [
+    "R-10"
+   ],
+   "applicability": "Share of site pixels with NDVI ≥ 0.2",
+   "approved_by": null,
+   "approved_on": null
+  },
+  {
+   "id": "finding.SHADE-01",
+   "value": [
+    85,
+    70
+   ],
+   "unit": "%",
+   "used_in": "findings",
+   "basis_type": "project_choice",
+   "references": [],
+   "applicability": "Open space not in building shade at 15:00",
+   "reason": "To be replaced by the UTCI-based severity in stage S2",
+   "approved_by": null,
+   "approved_on": null
+  },
+  {
+   "id": "finding.planning_failure",
+   "value": "high",
+   "unit": null,
+   "used_in": "findings",
+   "basis_type": "project_choice",
+   "references": [
+    "R-17"
+   ],
+   "applicability": "Any failure of a user-verified planning rule",
+   "reason": "A verified rule either holds or it does not",
+   "approved_by": null,
+   "approved_on": null
+  },
+  {
+   "id": "solar.report_hours",
+   "value": [
+    9,
+    12,
+    15
+   ],
+   "unit": "h (true solar time)",
+   "used_in": "solar_shade",
+   "basis_type": "project_choice",
+   "references": [],
+   "applicability": "Hours reported individually; shade duration uses all hours 07–17",
+   "reason": "Morning, noon and afternoon of the working day",
+   "approved_by": null,
+   "approved_on": null
+  },
+  {
+   "id": "cost.stale_price_years",
+   "value": 2,
+   "unit": "years",
+   "used_in": "cost",
+   "basis_type": "project_choice",
+   "references": [],
+   "applicability": "Prices older than this are flagged",
+   "reason": "No approved inflation index is available",
+   "approved_by": null,
+   "approved_on": null
+  },
+  {
+   "id": "compliance.plot_area_tolerance_pct",
+   "value": 5,
+   "unit": "%",
+   "used_in": "planning_compliance",
+   "basis_type": "project_choice",
+   "references": [],
+   "applicability": "Allowed difference between the drawn and the verified plot area",
+   "approved_by": null,
+   "approved_on": null
+  },
+  {
+   "id": "config.context_buffer_m",
+   "value": 500,
+   "unit": "m",
+   "used_in": "site_context",
+   "basis_type": "project_choice",
+   "references": [],
+   "applicability": "Neighbourhood around the site",
+   "reason": "Default analysis setting; the user can change it per run",
+   "approved_by": null,
+   "approved_on": null
+  },
+  {
+   "id": "config.lst_buffer_m",
+   "value": 1000,
+   "unit": "m",
+   "used_in": "surface_heat",
+   "basis_type": "project_choice",
+   "references": [],
+   "applicability": "Surroundings for the comparison ring",
+   "reason": "Default analysis setting; the user can change it per run",
+   "approved_by": null,
+   "approved_on": null
+  },
+  {
+   "id": "config.ndvi_buffer_m",
+   "value": 500,
+   "unit": "m",
+   "used_in": "vegetation",
+   "basis_type": "project_choice",
+   "references": [],
+   "applicability": "Surroundings for the vegetation comparison",
+   "reason": "Default analysis setting; the user can change it per run",
+   "approved_by": null,
+   "approved_on": null
+  },
+  {
+   "id": "config.satellite_years",
+   "value": 3,
+   "unit": "years",
+   "used_in": "surface_heat, vegetation",
+   "basis_type": "project_choice",
+   "references": [],
+   "applicability": "Recent years searched for scenes",
+   "reason": "Default analysis setting; the user can change it per run",
+   "approved_by": null,
+   "approved_on": null
+  },
+  {
+   "id": "config.lst_max_scenes",
+   "value": 6,
+   "unit": "scenes",
+   "used_in": "surface_heat",
+   "basis_type": "project_choice",
+   "references": [],
+   "applicability": "Upper limit on scenes read",
+   "reason": "Default analysis setting; the user can change it per run",
+   "approved_by": null,
+   "approved_on": null
+  },
+  {
+   "id": "config.ndvi_max_scenes",
+   "value": 4,
+   "unit": "scenes",
+   "used_in": "vegetation",
+   "basis_type": "project_choice",
+   "references": [],
+   "applicability": "Upper limit on scenes read",
+   "reason": "Default analysis setting; the user can change it per run",
+   "approved_by": null,
+   "approved_on": null
+  },
+  {
+   "id": "config.ndvi_lookback_days",
+   "value": 365,
+   "unit": "days",
+   "used_in": "vegetation",
+   "basis_type": "project_choice",
+   "references": [],
+   "applicability": "Period searched for Sentinel-2 scenes",
+   "reason": "Default analysis setting; the user can change it per run",
+   "approved_by": null,
+   "approved_on": null
+  },
+  {
+   "id": "config.max_scene_cloud_pct",
+   "value": 40,
+   "unit": "%",
+   "used_in": "surface_heat, vegetation",
+   "basis_type": "project_choice",
+   "references": [],
+   "applicability": "Scene-level cloud limit before pixel masking",
+   "reason": "Default analysis setting; the user can change it per run",
+   "approved_by": null,
+   "approved_on": null
+  },
+  {
+   "id": "config.min_valid_site_fraction",
+   "value": 0.6,
+   "unit": "fraction",
+   "used_in": "surface_heat, vegetation",
+   "basis_type": "project_choice",
+   "references": [],
+   "applicability": "Share of clear site pixels for a scene to be used",
+   "reason": "Default analysis setting; the user can change it per run",
+   "approved_by": null,
+   "approved_on": null
+  }
+ ]
+}

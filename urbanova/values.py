@@ -27,6 +27,10 @@ MODELLED = "modelled"          # estimated by a model
 USER_PROVIDED = "user_provided"
 OUTPUT_KINDS = {OBSERVED, RETRIEVED_MODEL, CALCULATED, CLASSIFIED, MODELLED, USER_PROVIDED}
 
+# Condition (decision S-8): does a value describe the land as it is today, or the proposed design?
+EXISTING, DESIGN = "existing", "design"
+CONDITIONS = {EXISTING, DESIGN}
+
 OUTPUT_KIND_LABELS = {
     OBSERVED: "Observed / retrieved",
     RETRIEVED_MODEL: "Retrieved reanalysis (gridded model data)",
@@ -50,7 +54,7 @@ def metric(
     sources: list[str] | None = None,
     quality: dict | None = None,
     uncertainty: dict | None = None,
-    design_dependent: bool = False,
+    condition: str | None = None,
     extra: dict | None = None,
 ) -> dict[str, Any]:
     """Build a metric record, enforcing the value-state invariant."""
@@ -58,6 +62,8 @@ def metric(
         state = AVAILABLE if value is not None else UNKNOWN
     if state not in VALUE_STATES:
         raise ValueError(f"unknown value state {state!r}")
+    if condition is not None and condition not in CONDITIONS:
+        raise ValueError(f"unknown condition {condition!r}")
     if output_kind not in OUTPUT_KINDS:
         raise ValueError(f"unknown output kind {output_kind!r}")
     if state != AVAILABLE:
@@ -79,9 +85,14 @@ def metric(
         "source_dataset_ids": sources or [],
         "quality": quality or {},
         "uncertainty": uncertainty or {},
-        "design_dependent": design_dependent,
+        "condition": condition,  # None = the module's condition (urbanova/config/analyses.json), set by engine.core
         "extra": extra or {},
     }
+
+
+def condition_of(m: dict[str, Any]) -> str:
+    """The metric's condition; rows stored before the field existed fall back to their design flag."""
+    return m.get("condition") or (DESIGN if m.get("design_dependent") else EXISTING)
 
 
 def missing(name: str, label: str, unit: str | None, state: str, reason: str, **kw: Any) -> dict[str, Any]:

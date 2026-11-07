@@ -340,6 +340,42 @@
       },
       "approval_note": "Approved on 2026-11-04 for the climate validation script only (decision D3). Not used by any analysis module.",
       "caching_permitted": true
+    },
+    {
+      "id": "nominatim",
+      "name": "OpenStreetMap Nominatim (address search)",
+      "documentation_url": "https://nominatim.org/release-docs/latest/api/Search/",
+      "implementation_status": "implemented",
+      "enabled": true,
+      "priority": 1,
+      "access_method": "api",
+      "data_type": "geocoding",
+      "data_nature": "mapped_volunteered",
+      "variables": [
+        "display_name",
+        "lat",
+        "lon",
+        "boundingbox"
+      ],
+      "geographic_coverage": "Global, completeness varies by place",
+      "spatial_resolution": "Point or bounding box",
+      "temporal_resolution": "Live database snapshot at retrieval time",
+      "temporal_coverage": "Current",
+      "authentication": "none",
+      "usage_limits": "Public service: absolute maximum 1 request per second, no autocomplete or bulk geocoding, identify the application in the User-Agent; results may be cached.",
+      "license": "ODbL 1.0",
+      "attribution": "© OpenStreetMap contributors (ODbL)",
+      "commercial_use": "permitted_with_share_alike",
+      "units": {},
+      "suitability": "project_setup",
+      "known_limitations": "A place name can match several places; the user picks one and confirms the site location on the map. Not a cadastral or legal address.",
+      "fallback_ids": [],
+      "approval_status": "approved",
+      "approved_by": "Project decision maker (data science lead)",
+      "approved_on": "2026-11-07",
+      "approval_note": "Approved in the stage S1 plan (PHASE2_SPEC §2.1, decision S-7). Policy: https://operations.osmfoundation.org/policies/nominatim/",
+      "caching_permitted": true,
+      "timeout_s": 15
     }
   ]
 }

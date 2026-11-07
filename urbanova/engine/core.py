@@ -14,7 +14,7 @@ from typing import Callable
 from .. import findings, recording
 from ..analysis import climate, compliance, context, solar, surface_heat, urban_form, vegetation
 from ..analysis.common import FAILED, SKIPPED, Context
-from ..readiness import ANALYSES, RUNNABLE
+from ..readiness import ANALYSES, CONDITION, RUNNABLE
 
 log = logging.getLogger("urbanova.engine")
 
@@ -48,8 +48,9 @@ def run_design(ctx: Context, selected: list[str], on_module: Callable[[str, int]
         res = _run_module(ctx, mod)
         results[mod] = res
         for m in res["metrics"]:
+            cond = m.get("condition") or CONDITION[mod]
             metrics.append({**m, "id": recording.new_id("met"), "run_id": ctx.run_id, "module": mod, "calculated_at": recording.now(),
-                            "design_dependent": int(m["design_dependent"])})
+                            "condition": cond, "design_dependent": int(cond == "design")})  # design_dependent: derived, for contract 1.0 readers
         for lay in res["layers"]:
             layers.append({"id": recording.new_id("lyr"), "run_id": ctx.run_id, "module": mod, **lay})
         dataset_ids.extend(d for d in res["datasets"] if d not in dataset_ids)

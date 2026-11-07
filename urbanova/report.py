@@ -12,9 +12,10 @@ from pathlib import Path
 
 from shapely.geometry import shape
 
-from . import __version__, db, files, plans
+from . import __version__, basis, db, files, plans
 from .orchestrator import run_bundle
-from .readiness import ANALYSES
+from .readiness import ANALYSES, CONDITION
+from .values import DESIGN, EXISTING, condition_of
 from .settings import settings
 from .values import OUTPUT_KIND_LABELS
 
@@ -185,6 +186,21 @@ def _methodology(run: dict, bundle: dict) -> list[tuple[str, list[str]]]:
     return out
 
 
+def _basis_rows(run: dict) -> list[list[str]]:
+    """Every value the run's modules use, with its basis (PHASE2_SPEC §3.1)."""
+    rows = []
+    for r in basis.used_by(set((run.get("configuration") or {}).get("modules") or [])):
+        refs = ", ".join(r["references"]) or "—"
+        status = "PROVISIONAL" if basis.is_provisional(r["id"]) else "approved " + r["approved_on"] if r.get("approved_by") else "accepted by source"
+        val = r["value"] if not isinstance(r["value"], (dict, list)) else json.dumps(r["value"], ensure_ascii=False)
+        rows.append([r["id"], f"{val}{' ' + r['unit'] if r.get('unit') else ''}", basis.BASIS_LABELS[r["basis_type"]], refs,
+                     r["applicability"] + (f" ({r['reason']})" if r.get("reason") else ""), status])
+    return rows
+
+
+BASIS_HEADER = ["Value", "Setting", "Basis", "References", "Applies to", "Status"]
+
+
 def _html(project, run, bundle, scenario, files_, rules, comparison, summary, map_png, clim_png) -> str:
     ms = run.get("module_status") or {}
     rows = []
@@ -238,9 +254,10 @@ def _html(project, run, bundle, scenario, files_, rules, comparison, summary, ma
         mm = [m for m in bundle["metrics"] if m["module"] == mod]
         if not mm:
             continue
-        sec.append(f"<h3>{_e(ANALYSES[mod])}</h3><table><tr><th>Metric</th><th>Value</th><th>Kind</th><th>Method</th></tr>")
+        sec.append(f"<h3>{_e(ANALYSES[mod])} <small>({'proposed design' if CONDITION.get(mod) == DESIGN else 'existing land'})</small></h3><table><tr><th>Metric</th><th>Value</th><th>Kind</th><th>Method</th></tr>")
         for m in mm:
-            sec.append(f"<tr><td>{_e(m['label'])}</td><td>{_fmt(m)}</td><td>{_e(OUTPUT_KIND_LABELS.get(m['output_kind']))}</td><td>{_e(m['method'])}</td></tr>")
+            note = " <small>(same for every design)</small>" if CONDITION.get(mod) == DESIGN and condition_of(m) == EXISTING else ""
+            sec.append(f"<tr><td>{_e(m['label'])}{note}</td><td>{_fmt(m)}</td><td>{_e(OUTPUT_KIND_LABELS.get(m['output_kind']))}</td><td>{_e(m['method'])}</td></tr>")
         sec.append("</table>")
     sec.append("<h2>" + SECTIONS[6] + "</h2>")
     concerns = [f for f in bundle["findings"] if f["classification"] != "data_quality_issue"]
@@ -304,7 +321,9 @@ def _html(project, run, bundle, scenario, files_, rules, comparison, summary, ma
     sec.append(f"</ul><h2>{SECTIONS[12]}</h2><p>Analysis methods version {_e(run['analysis_version'])}. The calculation recorded for each metric, by analysis:</p>")
     for label, methods in _methodology(run, bundle):
         sec.append(f"<h3>{_e(label)}</h3><ul>" + "".join(f"<li>{_e(x)}</li>" for x in methods) + "</ul>")
-    sec.append("<p>Full descriptions, data sources and thresholds: docs/METHODOLOGY.md and urbanova/config/rules.json in the project repository.</p>")
+    sec.append("<h3>Values used and their basis</h3><table><tr>" + "".join(f"<th>{h}</th>" for h in BASIS_HEADER) + "</tr>"
+               + "".join("<tr>" + "".join(f"<td>{_e(c)}</td>" for c in row) + "</tr>" for row in _basis_rows(run)) + "</table>")
+    sec.append("<p>Full descriptions, data sources and thresholds: docs/METHODOLOGY.md, urbanova/config/rules.json and urbanova/config/basis.json in the project repository. References are listed in docs/PHASE2_SPEC.md §12.</p>")
     sec.append(f"<h2>{SECTIONS[13]}</h2><pre>{_e(json.dumps({'run_id': run['id'], 'configuration': run['configuration'], 'fingerprint': run['fingerprint'], 'datasets': run.get('input_dataset_ids')}, indent=1))}</pre>")
     css = """body{font-family:system-ui,Segoe UI,Arial,sans-serif;max-width:960px;margin:24px auto;padding:0 16px;color:#1d1d1d;line-height:1.45}
 table{border-collapse:collapse;width:100%;margin:8px 0 16px;font-size:13px}th,td{border:1px solid #ccc;padding:5px 7px;text-align:left;vertical-align:top}th{background:#f2f2f2}
@@ -436,7 +455,9 @@ def _pdf(path: Path, project, run, bundle, scenario, files_, rules, comparison, 
         story.append(Paragraph(f"<b>{_e(label)}</b>", small))
         for x in methods:
             story.append(bullet(x))
-    story.append(Paragraph("Full descriptions, data sources and thresholds: docs/METHODOLOGY.md and urbanova/config/rules.json in the project repository.", small))
+    story.append(Paragraph("<b>Values used and their basis</b>", small))
+    story.append(table([BASIS_HEADER] + _basis_rows(run), [3.2 * cm, 2.6 * cm, 2.2 * cm, 2.4 * cm, 5 * cm, 2.2 * cm]))
+    story.append(Paragraph("Full descriptions, data sources and thresholds: docs/METHODOLOGY.md, urbanova/config/rules.json and urbanova/config/basis.json in the project repository. References are listed in docs/PHASE2_SPEC.md §12.", small))
     story.append(h(13))
     story.append(Paragraph(_e(json.dumps({"run": run["id"], "analysis_version": run["analysis_version"], "configuration": run["configuration"], "fingerprint": run.get("fingerprint"), "datasets": run.get("input_dataset_ids")})), small))
     SimpleDocTemplate(str(path), pagesize=A4, leftMargin=1.6 * cm, rightMargin=1.6 * cm, topMargin=1.5 * cm, bottomMargin=1.5 * cm,

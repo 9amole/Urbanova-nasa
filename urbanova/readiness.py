@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from . import db, documents, plans
 from .providers.base import availability
-from .settings import settings
+from .settings import load_config, settings
 
 READY, LIMITED, BLOCKED, NOT_IN_BUILD = "ready", "ready_with_limitations", "blocked", "not_in_this_build"
 
@@ -22,6 +22,8 @@ ANALYSES = {
     "air_quality": "Regional air-quality context",
 }
 RUNNABLE = ["climate_baseline", "site_context", "urban_form", "vegetation", "surface_heat", "solar_shade", "planning_compliance"]
+# Existing land or proposed design, per runnable module (urbanova/config/analyses.json, decision S-8).
+CONDITION = {a["id"]: a["condition"] for a in load_config("analyses.json")["analyses"] if a["id"] in RUNNABLE}
 
 
 def _entry(key: str, status: str, missing: list[str] | None = None, prevents: str = "", next_step: str = "", limitations: list[str] | None = None) -> dict:

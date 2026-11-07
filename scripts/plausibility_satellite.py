@@ -38,7 +38,7 @@ def main() -> int:
     rows = []
     with tempfile.TemporaryDirectory(prefix="urbanova_plaus_") as tmp:
         for s in SITES:
-            req = {"contract_version": "1.0", "request_id": f"plausibility-{s['key']}",
+            req = {"contract_version": "1.1", "request_id": f"plausibility-{s['key']}",
                    "site": {"latitude": s["latitude"], "longitude": s["longitude"]},
                    "settings": {"modules": ["climate_baseline", "vegetation", "surface_heat"]}}
             res = analyse(req, Path(tmp) / s["key"])

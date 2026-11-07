@@ -8,6 +8,9 @@ Method (documented in docs/METHODOLOGY.md):
 5. Accept a scene only if ≥ 60% of site pixels are valid; composite = per-pixel median.
 6. Compare the site with a surrounding ring and classify pixels relative to the
    study-area distribution (P25/P75/P90). No absolute "hot" threshold is used.
+7. Statistical position of the site: the ring is aggregated to 90 m blocks (3 × 3 pixels, close to
+   the 100 m native thermal resolution) and the site's mean is placed among the block means
+   (percentile and standardised difference).
 """
 
 from __future__ import annotations
@@ -28,6 +31,8 @@ PROVIDER = "pc_landsat_c2_l2"
 SCALE, OFFSET = 0.00341802, 149.0
 QA_MASK_BITS = 0b11111  # fill, dilated cloud, cirrus, cloud, cloud shadow
 CLASS_COLORS = {1: "#2c7bb6", 2: "#ffffbf", 3: "#fdae61", 4: "#d7191c"}
+BLOCK = 3  # 3 × 3 pixels of 30 m = 90 m blocks (basis: surface_heat.block_size_m)
+MIN_RING_BLOCKS = 10  # basis: surface_heat.min_ring_blocks
 CLASS_LABELS = {1: "Cooler than study-area P25", 2: "Typical (P25–P75)", 3: "Warmer (P75–P90)", 4: "Hottest decile (≥ P90)"}
 
 
@@ -37,6 +42,41 @@ def hot_months(ctx: Context) -> tuple[list[int], str]:
         basis = "the three warmest months in the climate baseline" if not ctx.config.get("hot_months") else "user-selected months"
         return sorted(months), basis
     return ([6, 7, 8] if ctx.lat >= 0 else [12, 1, 2]), "hemisphere default summer (climate baseline unavailable)"
+
+
+def mid_rank(ref_sorted: np.ndarray, x) -> np.ndarray:
+    """Mid-rank percentile (0–1) of x within sorted ref: values tied with x count half."""
+    return (np.searchsorted(ref_sorted, x, "left") + np.searchsorted(ref_sorted, x, "right")) / 2 / ref_sorted.size
+
+
+def site_position(comp: np.ndarray, site_mask: np.ndarray, ring_mask: np.ndarray, draws: int = 999) -> dict:
+    """Where the site's mean surface temperature sits among the surroundings, at the ~100 m native scale.
+
+    The ring is cut into 90 m blocks (a block counts only if all its pixels are valid and inside the
+    ring). The site covers about n blocks, so it is compared with the means of n blocks drawn from
+    the ring (seeded resampling): a large site is judged against averages of the same size, not
+    against single blocks. Returns the site mean, the number of ring blocks, the mid-rank percentile
+    (ties count half) and the standardised difference (None when the blocks do not vary)."""
+    site_vals = comp[site_mask & ~np.isnan(comp)]
+    rows, cols = (comp.shape[0] // BLOCK) * BLOCK, (comp.shape[1] // BLOCK) * BLOCK
+    shape4 = (rows // BLOCK, BLOCK, cols // BLOCK, BLOCK)
+    full = (ring_mask[:rows, :cols] & ~np.isnan(comp[:rows, :cols])).reshape(shape4).all(axis=(1, 3))
+    blocks = comp[:rows, :cols].reshape(shape4).mean(axis=(1, 3))[full]
+    out = {"site_mean_c": float(site_vals.mean()) if site_vals.size else None, "ring_blocks": int(blocks.size), "percentile": None, "z": None}
+    if out["site_mean_c"] is None or blocks.size < MIN_RING_BLOCKS:
+        return out
+    s = out["site_mean_c"]
+    n = int(min(max(1, round(site_vals.size / BLOCK ** 2)), blocks.size))
+    if n == 1:
+        null = blocks  # a one-block site is compared with every block
+    else:
+        rng = np.random.default_rng(0)  # fixed seed: the same data always gives the same answer
+        idx = rng.random((draws, blocks.size)).argpartition(n, axis=1)[:, :n]  # n distinct blocks per draw
+        null = blocks[idx].mean(axis=1)
+    sd = float(blocks.std(ddof=1)) / np.sqrt(n)
+    out.update(site_blocks=n, ring_block_mean_c=float(blocks.mean()), percentile=float(100 * mid_rank(np.sort(null), s)),
+               z=(s - float(blocks.mean())) / sd if sd > 1e-9 else None)
+    return out
 
 
 def _colocate_with_ndvi(ctx: Context, comp, classes, transform, shape_, study_mask, local, src) -> list[dict]:
@@ -128,7 +168,7 @@ def run(ctx: Context) -> dict:
     # Mid-rank percentile of each pixel within the study area. Using ranks (not "≥ P90")
     # keeps tied values together: a uniform field is "typical", never "hottest decile".
     ref = np.sort(comp[v])
-    rank = (np.searchsorted(ref, comp[v], "left") + np.searchsorted(ref, comp[v], "right")) / 2 / ref.size
+    rank = mid_rank(ref, comp[v])
     cls = np.select([rank < 0.25, rank < 0.75, rank < 0.90], [1, 2, 3], default=4).astype("float32")
     classes[v] = cls
     site_vals = comp[site_mask & v]
@@ -160,6 +200,24 @@ def run(ctx: Context) -> dict:
         m.append(V.metric("lst_site_minus_surroundings_k", "Site minus surroundings median surface temperature", round(diff, 2), "K", method="Difference of medians (site − ring)", sources=src, quality=q, uncertainty=unc))
     else:
         m.append(V.missing("lst_site_minus_surroundings_k", "Site minus surroundings median surface temperature", "K", V.UNKNOWN, "No valid pixels in the surrounding ring.", sources=src))
+    pos = site_position(comp, site_mask, ring_mask)
+    pq = {**q, "ring_blocks_90m": pos["ring_blocks"], "basis": "finding.HEAT-LST-01"}
+    p_label = "Site position among surrounding 90 m blocks (percentile of mean surface temperature)"
+    z_label = "Site minus surroundings, in standard deviations of the surrounding 90 m blocks"
+    if pos["percentile"] is None:
+        why = f"Only {pos['ring_blocks']} complete 90 m blocks in the surrounding ring (at least {MIN_RING_BLOCKS} needed)."
+        m.append(V.missing("lst_site_percentile_in_surroundings", p_label, "percentile", V.UNKNOWN, why, sources=src))
+        m.append(V.missing("lst_site_minus_surroundings_z", z_label, "SD", V.UNKNOWN, why, sources=src))
+    else:
+        m.append(V.metric("lst_site_percentile_in_surroundings", p_label, round(pos["percentile"], 1), "percentile",
+                          method=(f"Share of 999 seeded draws of {pos['site_blocks']} blocks (the site's size) from the {pos['ring_blocks']} complete 90 m ring blocks (3 × 3 composite pixels) whose mean is cooler than the site's mean surface temperature; ties count half"
+                                  if pos["site_blocks"] > 1 else f"Share of the {pos['ring_blocks']} complete 90 m ring blocks (3 × 3 composite pixels) cooler than the site's mean surface temperature; ties count half"),
+                          sources=src, quality=pq))
+        if pos["z"] is None:
+            m.append(V.missing("lst_site_minus_surroundings_z", z_label, "SD", V.UNKNOWN, "The surrounding blocks have no temperature variation.", sources=src))
+        else:
+            m.append(V.metric("lst_site_minus_surroundings_z", z_label, round(pos["z"], 2), "SD",
+                              method="(site mean − mean of the 90 m ring blocks) ÷ (standard deviation of the ring blocks ÷ √ site blocks)", sources=src, quality=pq))
     share = float(np.mean(classes[site_mask & v] == 4) * 100)
     m.append(V.metric("lst_site_hottest_decile_share_pct", "Share of site in the study area's hottest decile of surface temperature", round(share, 1), "%", output_kind=V.CLASSIFIED,
                       method="Site pixels whose mid-rank percentile within the study-area composite is ≥ 90 (ties share one rank) ÷ site pixels; expected ≈10% if the site were typical", sources=src, quality=q))

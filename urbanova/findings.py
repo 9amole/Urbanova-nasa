@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from . import db
+from . import basis, db
 from . import values as V
 from .settings import load_config
 
@@ -90,7 +90,9 @@ def generate(run: dict, project: dict, module_results: dict[str, dict], metric_r
             continue
         mod = module_of[rule["metric"]]
         conf, conf_why = _confidence(module_results[mod]["status"], m)
-        provisional = rule["status"] == "provisional_not_approved"
+        rule_basis = basis.get(f"finding.{rule['id']}")
+        provisional = basis.record_is_provisional(rule_basis)
+        status = "provisional_not_approved" if provisional else rule_basis["basis_type"]
         level = band["level"]
         capped = provisional and SEVERITY_ORDER[level] > SEVERITY_ORDER[PROVISIONAL_SEVERITY_CAP]
         if capped:
@@ -120,19 +122,23 @@ def generate(run: dict, project: dict, module_results: dict[str, dict], metric_r
             limitations.append("The severity threshold is PROVISIONAL and has not been approved; the AI/Analysis team must confirm or replace it before the finding is relied on.")
         if capped:
             limitations.append(f"Severity is capped at '{PROVISIONAL_SEVERITY_CAP}' while the threshold is unapproved; the band it falls in is '{band['level']}'.")
+        existing = V.condition_of(m) == V.EXISTING
+        if existing:
+            limitations.append("This describes the land as it is today, not the proposed design, so it is site context: design recommendations "
+                               "come only from analyses of the design (decision S-8).")
         if regional:
             limitations.append("This is a regional climate statistic for the reanalysis grid cell; it does not vary within the site and does not locate heat on the site.")
-        status_text = "PROVISIONAL threshold, not approved" if provisional else "recognised standard index" if rule["status"] == "standard" else rule["status"]
+        status_text = "PROVISIONAL threshold, not approved" if provisional else basis.BASIS_LABELS[status].lower()
         add({
             "category": rule["category"], "classification": rule["classification"], "title": rule["title"],
             "summary": f"{m['label']}: {m['value']:g} {m['unit']} — {rating}.",
             "geometry": geom, "metric_ids": [m["id"]], "severity": level, "affected_area": area,
             "severity_rule": f"Rule {rule['id']} bands: {_band_text(rule)} ({status_text})." + (f" Capped at {PROVISIONAL_SEVERITY_CAP} until approved." if capped else ""),
-            "rule_id": rule["id"], "threshold": {"bands": rule["severity"], "status": rule["status"], "justification": rule["justification"],
-                                                 "band_level": band["level"], "severity_capped": capped},
+            "rule_id": rule["id"], "threshold": {"bands": rule["severity"], "status": status, "justification": rule["justification"],
+                                                 "band_level": band["level"], "severity_capped": capped, "basis": rule_basis},
             "evidence": evidence, "sources": _sources(m, module_results[mod]), "confidence": conf,
             "limitations": limitations,
-        }, rule["recommendation_keys"], target={"description": area, "geometry": geom})
+        }, [] if existing else rule["recommendation_keys"], target={"description": area, "geometry": geom})
 
     for check in shared.get("compliance_checks", []):
         if check["status"] == "fails":

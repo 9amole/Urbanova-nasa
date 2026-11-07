@@ -58,7 +58,7 @@ def main() -> int:
         {"type": "Feature", "id": f["id"], "geometry": f["geometry"],
          "properties": {"feature_type": f["properties"]["feature_type"], **({"floors": f["properties"]["floors"]} if f["properties"].get("floors") else {})}}
         for f in feats if f["properties"]["feature_type"] != "unclassified"]}
-    req = {"contract_version": "1.0", "request_id": "real-geometry-garden-city", "site": {"latitude": LAT, "longitude": LON, "boundary": mapping(site)},
+    req = {"contract_version": "1.1", "request_id": "real-geometry-garden-city", "site": {"latitude": LAT, "longitude": LON, "boundary": mapping(site)},
            "designs": [{"id": "existing", "name": "Existing buildings (OSM)", "kind": "baseline", "features": design}],
            "settings": {"modules": ["urban_form"]}}
     with tempfile.TemporaryDirectory() as tmp:

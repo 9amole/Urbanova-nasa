@@ -15,10 +15,11 @@ import shapely
 from shapely.geometry import shape
 
 from .. import ANALYSIS_VERSION, __version__, comparison, cost, documents, files, findings, geo, plans, recording
+from .. import values as V
 from ..analysis.common import Context
 from ..orchestrator import OBJECTIVE_MODULES, RunError, answer_objectives, approval_info, resolve_config
 from ..settings import settings
-from .contract import CONTRACT_VERSION, AnalysisRequest
+from .contract import ACCEPTED_REQUEST_VERSIONS, CONTRACT_VERSION, AnalysisRequest
 from .core import jsonable, run_design
 
 MAX_FEATURES_PER_DESIGN = 5000
@@ -99,8 +100,8 @@ def analyse(request: dict[str, Any], output_dir: str | os.PathLike) -> dict[str,
 def _parse(request: dict[str, Any]) -> AnalysisRequest:
     if not isinstance(request, dict):
         raise _err([], "The request must be a JSON object.")
-    if request.get("contract_version") not in (None, CONTRACT_VERSION):
-        raise _err(["contract_version"], f"This engine implements contract {CONTRACT_VERSION}; the request uses {request.get('contract_version')}.")
+    if request.get("contract_version") not in (None, *ACCEPTED_REQUEST_VERSIONS):
+        raise _err(["contract_version"], f"This engine implements contract {CONTRACT_VERSION} (accepts requests {', '.join(ACCEPTED_REQUEST_VERSIONS)}); the request uses {request.get('contract_version')}.")
     try:
         return AnalysisRequest.model_validate(request)
     except ValidationError as exc:
@@ -243,7 +244,7 @@ def _rel(path: str | None, root: Path) -> str | None:
 def _metric(m: dict) -> dict:
     keys = ("id", "metric_name", "label", "module", "state", "value", "unit", "reason", "output_kind", "method", "design_dependent",
             "source_dataset_ids", "quality", "uncertainty", "extra")
-    return {k: m.get(k) for k in keys} | {"source_dataset_ids": m.get("source_dataset_ids") or []}
+    return {k: m.get(k) for k in keys} | {"source_dataset_ids": m.get("source_dataset_ids") or [], "condition": V.condition_of(m)}
 
 
 def _finding(f: dict) -> dict:

@@ -8,12 +8,13 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import Depends, FastAPI, File, Form, Header, Request, UploadFile
-from fastapi.responses import FileResponse, JSONResponse, Response
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 from . import __version__, comparison, cost, db, documents, explain, files, geo, orchestrator, plans, projects, readiness, report, scenarios, security, supplementary
 from .catalog import public_dataset
-from .providers.base import registry
+from .providers import geocode
+from .providers.base import ProviderError, registry
 from .settings import ROOT, settings
 
 log = logging.getLogger("urbanova.api")
@@ -21,7 +22,7 @@ app = FastAPI(title="URBANOVA Phase 1 API", version=__version__, docs_url="/api/
 API = "/api/v1"
 
 DOMAIN_ERRORS = (projects.ProjectError, geo.GeometryError, plans.PlanError, documents.DocumentError, scenarios.ScenarioError,
-                 orchestrator.RunError, comparison.ComparisonError, cost.CostError, supplementary.SupplementaryError)
+                 orchestrator.RunError, comparison.ComparisonError, cost.CostError, supplementary.SupplementaryError, geocode.GeocodeError)
 
 
 class NotFound(Exception):
@@ -124,7 +125,7 @@ def meta():
         "feature_types": plans.FEATURE_TYPES, "rule_types": documents.RULE_TYPES, "quantity_types": cost.QUANTITY_TYPES,
         "upload_categories": {k: {**v, "capabilities": {t: files.CAPABILITIES[t] for t in v["types"]}} for k, v in files.ALLOWLIST.items()},
         "max_upload_mb": settings.max_upload_mb, "analyses": readiness.ANALYSES, "runnable_modules": readiness.RUNNABLE,
-        "default_config": orchestrator.DEFAULT_CONFIG,
+        "default_config": orchestrator.DEFAULT_CONFIG, "module_condition": readiness.CONDITION,
         "basemap": {"url": settings.tile_url, "attribution": settings.tile_attribution, "max_zoom": settings.tile_max_zoom,
                     "is_osm_volunteer_service": "tile.openstreetmap.org" in settings.tile_url},
     }
@@ -133,6 +134,15 @@ def meta():
 @app.get(f"{API}/providers")
 def providers(user: dict = Depends(current_user)):
     return list(registry().values())
+
+
+@app.get(f"{API}/geocode")
+def geocode_search(q: str = "", user: dict = Depends(current_user)):
+    """Address search for creating a project (Nominatim). Runs only when the user presses Search."""
+    try:
+        return geocode.search(q)
+    except ProviderError as exc:
+        return JSONResponse({"detail": f"Address search is unavailable: {exc.as_dict()['message']} Click the map or enter coordinates instead."}, status_code=503)
 
 
 # Provider logs (FR-41) are kept in the `provider_logs` table for operators. They are not exposed
@@ -563,6 +573,27 @@ async def feedback(pid: str, request: Request, user: dict = Depends(current_user
 @app.get("/api/health")
 def health():
     return {"status": "ok", "version": __version__, "offline": settings.offline}
+
+
+def _index_html() -> str:
+    """index.html with each asset link keyed by a hash of the file, so browsers fetch new code after any change."""
+    import hashlib
+    import re
+
+    html = (ROOT / "web" / "index.html").read_text(encoding="utf-8")
+    for name in ("app.js", "styles.css"):
+        digest = hashlib.sha256((ROOT / "web" / name).read_bytes()).hexdigest()[:12]
+        html = re.sub(rf'{re.escape(name)}\?v=[^"]*', f"{name}?v={digest}", html)
+    return html
+
+
+INDEX_HTML = _index_html()
+
+
+@app.get("/", include_in_schema=False)
+@app.get("/index.html", include_in_schema=False)
+def index():
+    return HTMLResponse(INDEX_HTML, headers={"Cache-Control": "no-cache"})
 
 
 app.mount("/", StaticFiles(directory=str(ROOT / "web"), html=True), name="web")

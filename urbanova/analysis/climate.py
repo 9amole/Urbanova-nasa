@@ -9,6 +9,7 @@ from statistics import mean
 from .. import catalog
 from .. import values as V
 from ..providers.base import ProviderError
+from ..providers import weather
 from ..providers.weather import LABELS, fetch_daily
 from ..settings import load_config
 from .common import COMPLETED, PARTIAL, UNAVAILABLE, Context, result
@@ -25,6 +26,15 @@ def default_period(today: date | None = None) -> dict:
 
 def _cmp(v: float, op: str, t: float) -> bool:
     return v > t if op == ">" else v >= t
+
+
+def complete_years(dates: list[str], vals: list) -> dict[str, list[tuple[str, float]]]:
+    """(date, value) pairs per year, for years with at most MAX_MISSING_FRACTION of days missing."""
+    by_year: dict[str, list] = defaultdict(list)
+    for d, v in zip(dates, vals):
+        by_year[d[:4]].append((d, v))
+    return {y: [(d, v) for d, v in days if v is not None] for y, days in by_year.items()
+            if sum(v is not None for _, v in days) >= len(days) * (1 - MAX_MISSING_FRACTION)}
 
 
 def summarise(data: dict, indices: list[dict]) -> dict:
@@ -50,12 +60,7 @@ def summarise(data: dict, indices: list[dict]) -> dict:
         vals = s.get(ix["variable"])
         if not vals:
             continue
-        per_year = {}
-        for y in years:
-            yv = [v for d, v in zip(dates, vals) if d.startswith(y) and v is not None]
-            n_days = sum(1 for d in dates if d.startswith(y))
-            if n_days and len(yv) >= n_days * (1 - MAX_MISSING_FRACTION):
-                per_year[y] = sum(1 for v in yv if _cmp(v, ix["op"], ix["threshold"]))
+        per_year = {y: sum(1 for _, v in obs if _cmp(v, ix["op"], ix["threshold"])) for y, obs in sorted(complete_years(dates, vals).items())}
         idx_out.append({**ix, "per_year": per_year, "mean_per_year": round(mean(per_year.values()), 1) if per_year else None, "years_complete": len(per_year)})
     tmax = [v for v in s.get("tmax_c", []) if v is not None]
     tmax_sorted = sorted(tmax)
@@ -80,6 +85,62 @@ def summarise(data: dict, indices: list[dict]) -> dict:
         "tmax_record_c": round(max(tmax), 1) if tmax else None, "hottest_months": hottest,
         "hottest_month_names": [MONTHS[m - 1] for m in hottest], "annual": annual, "years": years,
     }
+
+
+def _calendar_day(d: str) -> int:
+    """Day index 0–364 on a 365-day calendar; 29 February shares 28 February's threshold."""
+    m, dd = int(d[5:7]), int(d[8:10])
+    if m == 2 and dd == 29:
+        dd = 28
+    return date(2001, m, dd).timetuple().tm_yday - 1
+
+
+def tx90p(dates: list[str], tmax: list, base_dates: list[str], base_tmax: list, window: int = 5) -> dict | None:
+    """ETCCDI TX90p: % of days with Tmax above the calendar-day 90th percentile of the base period.
+
+    The threshold for each calendar day is the 90th percentile (Hyndman–Fan type 8, as in the
+    ETCCDI software) of base-period Tmax in a `window`-day window centred on that day. The
+    analysis years lie outside the base period, so no bootstrap is needed (Zhang et al. 2011).
+    Returns None when the base period is less than 90 % complete or a calendar window has no data."""
+    import numpy as np
+
+    by_day: list[list[float]] = [[] for _ in range(365)]
+    valid = 0
+    for d, v in zip(base_dates, base_tmax):
+        if v is not None:
+            by_day[_calendar_day(d)].append(v)
+            valid += 1
+    if not base_dates or valid < len(base_dates) * (1 - MAX_MISSING_FRACTION):
+        return None
+    half = window // 2
+    thresholds = []
+    for k in range(365):
+        sample = [v for j in range(k - half, k + half + 1) for v in by_day[j % 365]]
+        if not sample:
+            return None
+        thresholds.append(float(np.percentile(sample, 90, method="median_unbiased")))
+    per_year = {y: round(100 * sum(1 for d, v in obs if v > thresholds[_calendar_day(d)]) / len(obs), 2)
+                for y, obs in sorted(complete_years(dates, tmax).items()) if obs}
+    return {"per_year": per_year, "mean": round(mean(per_year.values()), 1) if per_year else None, "thresholds_c": thresholds}
+
+
+def _tx90p_metric(ctx: Context, data: dict, src: list[str]) -> dict:
+    """The TX90p metric, or a missing value with the reason (a base-period failure does not affect the rest of the module)."""
+    name, label = "climate_mean_annual_TX90p_pct", "Share of days hotter than the local 1961–1990 90th percentile (ETCCDI TX90p)"
+    if data["provider"] != "open_meteo_archive":
+        return V.missing(name, label, "% of days", V.UNAVAILABLE, "TX90p needs the 1961–1990 ERA5 base period; the fallback provider in use starts in 1981.", sources=src)
+    try:
+        base = weather.fetch_tmax_base(ctx.lat, ctx.lon)
+    except ProviderError as exc:
+        return V.missing(name, label, "% of days", V.UNAVAILABLE, f"The 1961–1990 base period could not be retrieved ({exc.kind}).", sources=src)
+    out = tx90p(data["dates"], data["series"].get("tmax_c") or [], base["dates"], base["series"].get("tmax_c") or [])
+    if not out or out["mean"] is None:
+        return V.missing(name, label, "% of days", V.UNKNOWN, "The base period or the analysis years are less than 90 % complete.", sources=src)
+    return V.metric(name, label + " — mean per year", out["mean"], "% of days",
+                    method="Days with Tmax above the calendar-day 90th percentile of 1961–1990 ERA5 Tmax (5-day window, Hyndman–Fan type 8), "
+                           "as a percentage of valid days per complete year, averaged; about 10 % means no change from the base climate",
+                    sources=src, quality={"provider": data["provider"], "base_period": "1961–1990", "basis": "climate.TX90p", "per_year": out["per_year"],
+                                          "base_cache_key": base["meta"].get("cache_key")})
 
 
 def run(ctx: Context) -> dict:
@@ -140,6 +201,10 @@ def run(ctx: Context) -> dict:
             m.append(V.metric(name, ix["label"] + " — mean per year", ix["mean_per_year"], "days/year",
                               method=f"Count of days with {ix['variable']} {ix['op']} {ix['threshold']} per complete year, averaged over {ix['years_complete']} years",
                               sources=src, quality={**q, "rule_status": ix["status"], "justification": ix["justification"]}))
+    tx = _tx90p_metric(ctx, data, src)
+    m.append(tx)
+    if tx["state"] != V.AVAILABLE:
+        warnings.append(f"ETCCDI TX90p was not calculated: {tx['reason']}")
     rh = summary["monthly_climatology"].get("rh_mean_pct")
     sw = summary["monthly_climatology"].get("sw_mj_m2")
     if summary["hottest_months"] and rh and all(rh[mm - 1] is not None for mm in summary["hottest_months"]):

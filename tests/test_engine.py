@@ -24,7 +24,7 @@ def test_example_request_runs_and_matches_the_result_contract(env, tmp_path, req
     AnalysisRequest.model_validate(request_sample)
     res = analyse(request_sample, tmp_path / "out")
     AnalysisResult.model_validate(res)
-    assert res["contract_version"] == "1.0" and res["request_id"] == "example-synthetic-site"
+    assert res["contract_version"] == "1.1" and res["request_id"] == "example-synthetic-site"
     assert [d["design_id"] for d in res["designs"]] == ["baseline", "alt-greener"]
     base = res["designs"][0]
     # Offline: external modules are honestly unavailable, design modules complete; missing is never 0.

@@ -74,11 +74,24 @@ def _validate_series(series: dict[str, list], dates: list[str]) -> dict:
     return qc
 
 
+# ETCCDI base period for percentile indices such as TX90p (Zhang et al. 2011, R-1).
+BASE_PERIOD = (date(1961, 1, 1), date(1990, 12, 31))
+
+
 def fetch_open_meteo(lat: float, lon: float, start: date, end: date) -> dict:
+    return _open_meteo(lat, lon, start, end, list(OPEN_METEO_MAP))
+
+
+def fetch_tmax_base(lat: float, lon: float) -> dict:
+    """Daily ERA5 maximum temperature for the 1961–1990 base period (one cached request)."""
+    return _open_meteo(lat, lon, *BASE_PERIOD, ["temperature_2m_max"])
+
+
+def _open_meteo(lat: float, lon: float, start: date, end: date, daily_vars: list[str]) -> dict:
     p = provider("open_meteo_archive")
     params = {
         "latitude": round(lat, 4), "longitude": round(lon, 4), "start_date": start.isoformat(), "end_date": end.isoformat(),
-        "daily": ",".join(OPEN_METEO_MAP), "timezone": "auto", "models": "era5",
+        "daily": ",".join(daily_vars), "timezone": "auto", "models": "era5",
     }
     # Commercial use requires Open-Meteo's paid API: same parameters on the customer host plus
     # an `apikey` (server-side only; excluded from the cache key and redacted in logs).

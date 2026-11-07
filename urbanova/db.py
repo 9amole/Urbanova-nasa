@@ -86,7 +86,7 @@ CREATE TABLE IF NOT EXISTS metrics (
     id TEXT PRIMARY KEY, run_id TEXT NOT NULL, module TEXT NOT NULL, metric_name TEXT NOT NULL,
     label TEXT, state TEXT NOT NULL, value REAL, unit TEXT, reason TEXT, method TEXT,
     source_dataset_ids TEXT, quality TEXT, uncertainty TEXT, output_kind TEXT,
-    design_dependent INTEGER DEFAULT 0, extra TEXT, calculated_at TEXT NOT NULL
+    design_dependent INTEGER DEFAULT 0, extra TEXT, calculated_at TEXT NOT NULL, condition TEXT
 );
 CREATE TABLE IF NOT EXISTS layers (
     id TEXT PRIMARY KEY, run_id TEXT NOT NULL, module TEXT NOT NULL, name TEXT NOT NULL,
@@ -131,6 +131,7 @@ CREATE INDEX IF NOT EXISTS ix_datasets_cache ON datasets(cache_key);
 # Columns added after the first release: (table, column, type). Applied once to existing databases.
 MIGRATIONS: list[tuple[str, str, str]] = [
     ("findings", "affected_area", "TEXT"),
+    ("metrics", "condition", "TEXT"),
 ]
 
 # Columns holding JSON documents, decoded automatically on read.

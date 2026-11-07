@@ -7,11 +7,14 @@ Breaking changes increase the major version of CONTRACT_VERSION; additions incre
 
 from __future__ import annotations
 
-from typing import Any, Literal
+from typing import Any, Literal, get_args
 
 from pydantic import BaseModel, ConfigDict, Field
 
-CONTRACT_VERSION = "1.0"
+CONTRACT_VERSION = "1.1"
+# Requests written for these versions are accepted unchanged (1.1 only added result fields).
+RequestVersion = Literal["1.0", "1.1"]
+ACCEPTED_REQUEST_VERSIONS = get_args(RequestVersion)
 
 FeatureType = Literal["site_boundary", "building", "road", "green_space", "tree", "parking", "open_space", "water",
                       "shade_structure", "land_use_zone", "unclassified"]
@@ -111,7 +114,7 @@ class Settings(_Strict):
 
 
 class AnalysisRequest(_Strict):
-    contract_version: Literal["1.0"]
+    contract_version: RequestVersion
     request_id: str | None = Field(None, max_length=64, description="Caller's identifier; echoed in the result and used as the project id in provenance.")
     site: Site
     objectives: list[Objective] = Field(default_factory=lambda: ["main_concerns"])
@@ -135,7 +138,8 @@ class Metric(BaseModel):
     reason: str | None = Field(None, description="Why the value is not available.")
     output_kind: OutputKind
     method: str | None
-    design_dependent: int
+    design_dependent: int = Field(description="1 when condition is 'design' (kept for contract 1.0 readers).")
+    condition: Literal["existing", "design"] = Field(description="Whether the value describes the existing land (observations of today's site) or the proposed design. Only design values differ between designs.")
     source_dataset_ids: list[str] = []
     quality: dict[str, Any] | None = None
     uncertainty: Any = None

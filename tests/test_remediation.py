@@ -274,7 +274,7 @@ def test_provisional_threshold_never_produces_high_severity(env):
     from urbanova import findings
 
     project = {"id": "p", "boundary": _local_box_wgs(0, 0, 100, 100)}
-    fs, recs = _generate([_metric("lst_site_minus_surroundings_k", "surface_heat", 9.0, "K")], project)
+    fs, recs = _generate([_metric("lst_site_hottest_decile_share_pct", "surface_heat", 60.0, "%")], project)
     [f] = fs
     assert f["threshold"]["status"] == "provisional_not_approved"
     assert f["severity"] == "moderate" and f["threshold"]["band_level"] == "high" and f["threshold"]["severity_capped"] is True

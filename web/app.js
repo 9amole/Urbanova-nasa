@@ -14,6 +14,10 @@ const MOD_STATUS = { completed: ["Completed", "b-ok"], partial: ["Completed with
 const READY = { ready: ["Ready", "b-ok"], ready_with_limitations: ["Ready with limitations", "b-warn"], blocked: ["Blocked", "b-bad"], not_in_this_build: ["Not in this build", "b-mute"] };
 const RUN_STATUS = { queued: ["Queued", "b-info"], running: ["Running", "b-info"], succeeded: ["Complete", "b-ok"], partially_succeeded: ["Partial", "b-warn"], failed: ["Failed", "b-bad"] };
 const badge = (pair) => `<span class="badge ${pair[1]}">${esc(pair[0])}</span>`;
+// Existing land (observations of today's site) vs proposed design (decision S-8).
+const modCondition = (mod) => (state.meta.module_condition || {})[mod];
+const metricCondition = (m) => m.condition || (m.design_dependent ? "design" : "existing"); // rows stored before the field existed
+const condBadge = (mod) => { const c = modCondition(mod); return c ? `<span class="badge cond-${c}" title="${c === "design" ? "Describes the proposed design; differs between designs" : "Describes the land as it is today; the same for every design"}">${c === "design" ? "Proposed design" : "Existing land"}</span>` : ""; };
 const kindBadge = (k) => `<span class="badge k-${esc(k)}" title="Kind of value">${esc(KIND[k] || k)}</span>`;
 const FCOLORS = { site_boundary: "#c62828", building: "#555", road: "#d9a400", green_space: "#2e8b57", tree: "#1b5e20", parking: "#8f8f8f", open_space: "#c8b88a", water: "#3a7bd5", shade_structure: "#8d6e63", land_use_zone: "#7e57c2", unclassified: "#e91e63" };
 
@@ -51,6 +55,9 @@ async function download(path, filename) {
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 5000);
 }
+
+const LOADING = `<p class="loading" role="status" aria-busy="true">Loading…</p>`;
+
 
 function clearMaps() { state.maps.forEach((m) => m.remove()); state.maps = []; }
 
@@ -170,15 +177,40 @@ async function viewProjects() {
     <label for="np-boundary">Site boundary <span class="hint">optional GeoJSON polygon in WGS 84</span></label><input id="np-boundary" type="file" accept=".geojson,.json,application/geo+json">
     <fieldset><legend>What do you want to find out?</legend>${objectives}</fieldset>
     <p><button class="primary" type="submit">Create project</button></p><p id="np-err" class="err" role="alert"></p>
-  </div><div><div id="np-map" class="map" aria-label="Map: click to set the site location"></div><p class="hint">Use a sample: 30.1200, 31.8500 (synthetic sample site) with samples/sample_site_boundary.geojson.</p></div></div></form></section>`;
+  </div><div>
+    <label for="np-find">Find an address or place</label>
+    <div class="row"><input id="np-find" type="search" maxlength="200" style="flex:1" placeholder="e.g. Fifth Settlement, New Cairo"><button id="np-find-btn" type="button">Search</button></div>
+    <ul id="np-find-out" class="find-results" aria-live="polite"></ul>
+    <div id="np-map" class="map" aria-label="Map: click to set the site location"></div><p class="hint">Use a sample: 30.1200, 31.8500 (synthetic sample site) with samples/sample_site_boundary.geojson.</p></div></div></form></section>`;
   clearMaps();
   const map = makeMap("np-map", 30.1200, 31.8500, 13);
   let marker = null;
-  map.on("click", (e) => {
-    document.getElementById("np-lat").value = e.latlng.lat.toFixed(6);
-    document.getElementById("np-lon").value = e.latlng.lng.toFixed(6);
-    if (marker) marker.setLatLng(e.latlng); else marker = L.marker(e.latlng).addTo(map);
-  });
+  const place = (latlng) => {
+    document.getElementById("np-lat").value = latlng.lat.toFixed(6);
+    document.getElementById("np-lon").value = latlng.lng.toFixed(6);
+    if (marker) marker.setLatLng(latlng); else marker = L.marker(latlng).addTo(map);
+  };
+  map.on("click", (e) => place(e.latlng));
+  // Address search (Nominatim): only on Search or Enter, never while typing (usage policy).
+  const out = document.getElementById("np-find-out");
+  const find = () => guarded(async () => {
+    const q = document.getElementById("np-find").value.trim();
+    out.innerHTML = `<li class="muted" aria-busy="true">Searching…</li>`;
+    try {
+      const r = await api(`/geocode?q=${encodeURIComponent(q)}`);
+      out.innerHTML = r.results.length
+        ? r.results.map((x, i) => `<li><button type="button" class="linkish" data-i="${i}">${esc(x.name)}</button></li>`).join("") + `<li class="hint">Search by ${esc(r.attribution)}. Check the pin and move it to the exact site.</li>`
+        : `<li class="muted">No places found. Try a different spelling, or click the map.</li>`;
+      out.querySelectorAll("button[data-i]").forEach((b) => (b.onclick = () => {
+        const x = r.results[+b.dataset.i];
+        place(L.latLng(x.latitude, x.longitude));
+        if (x.bbox) map.fitBounds([[x.bbox[0], x.bbox[2]], [x.bbox[1], x.bbox[3]]], { maxZoom: 17 }); else map.setView([x.latitude, x.longitude], 16);
+        if (!document.getElementById("np-city").value) document.getElementById("np-city").value = x.name.slice(0, 200);
+      }));
+    } catch (err) { out.innerHTML = `<li class="err">${esc(err.message)}</li>`; }
+  }, document.getElementById("np-find-btn"));
+  document.getElementById("np-find-btn").onclick = find;
+  document.getElementById("np-find").onkeydown = (e) => { if (e.key === "Enter") { e.preventDefault(); find(); } };
   document.getElementById("f-new").onsubmit = async (e) => {
     e.preventDefault();
     const errEl = document.getElementById("np-err"); errEl.textContent = "";
@@ -208,7 +240,7 @@ async function viewProject(pid, tab, extra) {
   $main.innerHTML = `<h1>${esc(p.name)} <span class="hint">(${esc(p.role)})</span></h1>
     ${p.location_confirmed ? "" : `<div class="alert warn">The site location is not confirmed. Check it on the Site tab and confirm before running analyses.</div>`}
     <nav class="tabs" aria-label="Project steps">${TABS.map(([k, l]) => `<a href="#/p/${pid}/${k}" ${k === tab ? 'aria-current="page"' : ""}>${esc(l)}</a>`).join("")}</nav>
-    <div id="tab"></div>`;
+    <div id="tab">${LOADING}</div>`;
   const el = document.getElementById("tab");
   const views = { overview: tabOverview, inputs: tabInputs, rules: tabRules, readiness: tabReadiness, scenarios: tabScenarios, analysis: tabAnalysis, results: tabResults, compare: tabCompare, report: tabReport };
   await (views[tab] || tabOverview)(el, data, extra);
@@ -556,7 +588,7 @@ async function tabAnalysis(el, data) {
       await new Promise((res) => setTimeout(res, 2000));
     }
     notify("Analysis finished. Opening results.", "ok");
-    location.hash = `#/p/${pid}/results/${runList[0].id}`;
+    location.hash = `#/p/${pid}/results`; // Results opens on the latest baseline run
   };
   f.onsubmit = (e) => { e.preventDefault(); guarded(async () => {
     const sid = document.getElementById("ru-scen").value;
@@ -568,13 +600,16 @@ async function tabAnalysis(el, data) {
 
 async function tabResults(el, data, runId) {
   const p = data.project, pid = p.id;
-  const runs = (await api(`/projects/${pid}/analysis-runs`)).filter((r) => !["queued", "running"].includes(r.status));
+  const [allRuns, scenList] = await Promise.all([api(`/projects/${pid}/analysis-runs`), api(`/projects/${pid}/scenarios`)]);
+  const runs = allRuns.filter((r) => !["queued", "running"].includes(r.status));
   if (!runs.length) { el.innerHTML = `<section class="panel"><p>No completed analysis runs yet. Go to <a href="#/p/${pid}/analysis">Run analysis</a>.</p></section>`; return; }
-  const rid = runId || runs[0].id;
+  const names = Object.fromEntries(scenList.map((s) => [s.id, s.name]));
+  // Open on the latest baseline run unless a run was chosen (the comparison reference comes first).
+  const baseIds = new Set(scenList.filter((s) => s.kind === "baseline").map((s) => s.id));
+  const rid = runId || (runs.find((r) => baseIds.has(r.scenario_id)) || runs[0]).id;
   const b = await api(`/analysis-runs/${rid}`);
   const run = b.run, ms = run.module_status || {};
   const scen = run.scenario_id ? await api(`/scenarios/${run.scenario_id}`) : null;
-  const names = Object.fromEntries((await api(`/projects/${pid}/scenarios`)).map((s) => [s.id, s.name]));
   const stale = Object.keys(run.stale_modules);
   const incomplete = Object.entries(ms).filter(([, s]) => !["completed", "skipped"].includes(s.status));
   const skipped = Object.values(ms).filter((s) => s.status === "skipped");
@@ -612,10 +647,10 @@ async function tabResults(el, data, runId) {
     <p class="hint">${esc(ms.climate_baseline.details.provider_name)} — grid point ${fmt(ms.climate_baseline.details.grid_point.latitude, 3)}, ${fmt(ms.climate_baseline.details.grid_point.longitude, 3)}. ${esc(ms.climate_baseline.details.attribution)}</p>
     ${climateChart(climate)}</section>` : ""}
   <section class="panel"><h2>Metrics by analysis</h2><div class="cards">
-   ${Object.entries(ms).map(([mod, s]) => `<div class="panel"><h3>${esc(s.label)} ${badge(MOD_STATUS[s.status])} ${run.stale_modules[mod] ? badge(["out of date", "b-warn"]) : ""}</h3>
+   ${Object.entries(ms).map(([mod, s]) => `<div class="panel"><h3>${esc(s.label)} ${condBadge(mod)} ${badge(MOD_STATUS[s.status])} ${run.stale_modules[mod] ? badge(["out of date", "b-warn"]) : ""}</h3>
      ${s.reason ? `<p class="state">${esc(s.reason)}</p>` : ""}${(s.warnings || []).map((w) => `<div class="alert warn">${esc(w)}</div>`).join("")}
      ${(s.provider_failures || []).length ? `<p class="muted">Provider failures: ${s.provider_failures.map((x) => esc(`${x.provider}: ${x.message}`)).join("; ")}</p>` : ""}
-     ${(byMod[mod] || []).length ? `<table>${byMod[mod].map((m) => `<tr><td>${esc(m.label)}<details><summary>method</summary><span class="muted">${esc(m.method)}</span></details></td><td>${metricValue(m)}</td><td>${kindBadge(m.output_kind)}</td></tr>`).join("")}</table>` : ""}
+     ${(byMod[mod] || []).length ? `<table>${byMod[mod].map((m) => `<tr><td>${esc(m.label)}${modCondition(mod) === "design" && metricCondition(m) === "existing" ? ` <span class="muted">(same for every design)</span>` : ""}<details><summary>method</summary><span class="muted">${esc(m.method)}</span></details></td><td>${metricValue(m)}</td><td>${kindBadge(m.output_kind)}</td></tr>`).join("")}</table>` : ""}
      ${(s.limitations || []).length ? `<details><summary>Limitations</summary><ul>${s.limitations.map((x) => `<li>${esc(x)}</li>`).join("")}</ul></details>` : ""}
      ${s.details?.accepted_scenes ? `<details><summary>Satellite scenes used (${s.details.accepted_scenes.length}) / excluded (${s.details.excluded_scenes.length})</summary><ul>${s.details.accepted_scenes.map((x) => `<li class="mono">✓ ${esc(x.scene_id)} ${esc(x.datetime.slice(0, 10))} cloud ${fmt(x.cloud_cover_pct, 1)}%, site valid ${fmt(x.valid_site_fraction * 100, 0)}%</li>`).join("")}${s.details.excluded_scenes.map((x) => `<li class="mono muted">✗ ${esc(x.scene_id)} ${esc(x.datetime.slice(0, 10))}: ${esc(x.reason)}</li>`).join("")}</ul></details>` : ""}
    </div>`).join("")}</div></section>
@@ -764,6 +799,8 @@ async function tabReport(el, data) {
 }
 
 // ------------------------------------------------------------------ router
+let loadingTimer = null;
+
 async function route() {
   const parts = (location.hash || "#/projects").slice(2).split("/");
   try {
@@ -771,12 +808,15 @@ async function route() {
     if (!state.token) return viewLogin();
     if (!state.user) { state.user = await api("/auth/me"); renderSession(); }
     clearMaps();
+    // Show "Loading…" only if the view takes a moment and has not rendered yet, so quick refreshes don't flash.
+    const before = $main.firstElementChild;
+    loadingTimer = setTimeout(() => { if ($main.firstElementChild === before) $main.innerHTML = LOADING; }, 250);
     if (parts[0] === "p" && parts[1]) return await viewProject(parts[1], parts[2] || "overview", parts[3]);
     if (parts[0] === "login") return viewLogin();
     return await viewProjects();
   } catch (e) {
     $main.innerHTML = `<div class="alert bad" role="alert">${esc(e.message)}</div><p><a href="#/projects">Back to projects</a></p>`;
-  }
+  } finally { clearTimeout(loadingTimer); }
 }
 window.addEventListener("hashchange", route);
 route();

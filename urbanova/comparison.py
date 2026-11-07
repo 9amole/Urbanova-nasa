@@ -88,7 +88,7 @@ def compare_core(base: dict, alts: list[dict], metrics: dict[str, dict[str, dict
     site_condition = []
     for a in alts:
         am = metrics[a["id"]]
-        names = sorted({n for n, m in bm.items() if m["design_dependent"]} | {n for n, m in am.items() if m["design_dependent"]})
+        names = sorted({n for n, m in bm.items() if V.condition_of(m) == V.DESIGN} | {n for n, m in am.items() if V.condition_of(m) == V.DESIGN})
         for n in names:
             b, x = bm.get(n), am.get(n)
             row = {"alternative_id": a["id"], "metric": n, "label": (b or x)["label"], "unit": (b or x)["unit"],
@@ -113,7 +113,7 @@ def compare_core(base: dict, alts: list[dict], metrics: dict[str, dict[str, dict
             rows.append(row)
         if not site_condition:
             for n, m in bm.items():
-                if not m["design_dependent"] and m["state"] == V.AVAILABLE:
+                if V.condition_of(m) == V.EXISTING and m["state"] == V.AVAILABLE:
                     site_condition.append({"metric": n, "label": m["label"], "value": m["value"], "unit": m["unit"]})
     planning = []
     for a in alts:

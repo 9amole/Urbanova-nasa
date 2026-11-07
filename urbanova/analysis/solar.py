@@ -87,8 +87,8 @@ def run(ctx: Context) -> dict:
     m = []
     for h in REPORT_HOURS:
         el, az = positions[h]
-        m.append(V.metric(f"solar_elevation_deg_{h:02d}00", f"Sun elevation at {h:02d}:00 solar time ({day.isoformat()})", round(el, 2), "°", method="NOAA solar position (Spencer series) at true solar time"))
-        m.append(V.metric(f"solar_azimuth_deg_{h:02d}00", f"Sun azimuth at {h:02d}:00 solar time ({day.isoformat()})", round(az, 1), "° from north", method="NOAA solar position (Spencer series) at true solar time"))
+        m.append(V.metric(f"solar_elevation_deg_{h:02d}00", f"Sun elevation at {h:02d}:00 solar time ({day.isoformat()})", round(el, 2), "°", method="NOAA solar position (Spencer series) at true solar time", condition=V.EXISTING))
+        m.append(V.metric(f"solar_azimuth_deg_{h:02d}00", f"Sun azimuth at {h:02d}:00 solar time ({day.isoformat()})", round(az, 1), "° from north", method="NOAA solar position (Spencer series) at true solar time", condition=V.EXISTING))
     feats = (ctx.scenario or {}).get("features", {}).get("features", [])
     local = ctx.local_crs
     casters, missing_h, open_parts = [], 0, []
@@ -117,8 +117,8 @@ def run(ctx: Context) -> dict:
         reason = ("No building heights are available, so building-cast shade cannot be calculated. Add heights on the Inputs screen."
                   if feats else "No design geometry is available for shade analysis.")
         for h in REPORT_HOURS:
-            m.append(V.missing(f"solar_open_space_exposed_pct_{h:02d}00", f"Open space not in building shade at {h:02d}:00", "%", V.BLOCKED, reason, design_dependent=True))
-        m.append(V.missing("solar_open_space_shade_hours", "Mean building-cast shade duration on open space (07–17 h)", "h", V.BLOCKED, reason, design_dependent=True))
+            m.append(V.missing(f"solar_open_space_exposed_pct_{h:02d}00", f"Open space not in building shade at {h:02d}:00", "%", V.BLOCKED, reason))
+        m.append(V.missing("solar_open_space_shade_hours", "Mean building-cast shade duration on open space (07–17 h)", "h", V.BLOCKED, reason))
         return result(PARTIAL if feats else BLOCKED, metrics=m, limitations=limitations, reason=reason,
                       details={"date": day.isoformat(), "date_basis": day_basis, "positions": {h: positions[h] for h in REPORT_HOURS}})
     buildings_u = unary_union([g for k, g, _ in casters if k == "prism"]) if any(k == "prism" for k, _, _ in casters) else None
@@ -141,10 +141,9 @@ def run(ctx: Context) -> dict:
                 dx, dy = _shift(el, az, height)
                 parts.append(translate(g, dx, dy))
         shade_by_hour[h] = unary_union(parts)
-    dd = {"design_dependent": True}
     # The method text must be identical across scenarios so results stay comparable; counts go to `extra`.
     method = f"Exact prism shadows of buildings with heights plus flat canopy shadows (shade structures, sized trees) on flat ground, {day.isoformat()}"
-    dd["extra"] = {"building_casters": sum(1 for k, _, _ in casters if k == "prism"), "canopy_casters": sum(1 for k, _, _ in casters if k != "prism")}
+    dd = {"extra": {"building_casters": sum(1 for k, _, _ in casters if k == "prism"), "canopy_casters": sum(1 for k, _, _ in casters if k != "prism")}}
     for h in REPORT_HOURS:
         sh = shade_by_hour[h]
         for target, geom, label in (("open_space", open_u, "designated open/green/parking space"), ("site_ground", ground, "unbuilt site area")):

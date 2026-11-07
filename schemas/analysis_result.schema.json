@@ -498,8 +498,18 @@
           "title": "Method"
         },
         "design_dependent": {
+          "description": "1 when condition is 'design' (kept for contract 1.0 readers).",
           "title": "Design Dependent",
           "type": "integer"
+        },
+        "condition": {
+          "description": "Whether the value describes the existing land (observations of today's site) or the proposed design. Only design values differ between designs.",
+          "enum": [
+            "existing",
+            "design"
+          ],
+          "title": "Condition",
+          "type": "string"
         },
         "source_dataset_ids": {
           "default": [],
@@ -550,7 +560,8 @@
         "unit",
         "output_kind",
         "method",
-        "design_dependent"
+        "design_dependent",
+        "condition"
       ],
       "title": "Metric",
       "type": "object"
