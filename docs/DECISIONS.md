@@ -19,7 +19,7 @@ The project assigned the data science lead as decision maker for Phase 1. These 
 | D5 | Security, accounts, rate limiting and secrets management. | Backend team |
 | D6 | Accessibility and browser support of the product UI. The engine returns legends with text labels so colour is never the only cue. | Backend/frontend team |
 | D7 | Commercial licensing (see C1) and the production basemap provider. | Product/backend team |
-| S | **Smart upgrade of Phase 1 approved** (2026-11-04): hotspot detection, design optimiser, AI engineering insights, chat assistant, reference cost library, new free data sources; stages S1–S7 as in [PHASE2_SPEC.md](PHASE2_SPEC.md) §11. Not started. | Data science lead |
+| S | **Smart upgrade of Phase 1 approved** (2026-11-04): hotspot detection, design optimiser, AI engineering insights, chat assistant, reference cost library, new free data sources; stages S1–S7 as in [PHASE2_SPEC.md](PHASE2_SPEC.md) §11. **Revision 2 approved 2026-11-07** after the step 2 review: existing vs design kept apart, H2 as site context at 100 m, UTCI heat-stress severity, vector-overlay H1, no-winner comparison without weights, ML LST downscaling, map editing and dashboard; stages now S1–S8 (spec §11). Not started. | Data science lead |
 
 ## 1. Rebuild instead of extending the earlier prototype
 
