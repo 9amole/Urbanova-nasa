@@ -83,6 +83,8 @@ def analyse(request: dict[str, Any], output_dir: str | os.PathLike) -> dict[str,
                 "layers": [_layer(lay, out_root) for lay in out["layers"]],
                 "objectives": answer_objectives(req.objectives, out["module_status"], available),
                 "warnings": out["warnings"],
+                "hotspots": [{k: v for k, v in h.items() if k != "run_id"} for h in out["hotspots"]],
+                "site_context": out["site_context"],
             })
         datasets = [_dataset(ds, out_root) for ds in rec.datasets.values()]
         requests = [dict(r) for r in rec.requests]
@@ -250,7 +252,7 @@ def _metric(m: dict) -> dict:
 def _finding(f: dict) -> dict:
     keys = ("id", "category", "classification", "title", "summary", "severity", "severity_rule", "affected_area", "geometry", "rule_id",
             "threshold", "evidence", "sources", "confidence", "limitations")
-    return {k: f.get(k) for k in keys}
+    return {k: f.get(k) for k in keys} | {"hotspot_ids": f.get("hotspot_ids") or []}
 
 
 def _rec(r: dict) -> dict:

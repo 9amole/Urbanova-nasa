@@ -19,7 +19,7 @@ ACCEPTED_REQUEST_VERSIONS = get_args(RequestVersion)
 FeatureType = Literal["site_boundary", "building", "road", "green_space", "tree", "parking", "open_space", "water",
                       "shade_structure", "land_use_zone", "unclassified"]
 Objective = Literal["main_concerns", "surface_heat", "vegetation", "shade", "compare_alternatives", "planning_compliance", "data_gaps"]
-ModuleName = Literal["climate_baseline", "site_context", "urban_form", "vegetation", "surface_heat", "solar_shade", "planning_compliance"]
+ModuleName = Literal["climate_baseline", "site_context", "urban_form", "vegetation", "surface_heat", "solar_shade", "heat_stress", "planning_compliance", "hotspots"]
 RuleType = Literal["max_building_coverage_pct", "max_height_m", "max_floors", "min_setback_m", "min_green_space_pct", "min_open_space_pct",
                    "max_far", "plot_area_m2", "permitted_land_use", "parking_requirement"]
 ValueState = Literal["available", "unknown", "unavailable", "invalid", "blocked", "not_applicable"]
@@ -162,6 +162,62 @@ class Finding(BaseModel):
     sources: list[dict[str, Any]]
     confidence: str
     limitations: list[str]
+    hotspot_ids: list[str] = Field(default_factory=list, description="Design hotspots this finding is about (contract 1.1).")
+
+
+class HotspotEvidence(BaseModel):
+    name: str
+    label: str
+    value: Any
+    unit: str | None
+    source_metric_ids: list[str] = Field(description="Ids of the design metrics this value was derived from.")
+    note: str | None = None
+
+
+class HotspotCause(BaseModel):
+    code: Literal["LARGE_PAVED_AREA", "NO_AFTERNOON_SHADE", "NO_TREES_NEARBY", "EXPOSED_WEST_EDGE", "ORIENTATION_EXPOSES_STREETS", "EXCEEDS_RULE"]
+    text: str
+    evidence: dict[str, Any]
+    evidence_ids: list[str] = Field(description="Ids of the design metrics supporting the cause.")
+
+
+class Hotspot(BaseModel):
+    """A place on the drawing with a measured problem, a size, a severity, supporting metrics and likely causes (PHASE2_SPEC §4)."""
+    id: str
+    number: int = Field(description="Priority order: severity, then area.")
+    types: list[Literal["H1", "H3", "H4"]]
+    type_labels: list[str]
+    condition: Literal["design"]
+    site_wide: bool = Field(description="True for a site-wide planning shortfall with no polygon.")
+    geometry: dict[str, Any] | None = Field(description="WGS 84 GeoJSON geometry; None when site_wide.")
+    area_m2: float
+    site_share_pct: float
+    size_class: Literal["small", "medium", "large"]
+    intensity: Literal["high", "moderate", "low"]
+    severity: Literal["high", "moderate", "low"]
+    severity_uncapped: Literal["high", "moderate", "low"]
+    severity_capped: bool = Field(description="True when an unapproved project-choice value capped the severity at moderate.")
+    provisional_basis: list[str]
+    severity_basis: str
+    supporting_metrics: list[HotspotEvidence]
+    likely_causes: list[HotspotCause]
+    rule: dict[str, Any] | None = None
+    merged_from: int = 1
+    confidence: str
+    confidence_reason: str
+
+
+class SiteContext(BaseModel):
+    """Existing-land context (H2 observed hot cluster); never a design hotspot and never a cause."""
+    type: Literal["H2"]
+    condition: Literal["existing"]
+    metric: str
+    in_cluster: bool | None
+    site_share_pct: float | None
+    cluster_geometry: dict[str, Any] | None
+    method: str
+    statement: str
+    note: str
 
 
 class Recommendation(BaseModel):
@@ -222,6 +278,8 @@ class DesignResult(BaseModel):
     layers: list[Layer]
     objectives: list[ObjectiveAnswer]
     warnings: list[str]
+    hotspots: list[Hotspot] = Field(default_factory=list, description="Design hotspots, numbered by priority (contract 1.1).")
+    site_context: list[SiteContext] = Field(default_factory=list, description="Existing-land context such as the observed hot cluster (contract 1.1).")
 
 
 class Dataset(BaseModel):

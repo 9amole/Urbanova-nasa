@@ -14,6 +14,8 @@ PREFERRED = {
     "solar_open_space_exposed_pct_0900": "lower", "solar_open_space_exposed_pct_1200": "lower", "solar_open_space_exposed_pct_1500": "lower",
     "solar_site_ground_exposed_pct_0900": "lower", "solar_site_ground_exposed_pct_1200": "lower", "solar_site_ground_exposed_pct_1500": "lower",
     "solar_open_space_shade_hours": "higher",
+    "heat_stress_hard_surface_very_strong_m2h": "lower", "heat_stress_open_space_very_strong_m2h": "lower",
+    "hotspot_total_area_m2": "lower",
 }
 DIRECTION_NOTE = "Better/worse labels use a heat-focused preference (more green space and shade, less hard surface and sun exposure in the hot season). They may not suit cold climates or winter conditions."
 EPS = 1e-6

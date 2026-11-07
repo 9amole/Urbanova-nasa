@@ -48,16 +48,6 @@
       "justification": "Share of site pixels with NDVI ≥ 0.2. NDVI ≈ 0.2 is a widely used remote-sensing convention separating bare/built surfaces from sparse vegetation; the 10%/25% bands are provisional.",
       "limitation": "NDVI indicates vegetation-related reflectance at the image dates only. It does not measure canopy health, shade, irrigation or cooling.",
       "recommendation_keys": ["add_vegetation"]
-    },
-    {
-      "id": "SHADE-01", "category": "solar", "classification": "potential_environmental_concern",
-      "title": "Large exposed open spaces at mid-afternoon",
-      "metric": "solar_open_space_exposed_pct_1500", "applies_to": "design",
-      "severity": [{"min": 85, "level": "moderate"}, {"min": 70, "level": "low"}],
-      "status": "provisional_not_approved",
-      "justification": "Share of designated open/green/parking space not in building-cast shade at 15:00 true solar time on the analysis date. Bands are provisional.",
-      "limitation": "Geometric shade from buildings and shade structures with known heights on flat terrain. Trees are treated as opaque only if canopy size is supplied; off-site obstructions are not modelled.",
-      "recommendation_keys": ["shade_public_space", "review_orientation"]
     }
   ],
   "planning_checks": {

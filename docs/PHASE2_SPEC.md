@@ -194,7 +194,8 @@ Every threshold, band, coefficient and default in `urbanova/config/` gets a `bas
 * **Already done** (VALIDATION.md): ERA5 against 2 NOAA stations; satellite plausibility on known land covers; area calculations on real geometry.
 * **Planned in this upgrade:**
   * **H1 exactness:** sun-exposed area of a hand-drawn case equals the analytic value (vector overlay, no grid error).
-  * **H2 false discoveries:** across ≥ 200 seeded null fields, including spatially autocorrelated ones, the observed false-discovery rate is ≤ q plus a tolerance. Planted clusters are recovered.
+  * **H2 false discoveries:** across ≥ 200 seeded null fields, the observed false-discovery rate is ≤ q plus a tolerance. Planted clusters are recovered.
+    * *Note (S2):* on spatially **autocorrelated** fields the rate is recorded, not asserted to be ≤ q. Conditional permutation assumes no global autocorrelation, so a smooth field's warm patches are reported as clusters; this is a property of the test, not a fault. Planted clusters on autocorrelated backgrounds are still recovered (tests/test_stage_s2.py).
   * **H2 plausibility:** on the plausibility sites, water and irrigated farmland are never flagged as hot clusters.
   * **UTCI:** reference cases from the `pythermalcomfort` documentation reproduce to 0.1 °C.
   * **Interventions:** every measured effect equals an independent re-run of the engine on that option.
@@ -623,14 +624,14 @@ Each stage ends with all tests passing, a code review, a demo in the running app
 | R-23 | Open-Meteo elevation API or Open Topo Data | Deferred | to verify |
 | R-24 | WorldPop population grids | Deferred | to verify |
 | R-25 | public-apis directory, https://github.com/public-apis/public-apis | Source review, 2026-11-04 | Reviewed |
-| R-26 | Bröde, P. et al. (2012). Deriving the operational procedure for the Universal Thermal Climate Index (UTCI). *Int. J. Biometeorol.* 56, 481–494. doi:10.1007/s00484-011-0454-1 | UTCI scale and heat-stress categories | to verify (S2) |
-| R-27 | Caldas de Castro, M., Singer, B. H. (2006). Controlling the false discovery rate: a new application to account for multiple and dependent tests in local statistics of spatial association. *Geographical Analysis* 38(2), 180–208. doi:10.1111/j.0016-7363.2006.00682.x | FDR for dependent local tests | to verify (S2) |
+| R-26 | Bröde, P. et al. (2012). Deriving the operational procedure for the Universal Thermal Climate Index (UTCI). *Int. J. Biometeorol.* 56, 481–494. doi:10.1007/s00484-011-0454-1 | UTCI scale and heat-stress categories | Verified 2026-11-07 (authors, journal 56(3), pages, DOI) |
+| R-27 | Caldas de Castro, M., Singer, B. H. (2006). Controlling the false discovery rate: a new application to account for multiple and dependent tests in local statistics of spatial association. *Geographical Analysis* 38(2), 180–208. doi:10.1111/j.0016-7363.2006.00682.x | FDR for dependent local tests | Verified 2026-11-07 (authors, journal, volume, pages 180–208) |
 | R-28 | Middel, A. et al. (2020). Solar reflective pavements — a policy panacea to heat mitigation? *Environmental Research Letters* 15, 064016. doi:10.1088/1748-9326/ab87d4 | Cool paving can raise pedestrian radiant heat | to verify (S3) |
-| R-29 | Tartarini, F., Schiavon, S. (2020). pythermalcomfort: a Python package for thermal comfort research. *SoftwareX* 12, 100578. doi:10.1016/j.softx.2020.100578 | UTCI and SolarCal computation | to verify (S2) |
+| R-29 | Tartarini, F., Schiavon, S. (2020). pythermalcomfort: a Python package for thermal comfort research. *SoftwareX* 12, 100578. doi:10.1016/j.softx.2020.100578 | UTCI and SolarCal computation | Verified 2026-11-07 (authors, SoftwareX 12, 100578, DOI); version 4.6.2 used |
 | R-30 | Hutengs, C., Vohland, M. (2016). Downscaling land surface temperatures at regional scales with random forest regression. *Remote Sensing of Environment* 178, 127–141 | ML downscaling method | Journal, volume and pages verified; DOI to verify |
 | R-31 | Agam, N., Kustas, W. P., Anderson, M. C., Li, F., Neale, C. M. U. (2007). A vegetation index based technique for spatial sharpening of thermal imagery. *Remote Sensing of Environment* 107, 545–558 | TsHARP sharpening | Journal, volume and pages verified; DOI and title to verify |
 | R-32 | Onačillová, K. et al. (2022). Combining Landsat 8 and Sentinel-2 data in Google Earth Engine to derive higher resolution land surface temperature maps in urban environment. *Remote Sensing* 14(16), 4076. doi:10.3390/rs14164076; and Remote Sensing 17(14), 2392 (2025), doi:10.3390/rs17142392 | Urban Landsat + Sentinel-2 downscaling; expected error range | DOIs from the published tools and articles; to verify (S7) |
-| R-33 | PySAL `esda` (exploratory spatial data analysis), `G_Local` with permutation inference, https://pysal.org/esda/ | Hot-cluster implementation | to verify (S2) |
+| R-33 | PySAL `esda` (exploratory spatial data analysis), `G_Local` with permutation inference, https://pysal.org/esda/stable/generated/esda.G_Local.html | Method followed by our own numpy Gi* (S2 decision: no esda dependency): `star=True`, conditional randomisation, p = (k + 1)/(permutations + 1) | Verified 2026-11-07 (documentation and source) |
 
 ## 13. Open decisions for the team and supervisors
 

@@ -12,7 +12,7 @@ import traceback
 from typing import Callable
 
 from .. import findings, recording
-from ..analysis import climate, compliance, context, solar, surface_heat, urban_form, vegetation
+from ..analysis import climate, compliance, context, heat_stress, hotspots, solar, surface_heat, urban_form, vegetation
 from ..analysis.common import FAILED, SKIPPED, Context
 from ..readiness import ANALYSES, CONDITION, RUNNABLE
 
@@ -20,7 +20,8 @@ log = logging.getLogger("urbanova.engine")
 
 MODULES = {
     "climate_baseline": climate.run, "site_context": context.run, "urban_form": urban_form.run, "vegetation": vegetation.run,
-    "surface_heat": surface_heat.run, "solar_shade": solar.run, "planning_compliance": compliance.run,
+    "surface_heat": surface_heat.run, "solar_shade": solar.run, "heat_stress": heat_stress.run, "planning_compliance": compliance.run,
+    "hotspots": hotspots.run,
 }
 # Modules whose result depends only on the site and settings, never on the design. In a request
 # with several designs they run once and every design receives the same result (remediation D4),
@@ -31,7 +32,8 @@ SITE_LEVEL = {"climate_baseline", "site_context", "surface_heat"}
 def run_design(ctx: Context, selected: list[str], on_module: Callable[[str, int], None] | None = None) -> dict:
     """Run the selected modules in order for ctx.scenario (None = site only).
 
-    Returns {"results", "module_status", "metrics", "layers", "dataset_ids", "findings", "recommendations", "status", "warnings"}.
+    Returns {"results", "module_status", "metrics", "layers", "dataset_ids", "findings", "recommendations", "status", "warnings",
+    "hotspots", "site_context"}.
     Metric, finding and recommendation records carry ids; nothing is persisted here.
     """
     results: dict[str, dict] = {}
@@ -57,7 +59,9 @@ def run_design(ctx: Context, selected: list[str], on_module: Callable[[str, int]
         module_status[mod] = {"status": res["status"], "label": ANALYSES[mod], "reason": res.get("reason"), "warnings": res["warnings"],
                               "limitations": res["limitations"], "details": jsonable(res["details"]), "provider_failures": res.get("provider_failures", []),
                               "shared_across_designs": bool(res.get("_shared"))}
-    fnds, recs = findings.generate({"id": ctx.run_id}, ctx.project, results, metrics, ctx.shared)
+    hotspots = link_hotspots(results.get("hotspots", {}).get("hotspots") or [], metrics, ctx.run_id)
+    site_context = list(ctx.shared.get("site_context") or [])
+    fnds, recs = findings.generate({"id": ctx.run_id}, ctx.project, results, metrics, ctx.shared, hotspots)
     ran = [s["status"] for s in module_status.values() if s["status"] != SKIPPED]
     if ran and all(s == "completed" for s in ran):
         status = "succeeded"
@@ -67,7 +71,21 @@ def run_design(ctx: Context, selected: list[str], on_module: Callable[[str, int]
         status = "failed"
     warnings = [f"{ANALYSES[m]}: {w}" for m, s in module_status.items() for w in s.get("warnings", [])]
     return {"results": results, "module_status": module_status, "metrics": metrics, "layers": layers, "dataset_ids": dataset_ids,
-            "findings": fnds, "recommendations": recs, "status": status, "warnings": warnings}
+            "findings": fnds, "recommendations": recs, "status": status, "warnings": warnings, "hotspots": hotspots, "site_context": jsonable(site_context)}
+
+
+def link_hotspots(hotspots: list[dict], metrics: list[dict], run_id: str) -> list[dict]:
+    """Give each hotspot an id and replace the metric names it cites with the ids of this run's available metrics
+    (the id chain metric.id → hotspot.supporting_metrics[].source_metric_ids / likely_causes[].evidence_ids)."""
+    ids = {m["metric_name"]: m["id"] for m in metrics if m["state"] == "available"}
+    out = []
+    for h in hotspots:
+        sm = [{**{k: v for k, v in s.items() if k != "source_metrics"}, "source_metric_ids": [ids[n] for n in s["source_metrics"] if n in ids]}
+              for s in h["supporting_metrics"]]
+        cs = [{**{k: v for k, v in c.items() if k != "evidence_metrics"}, "evidence_ids": [ids[n] for n in c["evidence_metrics"] if n in ids]}
+              for c in h["likely_causes"]]
+        out.append(jsonable({**h, "id": recording.new_id("hs"), "run_id": run_id, "supporting_metrics": sm, "likely_causes": cs}))
+    return out
 
 
 def _run_module(ctx: Context, mod: str) -> dict:

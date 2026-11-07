@@ -179,6 +179,22 @@
           },
           "title": "Warnings",
           "type": "array"
+        },
+        "hotspots": {
+          "description": "Design hotspots, numbered by priority (contract 1.1).",
+          "items": {
+            "$ref": "#/$defs/Hotspot"
+          },
+          "title": "Hotspots",
+          "type": "array"
+        },
+        "site_context": {
+          "description": "Existing-land context such as the observed hot cluster (contract 1.1).",
+          "items": {
+            "$ref": "#/$defs/SiteContext"
+          },
+          "title": "Site Context",
+          "type": "array"
         }
       },
       "required": [
@@ -313,6 +329,14 @@
           },
           "title": "Limitations",
           "type": "array"
+        },
+        "hotspot_ids": {
+          "description": "Design hotspots this finding is about (contract 1.1).",
+          "items": {
+            "type": "string"
+          },
+          "title": "Hotspot Ids",
+          "type": "array"
         }
       },
       "required": [
@@ -333,6 +357,282 @@
         "limitations"
       ],
       "title": "Finding",
+      "type": "object"
+    },
+    "Hotspot": {
+      "description": "A place on the drawing with a measured problem, a size, a severity, supporting metrics and likely causes (PHASE2_SPEC §4).",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "number": {
+          "description": "Priority order: severity, then area.",
+          "title": "Number",
+          "type": "integer"
+        },
+        "types": {
+          "items": {
+            "enum": [
+              "H1",
+              "H3",
+              "H4"
+            ],
+            "type": "string"
+          },
+          "title": "Types",
+          "type": "array"
+        },
+        "type_labels": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Type Labels",
+          "type": "array"
+        },
+        "condition": {
+          "const": "design",
+          "title": "Condition",
+          "type": "string"
+        },
+        "site_wide": {
+          "description": "True for a site-wide planning shortfall with no polygon.",
+          "title": "Site Wide",
+          "type": "boolean"
+        },
+        "geometry": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "WGS 84 GeoJSON geometry; None when site_wide.",
+          "title": "Geometry"
+        },
+        "area_m2": {
+          "title": "Area M2",
+          "type": "number"
+        },
+        "site_share_pct": {
+          "title": "Site Share Pct",
+          "type": "number"
+        },
+        "size_class": {
+          "enum": [
+            "small",
+            "medium",
+            "large"
+          ],
+          "title": "Size Class",
+          "type": "string"
+        },
+        "intensity": {
+          "enum": [
+            "high",
+            "moderate",
+            "low"
+          ],
+          "title": "Intensity",
+          "type": "string"
+        },
+        "severity": {
+          "enum": [
+            "high",
+            "moderate",
+            "low"
+          ],
+          "title": "Severity",
+          "type": "string"
+        },
+        "severity_uncapped": {
+          "enum": [
+            "high",
+            "moderate",
+            "low"
+          ],
+          "title": "Severity Uncapped",
+          "type": "string"
+        },
+        "severity_capped": {
+          "description": "True when an unapproved project-choice value capped the severity at moderate.",
+          "title": "Severity Capped",
+          "type": "boolean"
+        },
+        "provisional_basis": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Provisional Basis",
+          "type": "array"
+        },
+        "severity_basis": {
+          "title": "Severity Basis",
+          "type": "string"
+        },
+        "supporting_metrics": {
+          "items": {
+            "$ref": "#/$defs/HotspotEvidence"
+          },
+          "title": "Supporting Metrics",
+          "type": "array"
+        },
+        "likely_causes": {
+          "items": {
+            "$ref": "#/$defs/HotspotCause"
+          },
+          "title": "Likely Causes",
+          "type": "array"
+        },
+        "rule": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Rule"
+        },
+        "merged_from": {
+          "default": 1,
+          "title": "Merged From",
+          "type": "integer"
+        },
+        "confidence": {
+          "title": "Confidence",
+          "type": "string"
+        },
+        "confidence_reason": {
+          "title": "Confidence Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "number",
+        "types",
+        "type_labels",
+        "condition",
+        "site_wide",
+        "geometry",
+        "area_m2",
+        "site_share_pct",
+        "size_class",
+        "intensity",
+        "severity",
+        "severity_uncapped",
+        "severity_capped",
+        "provisional_basis",
+        "severity_basis",
+        "supporting_metrics",
+        "likely_causes",
+        "confidence",
+        "confidence_reason"
+      ],
+      "title": "Hotspot",
+      "type": "object"
+    },
+    "HotspotCause": {
+      "properties": {
+        "code": {
+          "enum": [
+            "LARGE_PAVED_AREA",
+            "NO_AFTERNOON_SHADE",
+            "NO_TREES_NEARBY",
+            "EXPOSED_WEST_EDGE",
+            "ORIENTATION_EXPOSES_STREETS",
+            "EXCEEDS_RULE"
+          ],
+          "title": "Code",
+          "type": "string"
+        },
+        "text": {
+          "title": "Text",
+          "type": "string"
+        },
+        "evidence": {
+          "additionalProperties": true,
+          "title": "Evidence",
+          "type": "object"
+        },
+        "evidence_ids": {
+          "description": "Ids of the design metrics supporting the cause.",
+          "items": {
+            "type": "string"
+          },
+          "title": "Evidence Ids",
+          "type": "array"
+        }
+      },
+      "required": [
+        "code",
+        "text",
+        "evidence",
+        "evidence_ids"
+      ],
+      "title": "HotspotCause",
+      "type": "object"
+    },
+    "HotspotEvidence": {
+      "properties": {
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "label": {
+          "title": "Label",
+          "type": "string"
+        },
+        "value": {
+          "title": "Value"
+        },
+        "unit": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Unit"
+        },
+        "source_metric_ids": {
+          "description": "Ids of the design metrics this value was derived from.",
+          "items": {
+            "type": "string"
+          },
+          "title": "Source Metric Ids",
+          "type": "array"
+        },
+        "note": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Note"
+        }
+      },
+      "required": [
+        "name",
+        "label",
+        "value",
+        "unit",
+        "source_metric_ids"
+      ],
+      "title": "HotspotEvidence",
       "type": "object"
     },
     "Layer": {
@@ -761,6 +1061,84 @@
         "review_status"
       ],
       "title": "Recommendation",
+      "type": "object"
+    },
+    "SiteContext": {
+      "description": "Existing-land context (H2 observed hot cluster); never a design hotspot and never a cause.",
+      "properties": {
+        "type": {
+          "const": "H2",
+          "title": "Type",
+          "type": "string"
+        },
+        "condition": {
+          "const": "existing",
+          "title": "Condition",
+          "type": "string"
+        },
+        "metric": {
+          "title": "Metric",
+          "type": "string"
+        },
+        "in_cluster": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "In Cluster"
+        },
+        "site_share_pct": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Site Share Pct"
+        },
+        "cluster_geometry": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Cluster Geometry"
+        },
+        "method": {
+          "title": "Method",
+          "type": "string"
+        },
+        "statement": {
+          "title": "Statement",
+          "type": "string"
+        },
+        "note": {
+          "title": "Note",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "condition",
+        "metric",
+        "in_cluster",
+        "site_share_pct",
+        "cluster_geometry",
+        "method",
+        "statement",
+        "note"
+      ],
+      "title": "SiteContext",
       "type": "object"
     }
   },

@@ -23,7 +23,8 @@ def test_every_module_has_a_condition_and_metrics_carry_it(client, auth):
     assert b["metrics"]
     for m in b["metrics"]:
         # The sun's position depends on place and date only, so it is the same for every design.
-        assert m["condition"] == ("existing" if m["metric_name"].startswith(("solar_elevation", "solar_azimuth")) else CONDITION[m["module"]])
+        # So are UTCI values in full sun or shade on the hot day (climate and sun position only).
+        assert m["condition"] == ("existing" if m["metric_name"].startswith(("solar_elevation", "solar_azimuth", "utci_")) else CONDITION[m["module"]])
         # A metric that depends on the design must come from a design analysis, and vice versa.
         assert bool(m["design_dependent"]) == (m["condition"] == "design"), m["metric_name"]
 
@@ -329,8 +330,11 @@ def test_existing_land_findings_are_context_without_design_recommendations(env):
     project = {"id": "p", "boundary": _local_box_wgs(0, 0, 100, 100)}
     [f], recs = _generate(_lst(99.0), project)
     assert recs == [] and any("decision S-8" in x for x in f["limitations"])
-    # A design finding still gets its recommendations.
-    _, recs2 = _generate([_metric("solar_open_space_exposed_pct_1500", "solar_shade", 95.0, "%", condition="design")], project)
+    # A design finding (a located design hotspot) still gets its recommendations.
+    from test_stage_s2 import hotspot_record
+    from urbanova import findings
+
+    _, recs2 = findings.generate({"id": "run_x"}, project, {}, [], {}, [hotspot_record()])
     assert recs2
 
 

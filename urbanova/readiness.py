@@ -15,13 +15,15 @@ ANALYSES = {
     "surface_heat": "Land surface temperature (Landsat) — heat analysis",
     "vegetation": "Vegetation indicator (Sentinel-2 NDVI)",
     "solar_shade": "Solar position & geometric shade",
+    "heat_stress": "Heat stress in sun and shade (UTCI, hot day)",
+    "hotspots": "Design hotspots (where, how big, how severe)",
     "planning_compliance": "Planning-rule checks",
     "scenario_comparison": "Alternative-design comparison",
     "cost_estimate": "Indicative cost estimate",
     "population_context": "Population context",
     "air_quality": "Regional air-quality context",
 }
-RUNNABLE = ["climate_baseline", "site_context", "urban_form", "vegetation", "surface_heat", "solar_shade", "planning_compliance"]
+RUNNABLE = ["climate_baseline", "site_context", "urban_form", "vegetation", "surface_heat", "solar_shade", "heat_stress", "planning_compliance", "hotspots"]
 # Existing land or proposed design, per runnable module (urbanova/config/analyses.json, decision S-8).
 CONDITION = {a["id"]: a["condition"] for a in load_config("analyses.json")["analyses"] if a["id"] in RUNNABLE}
 
@@ -88,6 +90,18 @@ def assess(project: dict, scenario: dict | None = None) -> dict:
                           "Shade from buildings without heights (shade is underestimated).", "Add the missing building heights on the Inputs screen."))
     else:
         out.append(_entry("solar_shade", READY, [], "", "Run the analysis.", ["Flat terrain; off-site obstructions not modelled."]))
+    # Hourly shadows come from buildings with heights, sized trees and shade structures with heights (solar.run).
+    casters = with_h or [f for f in sfeats if f["properties"].get("height_m") and (f["properties"].get("feature_type") == "shade_structure"
+                         or (f["properties"].get("feature_type") == "tree" and f["properties"].get("canopy_radius_m")))]
+    hs_missing = ([] if casters else ["Building, tree or shade-structure heights (for hourly shadows)"]) + climate_block
+    out.append(_entry("heat_stress", BLOCKED if hs_missing else READY, hs_missing, "UTCI heat stress in sun and shade on the hot day." if hs_missing else "",
+                      climate_step or ("Add building heights." if not casters else "Run the analysis."),
+                      ["Needs ERA5 hourly data (Open-Meteo); unavailable with the fallback climate provider.", "Surfaces assumed at air temperature."]))
+    hot_missing = ([] if sfeats else ["Design geometry"]) + ([] if has_boundary else ["Site boundary"])
+    out.append(_entry("hotspots", BLOCKED if hot_missing else (READY if casters and not climate_block else LIMITED), hot_missing,
+                      "Located design hotspots." if hot_missing else ("Heat hotspots (H1, H3) need heights for shadows and the hot-day weather." if not casters or climate_block else ""),
+                      "Upload the design and boundary." if hot_missing else "Run the analysis.",
+                      ["Planning-violation hotspots (H4) need verified rules."]))
     if not verified:
         cands = db.select("rules", "project_id = ? AND status = 'candidate'", [pid])
         step = f"Verify the {len(cands)} candidate rule(s) on the Planning rules screen." if cands else "Upload a planning document or enter verified rules manually."

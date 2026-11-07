@@ -87,12 +87,8 @@ def fetch_tmax_base(lat: float, lon: float) -> dict:
     return _open_meteo(lat, lon, *BASE_PERIOD, ["temperature_2m_max"])
 
 
-def _open_meteo(lat: float, lon: float, start: date, end: date, daily_vars: list[str]) -> dict:
+def _open_meteo_get(params: dict) -> tuple[dict, dict]:
     p = provider("open_meteo_archive")
-    params = {
-        "latitude": round(lat, 4), "longitude": round(lon, 4), "start_date": start.isoformat(), "end_date": end.isoformat(),
-        "daily": ",".join(daily_vars), "timezone": "auto", "models": "era5",
-    }
     # Commercial use requires Open-Meteo's paid API: same parameters on the customer host plus
     # an `apikey` (server-side only; excluded from the cache key and redacted in logs).
     key = os.environ.get(p.get("commercial_key_env") or "", "")
@@ -102,6 +98,51 @@ def _open_meteo(lat: float, lon: float, start: date, end: date, daily_vars: list
     meta["licence_tier"] = "commercial subscription" if key else "free tier (non-commercial use only)"
     if not isinstance(body, dict) or body.get("error"):
         raise ProviderError("open_meteo_archive", "invalid_response", str(body.get("reason") if isinstance(body, dict) else body)[:200])
+    return body, meta
+
+
+# Hourly ERA5 variables for the hot-day profile used by the heat-stress analysis (A9). Direct radiation uses the
+# `_instant` variant (value at the time stamp), matching instantaneous temperature, humidity and wind. SolarCal derives
+# diffuse and reflected radiation from the direct beam, so diffuse radiation is not fetched.
+HOURLY_MAP = {
+    "temperature_2m": ("ta_c", "°C", (-90, 60)), "relative_humidity_2m": ("rh_pct", "%", (0, 100)),
+    "wind_speed_10m": ("v10_ms", "m/s", (0, 120)), "direct_normal_irradiance_instant": ("dni_wm2", "W/m²", (0, 1400)),
+}
+
+
+def fetch_hourly(lat: float, lon: float, start: date, end: date) -> dict:
+    """Hourly ERA5 (Open-Meteo archive) in UTC for the heat-stress hot day. One cached request.
+
+    Returns {"times": ["YYYY-MM-DDTHH:MM" UTC], "series": {var: [float|None]}, "meta", "request_params"}."""
+    params = {
+        "latitude": round(lat, 4), "longitude": round(lon, 4), "start_date": start.isoformat(), "end_date": end.isoformat(),
+        "hourly": ",".join(HOURLY_MAP), "timezone": "GMT", "models": "era5", "wind_speed_unit": "ms",
+    }
+    body, meta = _open_meteo_get(params)
+    hourly, units = body.get("hourly") or {}, body.get("hourly_units") or {}
+    times = hourly.get("time") or []
+    if not times:
+        raise ProviderError("open_meteo_archive", "no_data", "No hourly records returned.")
+    if times != sorted(times) or times[0][:10] < start.isoformat() or times[-1][:10] > end.isoformat():
+        raise ProviderError("open_meteo_archive", "invalid_response", "Returned hours are outside the requested period or not in order.")
+    series = {}
+    for src, (var, unit, (lo, hi)) in HOURLY_MAP.items():
+        if units.get(src) != unit:
+            raise ProviderError("open_meteo_archive", "invalid_response", f"Unexpected unit {units.get(src)!r} for {src}.")
+        vals = hourly.get(src) or []
+        if len(vals) != len(times):
+            raise ProviderError("open_meteo_archive", "invalid_response", f"Length mismatch for {src}.")
+        series[var] = [float(v) if v is not None and lo <= v <= hi else None for v in vals]
+    return {"times": times, "series": series, "meta": meta, "request_params": params}
+
+
+def _open_meteo(lat: float, lon: float, start: date, end: date, daily_vars: list[str]) -> dict:
+    p = provider("open_meteo_archive")
+    params = {
+        "latitude": round(lat, 4), "longitude": round(lon, 4), "start_date": start.isoformat(), "end_date": end.isoformat(),
+        "daily": ",".join(daily_vars), "timezone": "auto", "models": "era5",
+    }
+    body, meta = _open_meteo_get(params)
     daily = body.get("daily") or {}
     units = body.get("daily_units") or {}
     dates = daily.get("time") or []

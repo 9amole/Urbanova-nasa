@@ -68,6 +68,11 @@ def prism_shadow(footprint, height: float, elev: float, az: float):
     return unary_union(parts)
 
 
+def sunlit(geom, shadow):
+    """The part of `geom` in sun for one hour's shadow; a None shadow means the sun is at or below the horizon (no sun)."""
+    return geom.difference(shadow) if shadow is not None else geom.difference(geom)
+
+
 def analysis_date(ctx: Context) -> tuple[date, str]:
     if ctx.config.get("solar_date"):
         return date.fromisoformat(ctx.config["solar_date"]), "user-selected date"
@@ -141,6 +146,9 @@ def run(ctx: Context) -> dict:
                 dx, dy = _shift(el, az, height)
                 parts.append(translate(g, dx, dy))
         shade_by_hour[h] = unary_union(parts)
+    # Hourly shadows (local CRS) for the heat-stress and hotspot analyses; None = sun at or below the horizon.
+    ctx.shared["solar"] = {"date": day.isoformat(), "positions": positions, "shade_by_hour": shade_by_hour,
+                           "buildings_without_height": missing_h, "local_crs": local}
     # The method text must be identical across scenarios so results stay comparable; counts go to `extra`.
     method = f"Exact prism shadows of buildings with heights plus flat canopy shadows (shade structures, sized trees) on flat ground, {day.isoformat()}"
     dd = {"extra": {"building_casters": sum(1 for k, _, _ in casters if k == "prism"), "canopy_casters": sum(1 for k, _, _ in casters if k != "prism")}}

@@ -288,7 +288,9 @@
                   "vegetation",
                   "surface_heat",
                   "solar_shade",
-                  "planning_compliance"
+                  "heat_stress",
+                  "planning_compliance",
+                  "hotspots"
                 ],
                 "type": "string"
               },

@@ -37,6 +37,48 @@ def _features_local(ctx: Context) -> dict[str, list]:
     return out
 
 
+# Open-space surfaces treated as soft (not paved) in the heat-stress and hotspot analyses (A8, A9).
+SOFT_SURFACES = {"grass", "lawn", "soil", "sand", "gravel", "planted", "soft", "earth"}
+HARD_TYPES = ("road", "parking", "open_space")
+
+
+def is_hard(ftype: str, props: dict) -> bool:
+    """Road and parking are hard surface; designated open space is assumed paved unless its `surface` says otherwise."""
+    return ftype in HARD_TYPES and not (ftype == "open_space" and str(props.get("surface") or "").lower() in SOFT_SURFACES)
+
+
+def design_surfaces(ctx: Context) -> dict | None:
+    """Design surfaces in the local CRS for the heat-stress and hotspot analyses, clipped to the site, minus buildings.
+
+    hard_parts: [(geometry, feature_type, name)] of hard surfaces; open: open and green space (pedestrian areas);
+    shade_sources: tree canopies and shade structures. Returns None without a boundary or design. Built once per design run."""
+    if "design_surfaces" not in ctx.shared:
+        ctx.shared["design_surfaces"] = _design_surfaces(ctx)
+    return ctx.shared["design_surfaces"]
+
+
+def _design_surfaces(ctx: Context) -> dict | None:
+    if not ctx.project.get("boundary") or not (ctx.scenario or {}).get("features", {}).get("features"):
+        return None
+    feats = _features_local(ctx)
+    site = geo.to_local(shape(ctx.project["boundary"]), ctx.local_crs)
+    empty = Point(0, 0).buffer(0)
+    buildings = unary_union([g for g, _ in feats.get("building", []) if g.geom_type in POLY] or [empty])
+    usable = site.difference(buildings)
+    hard_parts = []
+    for t in HARD_TYPES:
+        for g, p in feats.get(t, []):
+            if g.geom_type in POLY and is_hard(t, p):
+                piece = g.intersection(usable)
+                if piece.area > 0:
+                    hard_parts.append((piece, t, p.get("name") or t))
+    open_g = unary_union([g for t in ("open_space", "green_space") for g, _ in feats.get(t, []) if g.geom_type in POLY] or [empty]).intersection(usable)
+    shade_src = unary_union([g for t in ("tree", "shade_structure") for g, _ in feats.get(t, []) if g.geom_type in POLY] or [empty])
+    return {"site": site, "buildings": buildings, "hard_parts": hard_parts, "hard": unary_union([g for g, _, _ in hard_parts] or [empty]),
+            "open": open_g, "shade_sources": shade_src, "building_props": [(g, p) for g, p in feats.get("building", []) if g.geom_type in POLY],
+            "roads": [(g, p) for g, p in feats.get("road", []) if g.geom_type in POLY]}
+
+
 def compute(ctx: Context) -> dict:
     feats = _features_local(ctx)
     boundary = ctx.project.get("boundary")

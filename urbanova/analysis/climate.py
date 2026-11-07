@@ -13,6 +13,7 @@ from ..providers import weather
 from ..providers.weather import LABELS, fetch_daily
 from ..settings import load_config
 from .common import COMPLETED, PARTIAL, UNAVAILABLE, Context, result
+from .solar import DAY_HOURS
 
 MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 MAX_MISSING_FRACTION = 0.10
@@ -143,6 +144,75 @@ def _tx90p_metric(ctx: Context, data: dict, src: list[str]) -> dict:
                                           "base_cache_key": base["meta"].get("cache_key")})
 
 
+HOT_DAY_HOURS = DAY_HOURS  # the solar hours of the shade analysis
+
+
+def equation_of_time_min(doy: int) -> float:
+    """Equation of time in minutes (Spencer 1971 series, as used by the NOAA solar position)."""
+    import math
+
+    b = 2 * math.pi * (doy - 1) / 365
+    return 229.18 * (0.000075 + 0.001868 * math.cos(b) - 0.032077 * math.sin(b) - 0.014615 * math.cos(2 * b) - 0.040849 * math.sin(2 * b))
+
+
+def hot_day_profile(hourly: dict, dates: list[str], tmax: list, hot_months: list[int], threshold_c: float, lon: float) -> dict | None:
+    """Composite hot day: for each solar hour 07–17, the mean of each hourly variable over the hot-season
+    days whose Tmax is at or above `threshold_c` (basis climate.hot_day_definition).
+
+    Hourly UTC records are placed on true solar time (UTC + lon/15 h + equation of time) and linearly
+    interpolated to the exact solar hours. Returns None when there is no such day or an hour has no data."""
+    import numpy as np
+
+    hot = [d for d, v in zip(dates, tmax) if v is not None and int(d[5:7]) in hot_months and v >= threshold_c]
+    if not hot:
+        return None
+    t_utc = np.array([date.fromisoformat(t[:10]).toordinal() + int(t[11:13]) / 24 + int(t[14:16]) / 1440 for t in hourly["times"]])
+    doy = np.array([date.fromisoformat(t[:10]).timetuple().tm_yday for t in hourly["times"]])
+    t_sol = t_utc + (lon / 15 + np.array([equation_of_time_min(int(d)) for d in doy]) / 60) / 24
+    targets = np.array([[date.fromisoformat(d).toordinal() + h / 24 for h in HOT_DAY_HOURS] for d in hot])
+    out: dict[int, dict[str, float]] = {h: {} for h in HOT_DAY_HOURS}
+    for var, vals in hourly["series"].items():
+        arr = np.array([np.nan if v is None else v for v in vals], dtype=float)
+        # Interpolate, then blank any target whose bracketing records are missing or outside the data.
+        interp = np.interp(targets, t_sol, arr, left=np.nan, right=np.nan)
+        if not np.isfinite(interp).any(axis=0).all():
+            return None
+        for h, m in zip(HOT_DAY_HOURS, np.nanmean(interp, axis=0)):
+            out[h][var] = round(float(m), 2)
+    return {"hours": out, "days": len(hot), "threshold_c": threshold_c, "months": sorted(hot_months), "dates": hot}
+
+
+def _hot_day(ctx: Context, data: dict, summary: dict, period: dict, src: list[str]) -> tuple[list[dict], str | None]:
+    """Hot-day metrics and ctx.shared['hot_day'], or a warning. Needs ERA5 hourly data (Open-Meteo)."""
+    names = (("climate_hot_day_tmax_c", "Air temperature at 15:00 solar time on the composite hot day", "°C"),
+             ("climate_hot_day_count", "Hot-season days in the hot-day composite (Tmax ≥ period 90th percentile)", "days"))
+
+    def missing(state: str, why: str) -> tuple[list[dict], str]:
+        return [V.missing(n, lab, u, state, why, sources=src) for n, lab, u in names], why
+
+    if "heat_stress" not in (ctx.config.get("modules") or ["heat_stress"]):
+        return [], None  # nothing uses the hot day in this run: skip the hourly request
+    if data["provider"] != "open_meteo_archive" or not summary["hottest_months"] or summary["tmax_p90_c"] is None:
+        why = "The hot-day profile needs ERA5 hourly data; the fallback provider in use does not supply it." if data["provider"] != "open_meteo_archive" \
+            else "The hottest months or the Tmax 90th percentile could not be determined."
+        return missing(V.UNAVAILABLE, why)
+    try:
+        hourly = weather.fetch_hourly(ctx.lat, ctx.lon, date(period["start_year"], 1, 1), date(period["end_year"], 12, 31))
+    except ProviderError as exc:
+        why = f"Hourly ERA5 data for the hot day could not be retrieved ({exc.kind})."
+        return missing(V.UNAVAILABLE, why)
+    prof = hot_day_profile(hourly, data["dates"], data["series"].get("tmax_c") or [], summary["hottest_months"], summary["tmax_p90_c"], ctx.lon)
+    if not prof:
+        why = "No hot-season day reached the period's 90th percentile with complete hourly data."
+        return missing(V.UNKNOWN, why)
+    ctx.shared["hot_day"] = prof
+    method = (f"ERA5 hourly (Open-Meteo, UTC → true solar time), mean over the {prof['days']} days in months {prof['months']} with Tmax ≥ "
+              f"{prof['threshold_c']:g} °C (the period's 90th percentile)")
+    q = {"basis": "climate.hot_day_definition", "profile": prof["hours"], "hourly_cache_key": hourly["meta"].get("cache_key")}
+    return [V.metric(names[0][0], names[0][1], prof["hours"][15]["ta_c"], "°C", method=method, sources=src, quality=q),
+            V.metric(names[1][0], names[1][1], prof["days"], "days", method=method, sources=src, quality={"basis": "climate.hot_day_definition"})], None
+
+
 def run(ctx: Context) -> dict:
     period = ctx.project.get("analysis_period") or ctx.config.get("climate_period") or default_period()
     start, end = date(period["start_year"], 1, 1), date(period["end_year"], 12, 31)
@@ -205,6 +275,10 @@ def run(ctx: Context) -> dict:
     m.append(tx)
     if tx["state"] != V.AVAILABLE:
         warnings.append(f"ETCCDI TX90p was not calculated: {tx['reason']}")
+    hot_metrics, hot_why = _hot_day(ctx, data, summary, period, src)
+    m.extend(hot_metrics)
+    if hot_why:
+        warnings.append(f"No hot-day profile, so heat stress (UTCI) cannot be assessed: {hot_why}")
     rh = summary["monthly_climatology"].get("rh_mean_pct")
     sw = summary["monthly_climatology"].get("sw_mj_m2")
     if summary["hottest_months"] and rh and all(rh[mm - 1] is not None for mm in summary["hottest_months"]):

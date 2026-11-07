@@ -67,10 +67,22 @@ def _map_png(project: dict, scenario: dict | None, bundle: dict, out: Path) -> s
         g = shape(hot["geometry"])
         for p in getattr(g, "geoms", [g]):
             ax.fill(*p.exterior.xy, facecolor="none", edgecolor="#d7191c", hatch="///", lw=0.8)
+    from .analysis.hotspots import SEVERITY_COLORS as sev_color
+
+    for hs in bundle.get("hotspots") or []:
+        if not hs.get("geometry"):
+            continue
+        g = shape(hs["geometry"])
+        for p in getattr(g, "geoms", [g]):
+            ax.fill(*p.exterior.xy, facecolor=sev_color.get(hs["severity"], "#999999"), edgecolor="#5a0000", alpha=0.45, lw=0.8)
+        pt = g.representative_point()
+        ax.annotate(str(hs["number"]), (pt.x, pt.y), ha="center", va="center", fontsize=8, fontweight="bold", color="white",
+                    bbox={"boxstyle": "circle,pad=0.2", "fc": "#5a0000", "ec": "none"})
     ax.set_aspect(1 / max(0.2, math.cos(math.radians(project["latitude"]))))
     ax.set_xlabel("Longitude (°)")
     ax.set_ylabel("Latitude (°)")
-    ax.set_title("Site and design features" + (" (hatched: hottest-decile surfaces)" if hot else ""), fontsize=9)
+    ax.set_title("Site and design features" + (" (hatched: hottest-decile surfaces)" if hot else "")
+                 + (" · numbered: design hotspots" if any(h.get("geometry") for h in bundle.get("hotspots") or []) else ""), fontsize=9)
     ax.tick_params(labelsize=7)
     fig.tight_layout()
     path = out / "report_map.png"
@@ -157,6 +169,20 @@ SECTIONS = [
     "11. Assumptions, limitations and uncertainty", "12. Data-quality issues and unavailable analyses", "13. Methodology",
     "14. Reproducibility record",
 ]
+
+
+HOTSPOT_HEADER = ["No.", "Type", "Area", "Size", "Intensity", "Severity and basis", "UTCI sun / shade", "Likely causes"]
+
+
+def _hotspot_rows(bundle: dict) -> list[list[str]]:
+    rows = []
+    for h in bundle.get("hotspots") or []:
+        sm = {s["name"]: s["value"] for s in h["supporting_metrics"]}
+        utci = f"{sm['utci_sun_peak_c']:g} / {sm['utci_shade_peak_c']:g} °C" if "utci_sun_peak_c" in sm and "utci_shade_peak_c" in sm else "—"
+        sev = h["severity"].upper() + (" (PROVISIONAL, capped)" if h.get("severity_capped") else "")
+        rows.append([str(h["number"]), " + ".join(h["type_labels"]), f"{h['area_m2']:,.0f} m² ({h['site_share_pct']:g} % of site)" + (" site-wide" if h.get("site_wide") else ""),
+                     h["size_class"], h["intensity"], f"{sev}: {h['severity_basis']}", utci, "; ".join(c["text"] for c in h["likely_causes"]) or "none of the listed rules matched"])
+    return rows
 
 
 def _assumptions(run: dict, ms: dict) -> list[str]:
@@ -260,6 +286,18 @@ def _html(project, run, bundle, scenario, files_, rules, comparison, summary, ma
             sec.append(f"<tr><td>{_e(m['label'])}{note}</td><td>{_fmt(m)}</td><td>{_e(OUTPUT_KIND_LABELS.get(m['output_kind']))}</td><td>{_e(m['method'])}</td></tr>")
         sec.append("</table>")
     sec.append("<h2>" + SECTIONS[6] + "</h2>")
+    sec.append("<h3 id='hotspots'>Design hotspots</h3>")
+    if bundle.get("hotspots"):
+        sec.append("<p>Places on the drawing with a measured problem, numbered by priority (severity, then area) and shown on the map above. "
+                   "Severity follows the PHASE2_SPEC §4.2 table; heat stress uses the UTCI scale.</p><table><tr>" + "".join(f"<th>{_e(c)}</th>" for c in HOTSPOT_HEADER) + "</tr>")
+        for row in _hotspot_rows(bundle):
+            sec.append("<tr>" + "".join(f"<td>{_e(c)}</td>" for c in row) + "</tr>")
+        sec.append("</table>")
+    else:
+        notes = ((ms.get("hotspots") or {}).get("details") or {}).get("notes") or []
+        sec.append(f"<p>No design hotspots. {_e(' '.join(notes) or (ms.get('hotspots') or {}).get('reason') or 'Hotspot detection was not part of this run.')}</p>")
+    for c in bundle.get("site_context") or []:
+        sec.append(f"<div class='context'><h3>Site context (today's land)</h3><p>{_e(c['statement'])}</p><p><small>{_e(c['method'])}. {_e(c['note'])}</small></p></div>")
     concerns = [f for f in bundle["findings"] if f["classification"] != "data_quality_issue"]
     if not concerns:
         sec.append("<p>No rule-based environmental or planning findings were triggered by the available evidence. This does not mean the site has no issues — see the analyses that could not run.</p>")
@@ -328,7 +366,7 @@ def _html(project, run, bundle, scenario, files_, rules, comparison, summary, ma
     css = """body{font-family:system-ui,Segoe UI,Arial,sans-serif;max-width:960px;margin:24px auto;padding:0 16px;color:#1d1d1d;line-height:1.45}
 table{border-collapse:collapse;width:100%;margin:8px 0 16px;font-size:13px}th,td{border:1px solid #ccc;padding:5px 7px;text-align:left;vertical-align:top}th{background:#f2f2f2}
 .banner{padding:10px 12px;border-radius:6px}.banner.ok{background:#e8f5e9}.banner.warn{background:#fff3e0;border:1px solid #f0a020}
-.finding,.rec{border-left:4px solid #888;padding:4px 12px;margin:10px 0;background:#fafafa}.sev-high{border-color:#c62828}.sev-moderate{border-color:#ef6c00}.sev-low{border-color:#f9a825}
+.finding,.rec,.context{border-left:4px solid #888;padding:4px 12px;margin:10px 0;background:#fafafa}.context{border-color:#2c7bb6}.sev-high{border-color:#c62828}.sev-moderate{border-color:#ef6c00}.sev-low{border-color:#f9a825}
 .st-completed{color:#1b5e20}.st-partial{color:#e65100}.st-failed,.st-unavailable,.st-blocked{color:#b71c1c}h2{border-bottom:2px solid #ddd;padding-bottom:3px;margin-top:28px}
 @media print{body{max-width:none}.finding,.rec,table{page-break-inside:avoid}}"""
     return f"<!doctype html><html lang='en'><head><meta charset='utf-8'><title>URBANOVA report — {_e(project['name'])}</title><style>{css}</style></head><body>{''.join(sec)}<footer><p>Generated {_e(db.now())} by URBANOVA {_e(__version__)}.</p></footer></body></html>"
@@ -408,6 +446,13 @@ def _pdf(path: Path, project, run, bundle, scenario, files_, rules, comparison, 
         rows.append([ANALYSES[m["module"]], m["label"], val, OUTPUT_KIND_LABELS.get(m["output_kind"], "")])
     story.append(table(rows, [3.4 * cm, 6.2 * cm, 4.6 * cm, 3 * cm]))
     story.append(h(6))
+    story.append(Paragraph("<b>Design hotspots</b>", small))
+    if bundle.get("hotspots"):
+        story.append(table([HOTSPOT_HEADER] + _hotspot_rows(bundle), [0.8 * cm, 2.3 * cm, 2.2 * cm, 1.3 * cm, 1.5 * cm, 4 * cm, 1.9 * cm, 3.2 * cm]))
+    else:
+        story.append(Paragraph("No design hotspots. " + _e(" ".join(((ms.get("hotspots") or {}).get("details") or {}).get("notes") or [])), small))
+    for c in bundle.get("site_context") or []:
+        story.append(Paragraph(f"<b>Site context (today's land):</b> {_e(c['statement'])} <i>{_e(c['note'])}</i>", small))
     concerns = [f for f in bundle["findings"] if f["classification"] != "data_quality_issue"]
     if not concerns:
         story.append(Paragraph("No rule-based environmental or planning findings were triggered by the available evidence. This does not mean the site has no issues.", small))

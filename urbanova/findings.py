@@ -60,7 +60,11 @@ def _confidence(module_status: str, metric: dict) -> tuple[str, str]:
     return "adequate", "Inputs passed the module's quality checks."
 
 
-def generate(run: dict, project: dict, module_results: dict[str, dict], metric_rows: list[dict], shared: dict) -> tuple[list[dict], list[dict]]:
+HOTSPOT_RECS = {"H1": ["reduce_hard_surface", "shade_public_space", "add_vegetation"], "H3": ["shade_public_space", "add_vegetation"], "H4": ["review_compliance"]}
+
+
+def generate(run: dict, project: dict, module_results: dict[str, dict], metric_rows: list[dict], shared: dict,
+             hotspots: list[dict] | None = None) -> tuple[list[dict], list[dict]]:
     cfg = load_config("rules.json")
     templates = load_config("recommendations.json")["templates"]
     by_name = {m["metric_name"]: m for m in metric_rows}
@@ -70,6 +74,7 @@ def generate(run: dict, project: dict, module_results: dict[str, dict], metric_r
 
     def add(f: dict, rec_keys: list[str], target: Any = None, extra_problem: str | None = None) -> None:
         f.update(id=db.new_id("fnd"), run_id=run["id"], created_at=db.now())
+        f.setdefault("hotspot_ids", [])
         findings.append(f)
         for key in rec_keys:
             t = templates[key]
@@ -147,8 +152,38 @@ def generate(run: dict, project: dict, module_results: dict[str, dict], metric_r
             "limitations": limitations,
         }, [] if existing else rule["recommendation_keys"], target={"description": area, "geometry": geom})
 
+    hotspots = hotspots or []
+    h4_by_rule = {h["rule"]["rule_id"]: h["id"] for h in hotspots if h.get("rule")}
+    for h in hotspots:
+        if h["types"] == ["H4"]:
+            continue  # a located planning violation is the failed-rule finding below, linked to this hotspot
+        top = [c["text"] for c in h["likely_causes"]][:3]
+        sm = {s["name"]: s for s in h["supporting_metrics"]}
+        evidence = [{"metric": s["name"], "label": s["label"], "value": s["value"], "unit": s["unit"], "metric_ids": s["source_metric_ids"]} for s in h["supporting_metrics"]]
+        utci = (f" UTCI in sun up to {sm['utci_sun_peak_c']['value']:g} °C vs {sm['utci_shade_peak_c']['value']:g} °C in shade."
+                if "utci_sun_peak_c" in sm and "utci_shade_peak_c" in sm else "")
+        limitations = ["Heat stress is computed for the composite hot day with surfaces at air temperature; hot paving makes it worse than shown.",
+                       h["confidence_reason"]]
+        if h["severity_capped"]:
+            limitations.append(f"Severity is capped at '{h['severity']}' while these values are not approved: {', '.join(h['provisional_basis'])} "
+                               f"(the table gives '{h['severity_uncapped']}').")
+        add({
+            "category": "heat", "classification": "modelled_outcome",
+            "title": f"Hotspot {h['number']}: {' + '.join(h['type_labels'])}",
+            "summary": f"{h['area_m2']:g} m² ({h['site_share_pct']:g} % of the site), {h['size_class']}, intensity {h['intensity']}.{utci}"
+                       + (f" Likely causes: {'; '.join(top)}." if top else ""),
+            "geometry": h["geometry"], "metric_ids": sorted({i for s in h["supporting_metrics"] for i in s["source_metric_ids"]}),
+            "severity": h["severity"], "affected_area": f"Hotspot {h['number']} on the design", "severity_rule": h["severity_basis"], "rule_id": None,
+            "threshold": {"status": "provisional_not_approved" if h["severity_capped"] or h["provisional_basis"] else "standard",
+                          "basis": [basis.get(i) for i in ["heat_stress.utci_categories", *h["provisional_basis"]]],
+                          "band_level": h["severity_uncapped"], "severity_capped": h["severity_capped"]},
+            "evidence": evidence, "sources": [], "confidence": h["confidence"], "limitations": limitations, "hotspot_ids": [h["id"]],
+        }, sorted({k for t in h["types"] for k in HOTSPOT_RECS.get(t, [])}, key=lambda k: list(templates).index(k)),
+            target={"description": f"Hotspot {h['number']}", "geometry": h["geometry"], "hotspot_id": h["id"]})
+
     for check in shared.get("compliance_checks", []):
         if check["status"] == "fails":
+            hid = h4_by_rule.get(check["rule_id"])
             add({
                 "category": "planning", "classification": "planning_rule_check", "title": f"Design does not meet verified rule: {check['label']}",
                 "summary": f"Measured {check['measured']:g} {check['unit'] or ''} vs verified limit {check['operator']} {check['limit']:g}.",
@@ -158,6 +193,7 @@ def generate(run: dict, project: dict, module_results: dict[str, dict], metric_r
                 "evidence": [{"metric": check["metric"], "value": check["measured"], "unit": check["unit"], "rule_text": check["rule_source"]["text"]}],
                 "sources": [{"type": "planning_rule", **check["rule_source"]}], "confidence": "adequate",
                 "limitations": ["This is a geometric check against a user-verified rule, not a statutory determination."],
+                "hotspot_ids": [hid] if hid else [],
             }, ["review_compliance"])
         elif check["status"] == "not_assessed":
             add({

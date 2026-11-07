@@ -96,7 +96,13 @@ CREATE TABLE IF NOT EXISTS findings (
     id TEXT PRIMARY KEY, run_id TEXT NOT NULL, category TEXT NOT NULL, classification TEXT NOT NULL,
     title TEXT NOT NULL, summary TEXT, geometry TEXT, metric_ids TEXT, severity TEXT NOT NULL,
     severity_rule TEXT, rule_id TEXT, threshold TEXT, evidence TEXT, sources TEXT,
-    confidence TEXT, limitations TEXT, affected_area TEXT, created_at TEXT NOT NULL
+    confidence TEXT, limitations TEXT, affected_area TEXT, created_at TEXT NOT NULL, hotspot_ids TEXT
+);
+CREATE TABLE IF NOT EXISTS hotspots (
+    id TEXT PRIMARY KEY, run_id TEXT NOT NULL, number INTEGER NOT NULL, types TEXT NOT NULL, type_labels TEXT, condition TEXT NOT NULL,
+    site_wide INTEGER DEFAULT 0, geometry TEXT, area_m2 REAL, site_share_pct REAL, size_class TEXT, intensity TEXT, severity TEXT NOT NULL,
+    severity_uncapped TEXT, severity_capped INTEGER DEFAULT 0, provisional_basis TEXT, severity_basis TEXT, supporting_metrics TEXT,
+    likely_causes TEXT, rule TEXT, merged_from INTEGER DEFAULT 1, confidence TEXT, confidence_reason TEXT
 );
 CREATE TABLE IF NOT EXISTS recommendations (
     id TEXT PRIMARY KEY, run_id TEXT NOT NULL, finding_id TEXT NOT NULL, title TEXT NOT NULL,
@@ -125,6 +131,7 @@ CREATE TABLE IF NOT EXISTS feedback (
 CREATE INDEX IF NOT EXISTS ix_features_project ON features(project_id);
 CREATE INDEX IF NOT EXISTS ix_metrics_run ON metrics(run_id);
 CREATE INDEX IF NOT EXISTS ix_findings_run ON findings(run_id);
+CREATE INDEX IF NOT EXISTS ix_hotspots_run ON hotspots(run_id);
 CREATE INDEX IF NOT EXISTS ix_datasets_cache ON datasets(cache_key);
 """
 
@@ -132,6 +139,7 @@ CREATE INDEX IF NOT EXISTS ix_datasets_cache ON datasets(cache_key);
 MIGRATIONS: list[tuple[str, str, str]] = [
     ("findings", "affected_area", "TEXT"),
     ("metrics", "condition", "TEXT"),
+    ("findings", "hotspot_ids", "TEXT"),
 ]
 
 # Columns holding JSON documents, decoded automatically on read.
@@ -148,7 +156,8 @@ JSON_COLUMNS: dict[str, set[str]] = {
     "runs": {"configuration", "fingerprint", "input_dataset_ids", "module_status", "warnings"},
     "metrics": {"source_dataset_ids", "quality", "uncertainty", "extra"},
     "layers": {"bounds", "legend", "meta"},
-    "findings": {"geometry", "metric_ids", "threshold", "evidence", "sources", "limitations"},
+    "findings": {"geometry", "metric_ids", "threshold", "evidence", "sources", "limitations", "hotspot_ids"},
+    "hotspots": {"types", "type_labels", "geometry", "provisional_basis", "supporting_metrics", "likely_causes", "rule"},
     "recommendations": {"evidence", "target", "required_inputs", "tradeoffs"},
     "comparisons": {"alternative_scenario_ids", "run_ids", "criteria", "result"},
     "reports": {"summary"},

@@ -598,6 +598,29 @@ async function tabAnalysis(el, data) {
   document.getElementById("run-all").onclick = (e) => guarded(async () => { const rs = await api(`/projects/${pid}/analysis-runs/all-scenarios`, { body: { config: config() } }); await follow(rs); }, e.target);
 }
 
+const SEV_COLORS = { high: "#b2182b", moderate: "#ef8a62", low: "#e0a96d" };
+
+function hotspotsPanel(hotspots, context, profile, mod) {
+  if (!mod || mod.status === "skipped") return "";
+  const notes = mod.details?.notes || [];
+  const sm = (h, n) => h.supporting_metrics.find((s) => s.name === n);
+  return `<section class="panel"><h2>Design hotspots (${hotspots.length})</h2>
+   <p class="hint">Places on the drawing with a measured problem, numbered by priority (severity, then area) and shown on the map. Severity: PHASE2_SPEC §4.2 table; heat stress on the UTCI scale.</p>
+   ${hotspots.length ? "" : `<p>No design hotspots. ${esc(notes.join(" ") || mod.reason || "")}</p>`}
+   <div class="cards">${hotspots.map((h) => { const su = sm(h, "utci_sun_peak_c"), sh = sm(h, "utci_shade_peak_c");
+     return `<div class="panel hs"><h3><span class="hs-badge">${h.number}</span> <span class="badge sev-${esc(h.severity)}">${esc(h.severity.toUpperCase())}${h.severity_capped ? " (PROVISIONAL)" : ""}</span> ${esc(h.type_labels.join(" + "))}</h3>
+      <p>${fmt(h.area_m2, 0)} m² (${fmt(h.site_share_pct, 1)} % of the site${h.site_wide ? ", site-wide" : ""}) · size ${esc(h.size_class)} · intensity ${esc(h.intensity)}</p>
+      ${su && sh ? `<p>UTCI in sun up to <strong>${fmt(su.value, 1)} °C</strong>, in shade ${fmt(sh.value, 1)} °C</p>` : ""}
+      ${h.likely_causes.length ? `<ul>${h.likely_causes.map((c) => `<li><span class="mono">${esc(c.code)}</span> ${esc(c.text)}</li>`).join("")}</ul>` : `<p class="muted">None of the listed cause rules matched.</p>`}
+      <details><summary>Severity basis and measurements</summary><p class="muted">${esc(h.severity_basis)}</p>
+       <table>${h.supporting_metrics.map((s) => `<tr><td>${esc(s.label)}</td><td>${typeof s.value === "object" && s.value !== null ? esc(Object.entries(s.value).map(([k, v]) => `${k} ${v} %`).join(", ")) : s.value === null ? esc(s.note || "—") : `${fmt(s.value, 2)} ${esc(s.unit || "")}`}</td></tr>`).join("")}</table>
+       <p class="muted">Confidence: ${esc(h.confidence)} — ${esc(h.confidence_reason)}</p></details></div>`; }).join("")}</div>
+   ${context.map((c) => `<div class="alert info"><strong>Site context (today's land):</strong> ${esc(c.statement)}<div class="muted">${esc(c.note)}</div></div>`).join("")}
+   ${profile.length ? `<details><summary>Hot-day heat stress, hour by hour (UTCI in sun vs shade)</summary><table><thead><tr><th>Solar time</th><th>Air °C</th><th>UTCI sun °C</th><th>UTCI shade °C</th><th>Category in sun</th></tr></thead><tbody>
+     ${profile.map((r) => `<tr><td>${String(r.hour).padStart(2, "0")}:00</td><td>${fmt(r.ta_c, 1)}</td><td>${fmt(r.utci_sun_c, 1)}</td><td>${fmt(r.utci_shade_c, 1)}</td><td>${esc(r.category_sun || "outside UTCI range")}</td></tr>`).join("")}</tbody></table></details>` : ""}
+  </section>`;
+}
+
 async function tabResults(el, data, runId) {
   const p = data.project, pid = p.id;
   const [allRuns, scenList] = await Promise.all([api(`/projects/${pid}/analysis-runs`), api(`/projects/${pid}/scenarios`)]);
@@ -620,6 +643,8 @@ async function tabResults(el, data, runId) {
   const concerns = b.findings.filter((f) => f.classification !== "data_quality_issue");
   const dq = b.findings.filter((f) => f.classification === "data_quality_issue");
   const climate = ms.climate_baseline?.details?.summary;
+  const hotspots = b.hotspots || [], context = b.site_context || [];
+  const profile = ms.heat_stress?.details?.profile || [];
   el.innerHTML = `
   <section class="panel"><div class="row"><div><label for="rs-run">Analysis run</label><select id="rs-run">${runs.map((r) => `<option value="${r.id}" ${r.id === rid ? "selected" : ""}>${esc(names[r.scenario_id] || "site only")} — ${esc(r.completed_at)} (${esc(RUN_STATUS[r.status][0])})</option>`).join("")}</select></div></div>
    <div class="alert ${run.status === "succeeded" && !stale.length ? "ok" : "warn"}"><strong>${run.status === "succeeded" && !stale.length ? "Complete result" : "Partial or preliminary result"}</strong> for
@@ -630,6 +655,7 @@ async function tabResults(el, data, runId) {
      ${o.not_available?.length ? `<div class="muted">${o.not_available.map(esc).join("<br>")}</div>` : ""}</li>`).join("")}</ul></section>
   <section class="panel"><h2>Map</h2><div class="grid"><div id="rs-map" class="map" style="height:520px"></div><div><div id="rs-layers" class="layerctl"></div><div id="rs-legend"></div>
    <p class="hint">Colours of value kinds: ${Object.keys(KIND).map(kindBadge).join(" ")}</p></div></div></section>
+  ${hotspotsPanel(hotspots, context, profile, ms.hotspots)}
   <section class="panel"><h2>Findings (${concerns.length})</h2>
    ${concerns.length ? "" : `<p>No rule-based findings were triggered by the available evidence. This is not proof that the site has no issues — check the analyses that could not run.</p>`}
    ${concerns.map((f) => { const prov = f.threshold?.status === "provisional_not_approved"; return `<div class="panel"><h3><span class="badge sev-${esc(f.severity)}">${esc(f.severity.toUpperCase())}${prov ? " (PROVISIONAL)" : ""}</span> ${prov ? badge([f.threshold.severity_capped ? `Provisional threshold — not approved; capped from ${f.threshold.band_level}` : "Provisional threshold — not approved", "b-warn"]) : ""} ${esc(f.title)}</h3>
@@ -667,7 +693,16 @@ async function tabResults(el, data, runId) {
   const overlays = [];
   if (p.boundary) overlays.push(["Site boundary (user-provided)", L.geoJSON(p.boundary, { style: { color: "#c62828", weight: 3, fillOpacity: 0 } }), true, null]);
   if (scen) overlays.push([`Design: ${scen.name} (user-provided)`, L.geoJSON(scen.features, { style: featureStyle, pointToLayer: (f, ll) => L.circleMarker(ll, { radius: 4 }), onEachFeature: (f, l) => l.bindPopup(popupFor(f.properties)) }), true, typeLegend()]);
+  if (hotspots.some((h) => h.geometry)) {
+    const hsLayer = L.geoJSON({ type: "FeatureCollection", features: hotspots.filter((h) => h.geometry).map((h) => ({ type: "Feature", geometry: h.geometry, properties: h })) }, {
+      style: (f) => ({ color: "#5a0000", weight: 1.5, fillColor: SEV_COLORS[f.properties.severity] || "#999", fillOpacity: 0.45 }),
+      onEachFeature: (f, l) => { const h = f.properties;
+        l.bindTooltip(String(h.number), { permanent: true, direction: "center", className: "hs-num" });
+        l.bindPopup(`<strong>Hotspot ${h.number}: ${esc(h.type_labels.join(" + "))}</strong><br>${fmt(h.area_m2, 0)} m² · ${esc(h.size_class)} · severity ${esc(h.severity)}<br>${h.likely_causes.map((c) => esc(c.text)).join("<br>")}`); } });
+    overlays.push(["Design hotspots (numbered, calculated)", hsLayer, true, `<strong>Design hotspots</strong>${Object.entries(SEV_COLORS).map(([k, c]) => `<div><i style="background:${c}"></i>${esc(k)} severity</div>`).join("")}`]);
+  }
   for (const lay of b.layers) {
+    if (lay.module === "hotspots") continue;  // drawn above from the hotspot records, with numbers
     if (lay.layer_kind === "raster") {
       const url = URL.createObjectURL(await (await api(`/layers/${lay.id}/data`, { raw: true })).blob());
       const bb = lay.bounds;
@@ -676,9 +711,10 @@ async function tabResults(el, data, runId) {
       overlays.push([`${lay.name} (${KIND[lay.output_kind]})`, L.imageOverlay(url, [[bb.south, bb.west], [bb.north, bb.east]], { opacity: 0.75 }), false, `<strong>${esc(lay.name)}</strong>${leg}`]);
     } else {
       const fc = await (await api(`/layers/${lay.id}/data`, { raw: true })).json();
-      const isShadow = lay.module === "solar_shade";
+      const isShadow = lay.module === "solar_shade", isCluster = lay.module === "surface_heat";
       overlays.push([`${lay.name} (${KIND[lay.output_kind]})`, L.geoJSON(fc, {
-        style: (f) => isShadow ? { color: "#333", weight: 0.5, fillColor: "#000", fillOpacity: f.properties.solar_time === "15:00" ? 0.35 : 0.15 } : { color: FCOLORS[f.properties.feature_type] || "#666", weight: 1, fillOpacity: 0.25 },
+        style: (f) => isShadow ? { color: "#333", weight: 0.5, fillColor: "#000", fillOpacity: f.properties.solar_time === "15:00" ? 0.35 : 0.15 }
+          : isCluster ? { color: "#b2182b", weight: 2, dashArray: "6 4", fillColor: "#b2182b", fillOpacity: 0.08 } : { color: FCOLORS[f.properties.feature_type] || "#666", weight: 1, fillOpacity: 0.25 },
         onEachFeature: (f, l) => l.bindPopup(popupFor(f.properties)) }), false,
         isShadow ? "<strong>Shade</strong><div>Darker = 15:00, lighter = 09:00/12:00 (solar time)</div>" : `<strong>${esc(lay.name)}</strong><div class="muted">${esc(lay.meta?.attribution || "")}</div>`]);
     }

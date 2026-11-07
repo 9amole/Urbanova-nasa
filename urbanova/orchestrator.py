@@ -16,9 +16,9 @@ from .settings import settings
 log = logging.getLogger("urbanova.orchestrator")
 OBJECTIVE_MODULES = {
     "main_concerns": set(RUNNABLE),
-    "surface_heat": {"climate_baseline", "surface_heat", "urban_form", "vegetation"},
+    "surface_heat": {"climate_baseline", "surface_heat", "urban_form", "vegetation", "solar_shade", "heat_stress", "hotspots"},
     "vegetation": {"vegetation", "urban_form"},
-    "shade": {"climate_baseline", "solar_shade", "urban_form"},
+    "shade": {"climate_baseline", "solar_shade", "urban_form", "heat_stress", "hotspots"},
     "compare_alternatives": {"urban_form", "solar_shade", "planning_compliance", "climate_baseline"},
     "planning_compliance": {"urban_form", "planning_compliance"},
     "data_gaps": set(),
@@ -31,7 +31,15 @@ DEPENDS = {
     "vegetation": {"location", "boundary", "design"},
     "surface_heat": {"location", "boundary"},
     "solar_shade": {"design", "boundary", "period"},
+    "heat_stress": {"location", "design", "boundary", "period"},
     "planning_compliance": {"design", "boundary", "rules", "site_area_basis"},
+    "hotspots": {"location", "design", "boundary", "period", "rules", "site_area_basis"},
+}
+# Modules whose results a module consumes (added automatically when it is selected).
+NEEDS = {
+    "planning_compliance": ("urban_form",),
+    "heat_stress": ("climate_baseline", "solar_shade"),
+    "hotspots": ("urban_form", "solar_shade", "heat_stress", "climate_baseline"),  # H4 uses planning_compliance only when selected
 }
 DEFAULT_CONFIG = {
     "context_buffer_m": 500, "lst_buffer_m": 1000, "ndvi_buffer_m": 500, "satellite_years": 3, "lst_max_scenes": 6,
@@ -112,8 +120,13 @@ def resolve_config(project: dict, payload: dict) -> dict:
         selected = list(modules)
     else:
         selected = sorted(set().union(*(OBJECTIVE_MODULES.get(o, set()) for o in project.get("objectives") or ["main_concerns"])) or set(RUNNABLE))
-    if "planning_compliance" in selected and "urban_form" not in selected:
-        selected.append("urban_form")  # compliance consumes urban-form measurements
+    # Modules consume the results of earlier ones; add what a selected module needs (transitively).
+    todo = list(selected)
+    while todo:
+        for m in NEEDS.get(todo.pop(), ()):
+            if m not in selected:
+                selected.append(m)
+                todo.append(m)
     cfg["modules"] = [m for m in RUNNABLE if m in selected]
     return cfg
 
@@ -196,6 +209,8 @@ def execute(run_id: str, site_cache: dict | None = None) -> None:
         db.insert("findings", f)
     for r in out["recommendations"]:
         db.insert("recommendations", r)
+    for h in out["hotspots"]:
+        db.insert("hotspots", h)
     db.update("runs", "id", run_id, {"status": out["status"], "completed_at": db.now(), "module_status": out["module_status"],
                                      "input_dataset_ids": out["dataset_ids"], "warnings": out["warnings"]})
     db.update("jobs", "id", run["job_id"], {"status": out["status"], "progress": 1.0, "stage": "done", "completed_at": db.now(),
@@ -211,9 +226,17 @@ def run_bundle(run: dict) -> dict:
         "layers": [{k: v for k, v in lay.items() if k != "path"} for lay in db.select("layers", "run_id = ?", [run["id"]])],
         "findings": sorted(db.select("findings", "run_id = ?", [run["id"]]), key=findings.sort_key),
         "recommendations": db.select("recommendations", "run_id = ?", [run["id"]]),
+        "hotspots": db.select("hotspots", "run_id = ?", [run["id"]], order="number"),
+        "site_context": site_context(run),
         "datasets": [_with_approval(db.get("datasets", d)) for d in run.get("input_dataset_ids") or []],
         "objectives": objective_answers(run),
     }
+
+
+def site_context(run: dict) -> list[dict]:
+    """Existing-land context records (H2 hot cluster), kept apart from the design hotspots."""
+    sc = (((run.get("module_status") or {}).get("surface_heat") or {}).get("details") or {}).get("site_context")
+    return [sc] if sc else []
 
 
 APPROVAL_LABELS = {

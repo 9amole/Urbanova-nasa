@@ -1,6 +1,6 @@
 {
  "_comment": "Basis record for every threshold, band, coefficient and default the analysis uses (PHASE2_SPEC §3.1). basis_type: standard | regulatory | literature | statistical | project_choice | provisional. A provisional value, or a project_choice without approved_by, is labelled PROVISIONAL and its severity is capped at moderate. References are ids in PHASE2_SPEC §12.",
- "version": "2026.11-s1",
+ "version": "2026.11-s2",
  "values": [
   {
    "id": "climate.SU",
@@ -305,21 +305,6 @@
    "approved_on": null
   },
   {
-   "id": "finding.SHADE-01",
-   "value": [
-    85,
-    70
-   ],
-   "unit": "%",
-   "used_in": "findings",
-   "basis_type": "project_choice",
-   "references": [],
-   "applicability": "Open space not in building shade at 15:00",
-   "reason": "To be replaced by the UTCI-based severity in stage S2",
-   "approved_by": null,
-   "approved_on": null
-  },
-  {
    "id": "finding.planning_failure",
    "value": "high",
    "unit": null,
@@ -477,6 +462,267 @@
    "references": [],
    "applicability": "Share of clear site pixels for a scene to be used",
    "reason": "Default analysis setting; the user can change it per run",
+   "approved_by": null,
+   "approved_on": null
+  },
+  {
+   "id": "climate.hot_day_definition",
+   "value": {
+    "months": "three hottest calendar months",
+    "tmax_percentile": 90,
+    "solar_hours": [
+     7,
+     17
+    ]
+   },
+   "unit": "",
+   "used_in": "climate_baseline",
+   "basis_type": "project_choice",
+   "references": [],
+   "applicability": "Composite hot day for heat stress: mean hourly ERA5 conditions over hot-season days with Tmax at or above the period's 90th percentile",
+   "reason": "A design condition that is hot but not extreme (decided in S2 planning, 2026-11-07)",
+   "approved_by": null,
+   "approved_on": null
+  },
+  {
+   "id": "heat_stress.utci_categories",
+   "value": {
+    "moderate": 26,
+    "strong": 32,
+    "very_strong": 38,
+    "extreme": 46
+   },
+   "unit": "°C",
+   "used_in": "heat_stress, hotspots",
+   "basis_type": "standard",
+   "references": [
+    "R-26 (UTCI assessment scale)"
+   ],
+   "applicability": "UTCI heat-stress categories; global",
+   "approved_by": null,
+   "approved_on": null
+  },
+  {
+   "id": "heat_stress.min_wind_ms",
+   "value": 0.5,
+   "unit": "m/s",
+   "used_in": "heat_stress",
+   "basis_type": "standard",
+   "references": [
+    "R-26 (UTCI input range)"
+   ],
+   "applicability": "Lower limit of the 10 m wind input of UTCI",
+   "approved_by": null,
+   "approved_on": null
+  },
+  {
+   "id": "heat_stress.posture",
+   "value": "standing",
+   "unit": "",
+   "used_in": "heat_stress",
+   "basis_type": "standard",
+   "references": [
+    "ASHRAE 55 Appendix C (SolarCal)",
+    "R-29"
+   ],
+   "applicability": "Pedestrian posture in SolarCal",
+   "approved_by": null,
+   "approved_on": null
+  },
+  {
+   "id": "heat_stress.asw",
+   "value": 0.7,
+   "unit": "",
+   "used_in": "heat_stress",
+   "basis_type": "standard",
+   "references": [
+    "ASHRAE 55 Appendix C (SolarCal default short-wave absorptivity)",
+    "R-29"
+   ],
+   "applicability": "Average clothing and skin short-wave absorptivity",
+   "approved_by": null,
+   "approved_on": null
+  },
+  {
+   "id": "heat_stress.f_svv",
+   "value": 1.0,
+   "unit": "fraction",
+   "used_in": "heat_stress",
+   "basis_type": "project_choice",
+   "references": [
+    "ASHRAE 55 Appendix C (SolarCal)"
+   ],
+   "applicability": "Sky-vault view fraction for a pedestrian",
+   "reason": "Open sky assumed everywhere; nearby walls reduce it in reality",
+   "approved_by": null,
+   "approved_on": null
+  },
+  {
+   "id": "heat_stress.ground_reflectance",
+   "value": 0.2,
+   "unit": "fraction",
+   "used_in": "heat_stress",
+   "basis_type": "project_choice",
+   "references": [],
+   "applicability": "Short-wave reflectance of the ground around a pedestrian",
+   "reason": "Typical value for urban paving (asphalt is lower, light concrete higher)",
+   "approved_by": null,
+   "approved_on": null
+  },
+  {
+   "id": "hotspots.size_classes",
+   "value": {
+    "small_below_m2": 200,
+    "small_below_pct": 1,
+    "large_from_m2": 1000,
+    "large_from_pct": 5
+   },
+   "unit": "m², % of site",
+   "used_in": "hotspots",
+   "basis_type": "project_choice",
+   "references": [
+    "PHASE2_SPEC §4.2"
+   ],
+   "applicability": "Hotspot size classes using absolute area and share of the site",
+   "reason": "Spec §4.2; awaiting team approval (§13)",
+   "approved_by": null,
+   "approved_on": null
+  },
+  {
+   "id": "hotspots.intensity_hours",
+   "value": {
+    "high_very_strong_h": 4,
+    "moderate_strong_h": 4
+   },
+   "unit": "h",
+   "used_in": "hotspots",
+   "basis_type": "project_choice",
+   "references": [
+    "PHASE2_SPEC §4.2"
+   ],
+   "applicability": "Hours in sun at very strong / strong heat stress for high / moderate intensity",
+   "reason": "Spec §4.2",
+   "approved_by": null,
+   "approved_on": null
+  },
+  {
+   "id": "hotspots.deficit_distance_m",
+   "value": 30,
+   "unit": "m",
+   "used_in": "hotspots",
+   "basis_type": "project_choice",
+   "references": [
+    "PHASE2_SPEC §4.1 (D)"
+   ],
+   "applicability": "Shade-deficit distance from tree canopy or shade structure",
+   "reason": "Spec §4.1; awaiting team approval (§13)",
+   "approved_by": null,
+   "approved_on": null
+  },
+  {
+   "id": "hotspots.h4_bands",
+   "value": {
+    "high_pct": 25,
+    "moderate_pct": 10
+   },
+   "unit": "% of limit",
+   "used_in": "hotspots",
+   "basis_type": "project_choice",
+   "references": [
+    "PHASE2_SPEC §4.2"
+   ],
+   "applicability": "Planning-violation intensity by shortfall relative to the verified limit",
+   "reason": "Spec §4.2; awaiting team approval (§13)",
+   "approved_by": null,
+   "approved_on": null
+  },
+  {
+   "id": "hotspots.merge_overlap",
+   "value": 0.5,
+   "unit": "fraction of the smaller hotspot",
+   "used_in": "hotspots",
+   "basis_type": "project_choice",
+   "references": [
+    "PHASE2_SPEC §4.1"
+   ],
+   "applicability": "Hotspots overlapping more than this are merged",
+   "reason": "Spec §4.1",
+   "approved_by": null,
+   "approved_on": null
+  },
+  {
+   "id": "hotspots.min_piece_m2",
+   "value": 1.0,
+   "unit": "m²",
+   "used_in": "hotspots",
+   "basis_type": "project_choice",
+   "references": [],
+   "applicability": "Smallest hotspot polygon kept (removes slivers from polygon overlay)",
+   "reason": "Numerical tolerance, far below any meaningful area",
+   "approved_by": null,
+   "approved_on": null
+  },
+  {
+   "id": "hotspots.cause_thresholds",
+   "value": {
+    "large_paved_share": 0.7,
+    "afternoon_sunlit_share": 0.8,
+    "afternoon_hour": 15,
+    "west_edge_m": 5,
+    "ew_axis_tolerance_deg": 20,
+    "max_h_w_ratio": 0.5,
+    "street_building_search_m": 30
+   },
+   "unit": "",
+   "used_in": "hotspots",
+   "basis_type": "project_choice",
+   "references": [
+    "PHASE2_SPEC §4.3"
+   ],
+   "applicability": "Deterministic likely-cause rules",
+   "reason": "Spec §4.3; west-edge strip and street search distance chosen in S2",
+   "approved_by": null,
+   "approved_on": null
+  },
+  {
+   "id": "surface_heat.h2_band_blocks",
+   "value": 3,
+   "unit": "90 m blocks",
+   "used_in": "surface_heat",
+   "basis_type": "statistical",
+   "references": [
+    "PHASE2_SPEC §4.1 (2–3 native pixels)",
+    "R-3",
+    "R-15"
+   ],
+   "applicability": "Gi* distance band (270 m), the cell included",
+   "approved_by": null,
+   "approved_on": null
+  },
+  {
+   "id": "surface_heat.h2_permutations",
+   "value": 999,
+   "unit": "",
+   "used_in": "surface_heat",
+   "basis_type": "statistical",
+   "references": [
+    "R-33 (conditional permutation inference)"
+   ],
+   "applicability": "Conditional permutations for the Gi* p-values",
+   "approved_by": null,
+   "approved_on": null
+  },
+  {
+   "id": "surface_heat.h2_fdr_q",
+   "value": 0.05,
+   "unit": "",
+   "used_in": "surface_heat",
+   "basis_type": "statistical",
+   "references": [
+    "R-5",
+    "R-27"
+   ],
+   "applicability": "False-discovery rate for the local Gi* tests (Benjamini–Hochberg)",
    "approved_by": null,
    "approved_on": null
   }
