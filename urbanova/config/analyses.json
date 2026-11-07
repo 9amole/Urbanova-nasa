@@ -32,7 +32,7 @@
     {"id": "heat_stress", "spec_id": "A9", "name": "Heat-stress exposure", "condition": "design", "scope": "site", "status": "implemented",
      "measures": "Heat stress a person would feel in sun vs shade on a hot day", "inputs": "ERA5 hot-day conditions; sun/shade from A6",
      "method": "UTCI via pythermalcomfort; mean radiant temperature = air temperature + SolarCal ΔMRT (ASHRAE 55); composite ERA5 hot day 07–17 h solar", "outputs": "utci_* metrics (sun vs shade), sunlit area × very-strong hours"},
-    {"id": "intervention_evaluation", "spec_id": "A10", "name": "Intervention evaluation", "condition": "design", "scope": "site", "status": "planned",
+    {"id": "interventions", "spec_id": "A10", "name": "Intervention evaluation", "condition": "design", "scope": "site", "status": "implemented",
      "measures": "What each candidate intervention changes, measured", "inputs": "Design, hotspot, catalogue",
      "method": "Apply to a copy of the design; partial re-run; difference", "outputs": "Effect per option"},
     {"id": "cost_estimate", "spec_id": "A11", "name": "Cost estimation", "condition": "design", "scope": "site", "status": "extended",

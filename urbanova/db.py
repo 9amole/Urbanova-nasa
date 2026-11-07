@@ -140,6 +140,14 @@ MIGRATIONS: list[tuple[str, str, str]] = [
     ("findings", "affected_area", "TEXT"),
     ("metrics", "condition", "TEXT"),
     ("findings", "hotspot_ids", "TEXT"),
+    ("rate_items", "maintenance_per_year", "REAL"),
+    ("recommendations", "intervention_id", "TEXT"),
+    ("recommendations", "hotspot_id", "TEXT"),
+    ("recommendations", "options", "TEXT"),
+    ("recommendations", "confidence", "TEXT"),
+    ("recommendations", "cost", "TEXT"),
+    ("recommendations", "literature", "TEXT"),
+    ("findings", "checks", "TEXT"),
 ]
 
 # Columns holding JSON documents, decoded automatically on read.
@@ -156,9 +164,9 @@ JSON_COLUMNS: dict[str, set[str]] = {
     "runs": {"configuration", "fingerprint", "input_dataset_ids", "module_status", "warnings"},
     "metrics": {"source_dataset_ids", "quality", "uncertainty", "extra"},
     "layers": {"bounds", "legend", "meta"},
-    "findings": {"geometry", "metric_ids", "threshold", "evidence", "sources", "limitations", "hotspot_ids"},
+    "findings": {"geometry", "metric_ids", "threshold", "evidence", "sources", "limitations", "hotspot_ids", "checks"},
     "hotspots": {"types", "type_labels", "geometry", "provisional_basis", "supporting_metrics", "likely_causes", "rule"},
-    "recommendations": {"evidence", "target", "required_inputs", "tradeoffs"},
+    "recommendations": {"evidence", "target", "required_inputs", "tradeoffs", "options", "confidence", "cost", "literature"},
     "comparisons": {"alternative_scenario_ids", "run_ids", "criteria", "result"},
     "reports": {"summary"},
 }

@@ -1,0 +1,5 @@
+{
+ "_comment": "Cost library (PHASE2_SPEC §6.4). Each entry: item (quantity_type), unit, low, typical, high, currency, price_date, source, region, basis_type ('quotation' = a single written quotation collected by the team; 'approved_list' = a supervisor-approved published price list), maintenance_per_year (per unit, same currency) and approved_by. It starts EMPTY: no credible public Egyptian unit costs were found (search of 2026-11-04). Demo prices come from the project's own rate table (samples/sample_rates_TEST_ONLY.csv, test currency XTS).",
+ "version": "2026.11-s3",
+ "entries": []
+}

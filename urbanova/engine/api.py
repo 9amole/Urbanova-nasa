@@ -70,7 +70,7 @@ def analyse(request: dict[str, Any], output_dir: str | os.PathLike) -> dict[str,
             run_dir = out_root / f"{index:02d}_{_safe(key)}"
             run_dir.mkdir(parents=True, exist_ok=True)
             run_id = recording.new_id("run")
-            ctx = Context(project=project, scenario=d, config=cfg, run_id=run_id, out_dir=run_dir, rules=rules, site_cache=site_cache)
+            ctx = Context(project=project, scenario=d, config=cfg, run_id=run_id, out_dir=run_dir, rules=rules, site_cache=site_cache, rates=rates)
             out = run_design(ctx, cfg["modules"])
             design_raw[key] = out
             available = {m["metric_name"] for m in out["metrics"] if m["state"] == "available"}
@@ -85,6 +85,7 @@ def analyse(request: dict[str, Any], output_dir: str | os.PathLike) -> dict[str,
                 "warnings": out["warnings"],
                 "hotspots": [{k: v for k, v in h.items() if k != "run_id"} for h in out["hotspots"]],
                 "site_context": out["site_context"],
+                "package": ((out["module_status"].get("interventions") or {}).get("details") or {}).get("package"),
             })
         datasets = [_dataset(ds, out_root) for ds in rec.datasets.values()]
         requests = [dict(r) for r in rec.requests]
@@ -252,13 +253,13 @@ def _metric(m: dict) -> dict:
 def _finding(f: dict) -> dict:
     keys = ("id", "category", "classification", "title", "summary", "severity", "severity_rule", "affected_area", "geometry", "rule_id",
             "threshold", "evidence", "sources", "confidence", "limitations")
-    return {k: f.get(k) for k in keys} | {"hotspot_ids": f.get("hotspot_ids") or []}
+    return {k: f.get(k) for k in keys} | {"hotspot_ids": f.get("hotspot_ids") or [], "checks": f.get("checks") or []}
 
 
 def _rec(r: dict) -> dict:
     keys = ("id", "finding_id", "title", "problem", "intervention", "expected_direction", "required_inputs", "tradeoffs", "evaluation_method",
-            "target", "review_status")
-    return {k: r.get(k) for k in keys}
+            "target", "review_status", "intervention_id", "hotspot_id", "confidence", "cost")
+    return {k: r.get(k) for k in keys} | {"options": r.get("options") or [], "literature": r.get("literature") or []}
 
 
 def _layer(lay: dict, root: Path) -> dict:

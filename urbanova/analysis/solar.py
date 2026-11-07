@@ -141,7 +141,12 @@ def run(ctx: Context) -> dict:
         parts = []
         for kind, g, height in casters:
             if kind == "prism":
-                parts.append(prism_shadow(g, height, el, az))
+                # Memoised per request: candidate designs (A10) re-use the unchanged buildings' exact shadows.
+                memo = ctx.site_cache.setdefault("prism_shadows", {})
+                key = (g.wkb, height, el, az)
+                if key not in memo:
+                    memo[key] = prism_shadow(g, height, el, az)
+                parts.append(memo[key])
             else:
                 dx, dy = _shift(el, az, height)
                 parts.append(translate(g, dx, dy))
@@ -174,11 +179,11 @@ def run(ctx: Context) -> dict:
         status = PARTIAL
         warnings.append(f"{missing_h} building(s) have no height and cast no shadow in this analysis; shade is underestimated.")
     fc = {"type": "FeatureCollection", "features": []}
-    for h in REPORT_HOURS:
+    for h in ([] if ctx.partial else REPORT_HOURS):
         if shade_by_hour[h] is not None:
             fc["features"].append({"type": "Feature", "geometry": mapping(geo.to_wgs84(shade_by_hour[h], local)), "properties": {"solar_time": f"{h:02d}:00", "date": day.isoformat()}})
-    path = save_geojson(ctx.out_dir / "shadows.geojson", fc)
-    lay = layer(f"Building-cast shade ({day.isoformat()}, solar time)", "vector", V.CALCULATED, path, legend={h: f"{h:02d}:00" for h in REPORT_HOURS})
+    layers = [] if ctx.partial else [layer(f"Building-cast shade ({day.isoformat()}, solar time)", "vector", V.CALCULATED, save_geojson(ctx.out_dir / "shadows.geojson", fc),
+                                           legend={h: f"{h:02d}:00" for h in REPORT_HOURS})]
     details = {"date": day.isoformat(), "date_basis": day_basis, "positions": {str(h): {"elevation": round(positions[h][0], 2), "azimuth": round(positions[h][1], 1)} for h in DAY_HOURS},
                "casters": len(casters), "buildings_without_height": missing_h}
-    return result(status, metrics=m, layers=[lay], warnings=warnings, limitations=limitations, details=details)
+    return result(status, metrics=m, layers=layers, warnings=warnings, limitations=limitations, details=details)

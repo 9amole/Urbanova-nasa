@@ -160,8 +160,9 @@ def test_hotspot_findings_chain_back_to_available_design_metrics(sample_run):
     for f in hfs:
         assert f["metric_ids"] and all(by_id[i]["state"] == "available" for i in f["metric_ids"])
         assert any(by_id[i]["condition"] == "design" for i in f["metric_ids"])
-    recs = [r for r in out["recommendations"] if r["finding_id"] in {f["id"] for f in hfs}]
-    assert recs and all(r["target"]["hotspot_id"] for r in recs)
+    # Without the interventions analysis (A10) nothing is measured, so no recommendation is made (S3, spec §6.2).
+    assert not [r for r in out["recommendations"] if r["finding_id"] in {f["id"] for f in hfs}]
+    assert all(any("not evaluated" in x for x in f["limitations"]) for f in hfs)
 
 
 def test_shade_01_is_replaced_by_hotspots():

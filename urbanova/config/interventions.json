@@ -1,0 +1,92 @@
+{
+  "_comment": "Intervention catalogue (PHASE2_SPEC §6.1). Each intervention is a geometry operation the engine applies to a copy of the design and measures by a partial re-run. It keeps the fields of the old recommendation templates. Sizes and intensities have basis records (interventions.*). 'literature' is context only and is never attached to the site as a number.",
+  "version": "2026.11-s3",
+  "interventions": {
+    "I1": {
+      "title": "Plant shade trees on the paving or along its edges",
+      "intervention": "Plant trees in a regular grid across the hotspot, keeping clear of building façades.",
+      "applies_to": {"types": ["H1", "H3"], "causes": ["NO_TREES_NEARBY", "NO_AFTERNOON_SHADE", "LARGE_PAVED_AREA", "EXPOSED_WEST_EDGE"]},
+      "generator": "trees", "intensity_basis": "tree.spacings_m", "intensity_label": "spacing {v:g} m",
+      "quantity_type": "trees_added_count", "water_driver": "trees",
+      "expected_direction": "Removes sun from the paving under and beside each canopy; measured below as the change in sun-exposed area-hours.",
+      "required_inputs": ["Tree species and mature canopy size", "Irrigation water source and supply", "Below-ground services and soil volume"],
+      "tradeoffs": ["Irrigation water (litres/day per tree: value required)", "Maintenance (pruning, replacement)", "Years until the canopy reaches the modelled size", "May take parking or circulation space"],
+      "evaluation_method": "Measured: the trees are added to a copy of the design and the shade, heat-stress and hotspot analyses are re-run; the change is the hotspot's sun-exposed area-hours at very strong heat stress.",
+      "literature": [{"ref": "R-12", "text": "Urban forests average about 1.6 °C cooler by day than their surroundings"}, {"ref": "R-14", "text": "Tree shade lowers the radiant heat a pedestrian feels"}]
+    },
+    "I2": {
+      "title": "Add shade structures",
+      "intervention": "Cover part or all of the hotspot with shade structures (canopies, pergolas, colonnades).",
+      "applies_to": {"types": ["H1", "H3"], "causes": ["NO_AFTERNOON_SHADE", "NO_TREES_NEARBY", "EXPOSED_WEST_EDGE"]},
+      "generator": "shade", "intensity_basis": "shade.coverages", "intensity_label": "{p:.0f} % of the hotspot covered",
+      "quantity_type": "shade_structure_added_m2", "water_driver": null,
+      "expected_direction": "Shades the covered ground; measured below as the change in sun-exposed area-hours.",
+      "required_inputs": ["Structure type, height and material", "Structural and wind-load design", "Clearances for vehicles or people"],
+      "tradeoffs": ["Maintenance", "Wind loading", "Visual impact"],
+      "evaluation_method": "Measured: the structures are added to a copy of the design and the shade, heat-stress and hotspot analyses are re-run.",
+      "literature": [{"ref": "R-14", "text": "Shade lowers the radiant heat a pedestrian feels"}]
+    },
+    "I3": {
+      "title": "Convert part of the paving to planting",
+      "intervention": "Re-type part of the paved surface in the hotspot to planted ground, keeping access routes.",
+      "applies_to": {"types": ["H1"], "causes": ["LARGE_PAVED_AREA"]},
+      "generator": "convert", "intensity_basis": "convert_shares", "intensity_label": "{p:.0f} % of the paving converted",
+      "quantity_type": "green_space_added_m2", "water_driver": "planted_m2",
+      "expected_direction": "Reduces the sun-exposed hard surface and raises the green share; measured below.",
+      "required_inputs": ["Areas that are not needed for access or parking", "Planting scheme and soil", "Irrigation water source"],
+      "tradeoffs": ["Irrigation water (litres/day per m²: value required)", "Lost parking or circulation space", "Maintenance"],
+      "evaluation_method": "Measured: the paving is re-typed to planting in a copy of the design and the analyses are re-run.",
+      "literature": [{"ref": "R-11", "text": "Parks average about 0.94 °C cooler by day than their surroundings"}]
+    },
+    "I4": {
+      "title": "Cool (high-albedo) paving",
+      "intervention": "Re-surface the paving in the hotspot with a high-reflectance material.",
+      "applies_to": {"types": ["H1"], "causes": ["LARGE_PAVED_AREA"]},
+      "generator": "cool_paving", "intensities": [1.0], "intensity_label": "all paving in the hotspot",
+      "quantity_type": "cool_paving_m2", "water_driver": null,
+      "separate": true,
+      "expected_direction": "Lowers the paving's surface temperature; its effect on the heat a pedestrian feels is NOT modelled and can be negative (reflected sunlight).",
+      "required_inputs": ["Material specification and reflectance", "Glare assessment"],
+      "tradeoffs": ["May raise the radiant heat a pedestrian feels (reflected sunlight) [R-14, R-28]", "Glare", "Reflectance falls as the surface gets dirty"],
+      "evaluation_method": "Area treated only; reported separately and never ranked against shade, because the engine does not model surface temperature or reflected radiation.",
+      "literature": [{"ref": "R-13", "text": "High-albedo paving lowers surface temperature"}, {"ref": "R-28", "text": "Reflective paving can raise the mean radiant temperature pedestrians feel"}]
+    },
+    "I5": {
+      "title": "Reduce or reconfigure parking",
+      "intervention": "Remove part of the surface parking in the hotspot, leaving the freed ground unpaved.",
+      "applies_to": {"types": ["H1"], "causes": ["LARGE_PAVED_AREA"]},
+      "generator": "reduce_parking", "intensity_basis": "reduce_parking_shares", "intensity_label": "{p:.0f} % of the parking removed",
+      "quantity_type": "hard_surface_removed_m2", "water_driver": null,
+      "expected_direction": "Reduces the sun-exposed hard surface; measured below.",
+      "required_inputs": ["Required parking capacity", "Alternative parking or mobility provision"],
+      "tradeoffs": ["Lost parking spaces"],
+      "evaluation_method": "Measured: the parking is reduced in a copy of the design and the analyses are re-run.",
+      "literature": []
+    },
+    "I6": {
+      "title": "Fix the planning violation",
+      "intervention": "Trim building parts out of the setback band, or convert paving to green space until the verified minimum is met.",
+      "applies_to": {"types": ["H4"], "causes": ["EXCEEDS_RULE"]},
+      "generator": "fix_rule", "intensities": [1.0], "intensity_label": "meet the verified limit",
+      "quantity_type": null, "water_driver": "planted_m2",
+      "expected_direction": "Removes the shortfall so that the verified rule check passes; measured below.",
+      "required_inputs": ["Confirmed applicability of the rule", "Design changes acceptable to the client"],
+      "tradeoffs": ["Lost built area or paved area", "Irrigation water for added green (value required)"],
+      "evaluation_method": "Measured: the change is applied to a copy of the design and the urban-form and planning checks are re-run.",
+      "literature": []
+    },
+    "I7": {
+      "title": "Review street orientation and spacing",
+      "intervention": "Review the street axis and building heights along exposed east–west streets (rotate or shift blocks, or raise the edges).",
+      "applies_to": {"types": ["H1", "H3"], "causes": ["ORIENTATION_EXPOSES_STREETS"]},
+      "generator": "check_only", "intensities": [], "intensity_label": "",
+      "quantity_type": null, "water_driver": null,
+      "separate": true,
+      "expected_direction": "A redesign may add building shade on the street; not generated automatically in this version.",
+      "required_inputs": ["Alternative layout geometry", "Building heights"],
+      "tradeoffs": ["Redesign effort", "Plot layout", "Daylight and solar access to buildings"],
+      "evaluation_method": "Check only: the street axis and height-to-width ratio are reported with the street's sun-exposed area-hours; model a revised layout as an alternative to measure it.",
+      "literature": []
+    }
+  }
+}

@@ -31,6 +31,10 @@ class Context:
     # Shared by every design analysed in one request, so site data is fetched once and every
     # design is compared on identical observations (remediation D4).
     site_cache: dict = field(default_factory=dict)
+    # Unit rates for pricing intervention options (validated rate_items records: the project's own quotations).
+    rates: list = field(default_factory=list)
+    # A partial re-run that only measures a candidate design (A10): no output files, layers or findings.
+    partial: bool = False
 
     @property
     def lat(self) -> float:

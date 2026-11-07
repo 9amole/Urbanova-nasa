@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from . import db, documents, plans
+from . import basis, db, documents, plans
 from .providers.base import availability
 from .settings import load_config, settings
 
@@ -17,13 +17,14 @@ ANALYSES = {
     "solar_shade": "Solar position & geometric shade",
     "heat_stress": "Heat stress in sun and shade (UTCI, hot day)",
     "hotspots": "Design hotspots (where, how big, how severe)",
+    "interventions": "Intervention options (measured, with costs)",
     "planning_compliance": "Planning-rule checks",
     "scenario_comparison": "Alternative-design comparison",
     "cost_estimate": "Indicative cost estimate",
     "population_context": "Population context",
     "air_quality": "Regional air-quality context",
 }
-RUNNABLE = ["climate_baseline", "site_context", "urban_form", "vegetation", "surface_heat", "solar_shade", "heat_stress", "planning_compliance", "hotspots"]
+RUNNABLE = ["climate_baseline", "site_context", "urban_form", "vegetation", "surface_heat", "solar_shade", "heat_stress", "planning_compliance", "hotspots", "interventions"]
 # Existing land or proposed design, per runnable module (urbanova/config/analyses.json, decision S-8).
 CONDITION = {a["id"]: a["condition"] for a in load_config("analyses.json")["analyses"] if a["id"] in RUNNABLE}
 
@@ -102,6 +103,11 @@ def assess(project: dict, scenario: dict | None = None) -> dict:
                       "Located design hotspots." if hot_missing else ("Heat hotspots (H1, H3) need heights for shadows and the hot-day weather." if not casters or climate_block else ""),
                       "Upload the design and boundary." if hot_missing else "Run the analysis.",
                       ["Planning-violation hotspots (H4) need verified rules."]))
+    rates = db.select("rate_items", "project_id = ?", [pid])
+    out.append(_entry("interventions", BLOCKED if hot_missing else (READY if rates else LIMITED), hot_missing,
+                      "Measured intervention options per hotspot." if hot_missing else ("Option costs (options are still measured and ranked per unit of quantity)." if not rates else ""),
+                      "Upload the design and boundary." if hot_missing else ("Upload a unit-rate CSV to price the options (optional)." if not rates else "Run the analysis."),
+                      [f"Only the {basis.get('interventions.max_hotspots')['value']} highest-priority hotspots are optimised.", "Irrigation water per tree or m² is 'value required' until a sourced value is recorded."]))
     if not verified:
         cands = db.select("rules", "project_id = ? AND status = 'candidate'", [pid])
         step = f"Verify the {len(cands)} candidate rule(s) on the Planning rules screen." if cands else "Upload a planning document or enter verified rules manually."
@@ -116,7 +122,6 @@ def assess(project: dict, scenario: dict | None = None) -> dict:
     out.append(_entry("scenario_comparison", READY if baseline and alts else BLOCKED,
                       ([] if baseline else ["Baseline scenario"]) + ([] if alts else ["At least one alternative scenario"]),
                       "Comparing the design with an alternative.", "Create an alternative scenario and run the same analysis on both."))
-    rates = db.select("rate_items", "project_id = ?", [pid])
     out.append(_entry("cost_estimate", READY if rates and alts else BLOCKED,
                       ([] if rates else ["Unit rates (with currency, date and source)"]) + ([] if alts else ["Alternative scenario defining the intervention quantities"]),
                       "A priced estimate; quantities can still be shown.", "Upload a unit-rate CSV or add rates manually."))

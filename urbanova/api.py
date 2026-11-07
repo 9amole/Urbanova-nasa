@@ -387,6 +387,18 @@ async def import_scenario(sid: str, file: UploadFile = File(...), user: dict = D
     return scenarios.import_features_into(s, user, fc)
 
 
+@app.post(f"{API}/scenarios/{{sid}}/approve")
+def approve_scenario(sid: str, user: dict = Depends(current_user)):
+    s, _ = _owned("scenarios", sid, user, "editor")
+    return scenarios.approve_draft(s, user)
+
+
+@app.post(f"{API}/analysis-runs/{{rid}}/package/draft", status_code=201)
+def package_draft(rid: str, user: dict = Depends(current_user)):
+    run, p = _owned("runs", rid, user, "editor")
+    return scenarios.public(scenarios.create_draft_from_package(p, user, run), include_features=False)
+
+
 @app.post(f"{API}/scenarios/{{sid}}/archive")
 def archive_scenario(sid: str, user: dict = Depends(current_user)):
     s, _ = _owned("scenarios", sid, user, "editor")

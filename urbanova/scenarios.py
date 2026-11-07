@@ -88,7 +88,7 @@ def modify(scenario: dict, user: dict, ops: list[dict]) -> dict:
     if scenario["kind"] == "baseline":
         raise ScenarioError("The baseline is immutable. Create an alternative to explore changes.")
     if scenario["status"] != "active":
-        raise ScenarioError("Archived scenarios cannot be edited.")
+        raise ScenarioError("Only active scenarios can be edited (archived scenarios are kept as they were; approve a draft first).")
     if not ops:
         raise ScenarioError("No changes were supplied.")
     fc = copy.deepcopy(scenario["features"])
@@ -186,3 +186,40 @@ def public(s: dict, include_features: bool = True) -> dict:
         out.pop("features", None)
         out["feature_count"] = len(s["features"]["features"])
     return out
+
+
+def create_draft_from_package(project: dict, user: dict, run: dict) -> dict:
+    """Save a run's budget package (PHASE2_SPEC §6.6) as a DRAFT alternative. A draft is never analysed: runs accept
+    only active scenarios, so it must be approved first."""
+    pkg = (((run.get("module_status") or {}).get("interventions") or {}).get("details") or {}).get("package")
+    if not pkg or pkg.get("status") != "draft" or not pkg.get("features"):
+        raise ScenarioError("This run has no package of options within a budget. Run the analysis with a budget (budget_amount and budget_currency).")
+    base = db.get("scenarios", run["scenario_id"]) if run.get("scenario_id") else None
+    if not base or base["project_id"] != project["id"]:
+        raise ScenarioError("The run's design scenario was not found.")
+    fc = copy.deepcopy(pkg["features"])
+    now = db.now()
+    scen = {
+        "id": db.new_id("scn"), "project_id": project["id"], "name": f"Draft: options within {pkg['budget']['amount']:g} {pkg['budget']['currency']} ({run['id'][-6:]})",
+        "kind": "alternative", "parent_id": base["id"],
+        "description": "Draft generated from measured intervention options. Review it, then approve it to analyse it as an alternative.",
+        "features": fc, "status": "draft", "design_hash": design_hash(fc), "created_by": user["id"], "created_at": now, "updated_at": now,
+        "modifications": [{"at": now, "by": user["id"], "event": "draft_from_package", "run_id": run["id"], "option_ids": pkg["option_ids"],
+                           "source_scenario": base["id"], "cost": pkg.get("cost")}],
+    }
+    db.insert("scenarios", scen)
+    return scen
+
+
+def approve_draft(scenario: dict, user: dict) -> dict:
+    """Turn a draft into an active alternative (the user's approval), within the alternatives limit."""
+    if scenario["status"] != "draft":
+        raise ScenarioError("Only a draft scenario can be approved.")
+    active = db.select("scenarios", "project_id = ? AND kind = 'alternative' AND status = 'active'", [scenario["project_id"]])
+    if len(active) >= 5:
+        raise ScenarioError("The Phase 1 limit is 5 active alternatives. Archive one before approving this draft.")
+    if any(s["name"].lower() == scenario["name"].lower() for s in active):
+        raise ScenarioError("An active alternative already has this name.")
+    mods = (scenario.get("modifications") or []) + [{"at": db.now(), "by": user["id"], "event": "draft_approved"}]
+    db.update("scenarios", "id", scenario["id"], {"status": "active", "modifications": mods, "updated_at": db.now()})
+    return db.get("scenarios", scenario["id"])

@@ -77,7 +77,7 @@ Exit codes: 0 success, 2 invalid input (the errors are printed as JSON), 1 unexp
 
 ## 4. The contract
 
-The contract is defined in `urbanova/engine/contract.py` and exported as JSON Schema (`schemas/analysis_request.schema.json`, `schemas/analysis_result.schema.json`). A test fails if the exported schemas fall out of date. `contract_version` is `1.1` (1.1 added `condition` to every metric, and `hotspots`, `site_context` and `findings[].hotspot_ids` to each design result; all additive, and requests marked 1.0 are still accepted): a breaking change raises the major number, and an addition raises the minor.
+The contract is defined in `urbanova/engine/contract.py` and exported as JSON Schema (`schemas/analysis_request.schema.json`, `schemas/analysis_result.schema.json`). A test fails if the exported schemas fall out of date. `contract_version` is `1.1` (1.1 added `condition` to every metric, and `hotspots`, `site_context`, `package` and `findings[].hotspot_ids` to each design result, and `intervention_id`, `hotspot_id`, `options`, `confidence`, `cost` and `literature` to recommendations; all additive, and requests marked 1.0 are still accepted): a breaking change raises the major number, and an addition raises the minor.
 
 Rules the UI must respect:
 

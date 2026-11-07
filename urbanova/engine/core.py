@@ -11,7 +11,7 @@ import logging
 import traceback
 from typing import Callable
 
-from .. import findings, recording
+from .. import findings, interventions, recording
 from ..analysis import climate, compliance, context, heat_stress, hotspots, solar, surface_heat, urban_form, vegetation
 from ..analysis.common import FAILED, SKIPPED, Context
 from ..readiness import ANALYSES, CONDITION, RUNNABLE
@@ -21,7 +21,7 @@ log = logging.getLogger("urbanova.engine")
 MODULES = {
     "climate_baseline": climate.run, "site_context": context.run, "urban_form": urban_form.run, "vegetation": vegetation.run,
     "surface_heat": surface_heat.run, "solar_shade": solar.run, "heat_stress": heat_stress.run, "planning_compliance": compliance.run,
-    "hotspots": hotspots.run,
+    "hotspots": hotspots.run, "interventions": interventions.run,
 }
 # Modules whose result depends only on the site and settings, never on the design. In a request
 # with several designs they run once and every design receives the same result (remediation D4),
@@ -61,7 +61,7 @@ def run_design(ctx: Context, selected: list[str], on_module: Callable[[str, int]
                               "shared_across_designs": bool(res.get("_shared"))}
     hotspots = link_hotspots(results.get("hotspots", {}).get("hotspots") or [], metrics, ctx.run_id)
     site_context = list(ctx.shared.get("site_context") or [])
-    fnds, recs = findings.generate({"id": ctx.run_id}, ctx.project, results, metrics, ctx.shared, hotspots)
+    fnds, recs = ([], []) if ctx.partial else findings.generate({"id": ctx.run_id}, ctx.project, results, metrics, ctx.shared, hotspots)
     ran = [s["status"] for s in module_status.values() if s["status"] != SKIPPED]
     if ran and all(s == "completed" for s in ran):
         status = "succeeded"

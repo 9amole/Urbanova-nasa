@@ -13,6 +13,7 @@ from pathlib import Path
 from shapely.geometry import shape
 
 from . import __version__, basis, db, files, plans
+from .cost import STALE_PRICE_YEARS
 from .orchestrator import run_bundle
 from .readiness import ANALYSES, CONDITION
 from .values import DESIGN, EXISTING, condition_of
@@ -185,6 +186,33 @@ def _hotspot_rows(bundle: dict) -> list[list[str]]:
     return rows
 
 
+OPTION_HEADER = ["Hotspot", "Option", "Measured effect", "Quantity", "Cost", "Confidence (effect / cost)", "Role", "Water"]
+
+
+def _cost_text(c: dict) -> str:
+    if not c or c.get("status") == "not_applicable":
+        return "—"
+    if c["status"] != "priced":
+        return "price required"
+    m = f"; maintenance {c['maintenance_per_year']:,.0f}/year" if c.get("maintenance_per_year") is not None else ""
+    return f"{c['low']:,.0f}–{c['high']:,.0f} {c['currency']} (typical {c['typical']:,.0f}){m}" + (f" — price older than {STALE_PRICE_YEARS} years" if c.get("stale") else "")
+
+
+def _option_rows(bundle: dict) -> list[list[str]]:
+    num = {h["id"]: h["number"] for h in bundle.get("hotspots") or []}
+    rows = []
+    for r in bundle["recommendations"]:
+        for o in r.get("options") or []:
+            e = o["effect"]
+            eff = (f"{e['treated_m2']:,.0f} m² treated (not ranked; heat effect not modelled)" if o["separate"]
+                   else f"{e['before']:,.0f} → {e['after']:,.0f} {e['unit']} (−{e['change_pct']:g} %)")
+            rows.append([str(num.get(r.get("hotspot_id"), "")), f"{o['title']} — {o['intensity_label']}", eff,
+                         f"{o['quantity']['value']:,.0f} {o['quantity']['unit'] or ''}" + (f"; −{o['lost_parking_spaces']} parking spaces" if o.get("lost_parking_spaces") else ""),
+                         _cost_text(o["cost"]), f"{o['effect_confidence']['level']} / {(o['cost'].get('confidence') or {}).get('level', '—')}",
+                         ", ".join(o["roles"]) + (" (Pareto)" if o["pareto"] else ""), (o.get("water") or {}).get("note") or ("" if not o.get("water") else f"{o['water']['litres_per_day']} L/day")])
+    return rows
+
+
 def _assumptions(run: dict, ms: dict) -> list[str]:
     """Assumptions and limitations stated identically in the HTML and PDF reports."""
     out = sorted({lim for st in ms.values() for lim in (st.get("limitations") or [])})
@@ -313,6 +341,11 @@ def _html(project, run, bundle, scenario, files_, rules, comparison, summary, ma
                    f"<p><b>How to evaluate:</b> {_e(r['evaluation_method'])}</p><p><b>Review status:</b> {_e(r['review_status'])}</p></div>")
     if not bundle["recommendations"]:
         sec.append("<p>No recommendations (no supporting findings).</p>")
+    opt_rows = _option_rows(bundle)
+    if opt_rows:
+        sec.append("<h3 id='options'>Measured options per hotspot</h3><p>Each option was applied to a copy of the design and measured by re-running the design analyses. "
+                   "Costs come only from supplied rates or the approved cost library; otherwise 'price required'. Effect and cost confidences are kept separate.</p><table><tr>"
+                   + "".join(f"<th>{_e(c)}</th>" for c in OPTION_HEADER) + "</tr>" + "".join("<tr>" + "".join(f"<td>{_e(c)}</td>" for c in row) + "</tr>" for row in opt_rows) + "</table>")
     sec.append("<h2>" + SECTIONS[8] + "</h2>")
     checks = (ms.get("planning_compliance", {}).get("details") or {}).get("checks") or []
     if not checks:
@@ -467,6 +500,10 @@ def _pdf(path: Path, project, run, bundle, scenario, files_, rules, comparison, 
         story.append(Paragraph(f"<b>{_e(r['title'])}</b> — {_e(r['intervention'])} <i>Expected direction: {_e(r['expected_direction'])}</i> Evaluate by: {_e(r['evaluation_method'])}", small))
     if not bundle["recommendations"]:
         story.append(Paragraph("No recommendations (no supporting findings).", small))
+    opt_rows = _option_rows(bundle)
+    if opt_rows:
+        story.append(Paragraph("<b>Measured options per hotspot</b> (applied to a copy of the design and re-measured; costs only from supplied rates)", small))
+        story.append(table([OPTION_HEADER] + opt_rows, [1.2 * cm, 3.3 * cm, 3.2 * cm, 2 * cm, 2.6 * cm, 1.8 * cm, 1.6 * cm, 1.6 * cm]))
     story.append(h(8))
     checks = (ms.get("planning_compliance", {}).get("details") or {}).get("checks") or []
     if checks:
@@ -525,6 +562,13 @@ def export_zip(project: dict, run: dict) -> bytes:
         z.writestr("metrics.csv", s.getvalue())
         if scenario:
             z.writestr("design_features.geojson", json.dumps(scenario["features"]))
+        opt = io.StringIO()
+        ow = csv.writer(opt)
+        ow.writerow(OPTION_HEADER + ["option_id", "intervention_id", "evaluation_run_id"])
+        ids = [o for r in bundle["recommendations"] for o in r.get("options") or []]
+        for row, o in zip(_option_rows(bundle), ids):
+            ow.writerow(row + [o["id"], o["intervention_id"], o.get("evaluation_run_id") or ""])
+        z.writestr("options.csv", opt.getvalue())
         z.writestr("findings.geojson", json.dumps({"type": "FeatureCollection", "features": [
             {"type": "Feature", "geometry": f.get("geometry"), "properties": {k: f.get(k) for k in ("id", "title", "severity", "classification", "rule_id", "summary", "affected_area")}} for f in bundle["findings"]]}))
         for lay in db.select("layers", "run_id = ?", [run["id"]]):

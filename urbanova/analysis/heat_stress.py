@@ -104,7 +104,12 @@ def run(ctx: Context) -> dict:
         return result(BLOCKED, reason="No hot-day weather profile (needs the climate baseline with ERA5 hourly data), so heat stress cannot be assessed.")
     if not sol:
         return result(BLOCKED, reason="No hourly shadows (the shade analysis needs buildings with heights), so heat stress in sun and shade cannot be located.")
-    rows = profile(hot, sol["positions"])
+    # The profile depends on the hot day and the date only, so designs of one request share it.
+    memo = ctx.site_cache.setdefault("utci_profiles", {})
+    key = (repr(sorted(hot["hours"].items())), sol["date"])
+    if key not in memo:
+        memo[key] = profile(hot, sol["positions"])
+    rows = memo[key]
     method = ("UTCI (pythermalcomfort) from hot-day ERA5 air temperature, humidity and 10 m wind; mean radiant temperature = air temperature + "
               "SolarCal ΔMRT (ASHRAE 55), orientation-averaged, in sun and in shade")
     q = {"basis": "heat_stress.utci_categories", "hot_day_days": hot["days"]}  # the hourly profile is in the module details

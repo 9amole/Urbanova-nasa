@@ -330,11 +330,12 @@ def test_existing_land_findings_are_context_without_design_recommendations(env):
     project = {"id": "p", "boundary": _local_box_wgs(0, 0, 100, 100)}
     [f], recs = _generate(_lst(99.0), project)
     assert recs == [] and any("decision S-8" in x for x in f["limitations"])
-    # A design finding (a located design hotspot) still gets its recommendations.
-    from test_stage_s2 import hotspot_record
+    # A design finding (a failed verified planning rule) still gets its recommendation.
     from urbanova import findings
 
-    _, recs2 = findings.generate({"id": "run_x"}, project, {}, [], {}, [hotspot_record()])
+    check = {"status": "fails", "rule_id": "rule_1", "label": "Minimum setback", "measured": 2.0, "unit": "m", "operator": ">=", "limit": 5.0,
+             "rule_source": {"document": "d", "page": 1, "text": "setback 5 m"}, "metric": "min_building_setback_m"}
+    _, recs2 = findings.generate({"id": "run_x"}, project, {}, [], {"compliance_checks": [check]})
     assert recs2
 
 

@@ -19,7 +19,7 @@ ACCEPTED_REQUEST_VERSIONS = get_args(RequestVersion)
 FeatureType = Literal["site_boundary", "building", "road", "green_space", "tree", "parking", "open_space", "water",
                       "shade_structure", "land_use_zone", "unclassified"]
 Objective = Literal["main_concerns", "surface_heat", "vegetation", "shade", "compare_alternatives", "planning_compliance", "data_gaps"]
-ModuleName = Literal["climate_baseline", "site_context", "urban_form", "vegetation", "surface_heat", "solar_shade", "heat_stress", "planning_compliance", "hotspots"]
+ModuleName = Literal["climate_baseline", "site_context", "urban_form", "vegetation", "surface_heat", "solar_shade", "heat_stress", "planning_compliance", "hotspots", "interventions"]
 RuleType = Literal["max_building_coverage_pct", "max_height_m", "max_floors", "min_setback_m", "min_green_space_pct", "min_open_space_pct",
                    "max_far", "plot_area_m2", "permitted_land_use", "parking_requirement"]
 ValueState = Literal["available", "unknown", "unavailable", "invalid", "blocked", "not_applicable"]
@@ -78,13 +78,15 @@ class Rules(_Strict):
 
 class Rate(_Strict):
     id: str | None = Field(None, max_length=64)
-    quantity_type: Literal["green_space_added_m2", "hard_surface_removed_m2", "trees_added_count", "shade_structure_added_m2", "building_footprint_removed_m2"]
+    quantity_type: Literal["green_space_added_m2", "hard_surface_removed_m2", "trees_added_count", "shade_structure_added_m2", "building_footprint_removed_m2",
+                           "cool_paving_m2"]
     unit: str
     rate: float = Field(ge=0)
     currency: str = Field(min_length=3, max_length=3, description="ISO 4217 code, e.g. EGP; XTS for test values.")
     price_date: str = Field(description="YYYY-MM-DD")
     source: str = Field(min_length=1, description="Quotation reference, supplier or schedule of rates. Prices are never invented.")
     region: str | None = None
+    maintenance_per_year: float | None = Field(None, ge=0, description="Annual maintenance per unit, same currency (optional).")
 
 
 class Criterion(_Strict):
@@ -111,6 +113,8 @@ class Settings(_Strict):
     ndvi_lookback_days: int | None = None
     max_scene_cloud_pct: float | None = None
     min_valid_site_fraction: float | None = None
+    budget_amount: float | None = Field(None, gt=0, description="Budget for a site-wide package of intervention options (FR-29); needs budget_currency.")
+    budget_currency: str | None = Field(None, min_length=3, max_length=3, description="ISO 4217 code of the budget, e.g. EGP; XTS for test values.")
 
 
 class AnalysisRequest(_Strict):
@@ -163,6 +167,7 @@ class Finding(BaseModel):
     confidence: str
     limitations: list[str]
     hotspot_ids: list[str] = Field(default_factory=list, description="Design hotspots this finding is about (contract 1.1).")
+    checks: list[dict[str, Any]] = Field(default_factory=list, description="Check-only results (e.g. I7 street orientation) for the hotspot (contract 1.1).")
 
 
 class HotspotEvidence(BaseModel):
@@ -232,6 +237,13 @@ class Recommendation(BaseModel):
     evaluation_method: str
     target: dict[str, Any]
     review_status: str
+    intervention_id: str | None = Field(None, description="Catalogue intervention (I1–I7) for a measured recommendation (contract 1.1).")
+    hotspot_id: str | None = None
+    options: list[dict[str, Any]] = Field(default_factory=list, description="Measured options: intensity, quantity, effect before → after, cost range or "
+                                          "'price required', confidences, water, roles (best_value, largest_benefit, cheapest_effective), Pareto flag, recipe.")
+    confidence: dict[str, Any] | None = Field(None, description="Two separate confidences with reasons: effect and cost (never combined).")
+    cost: dict[str, Any] | None = None
+    literature: list[dict[str, Any]] = Field(default_factory=list, description="Literature context; never attached to the site as a number.")
 
 
 class Layer(BaseModel):
@@ -280,6 +292,8 @@ class DesignResult(BaseModel):
     warnings: list[str]
     hotspots: list[Hotspot] = Field(default_factory=list, description="Design hotspots, numbered by priority (contract 1.1).")
     site_context: list[SiteContext] = Field(default_factory=list, description="Existing-land context such as the observed hot cluster (contract 1.1).")
+    package: dict[str, Any] | None = Field(None, description="Site-wide package of best-value options within the budget, re-evaluated together, as a DRAFT "
+                                           "design (features) to be approved before it is analysed (contract 1.1).")
 
 
 class Dataset(BaseModel):

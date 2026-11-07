@@ -1,6 +1,6 @@
 {
  "_comment": "Basis record for every threshold, band, coefficient and default the analysis uses (PHASE2_SPEC §3.1). basis_type: standard | regulatory | literature | statistical | project_choice | provisional. A provisional value, or a project_choice without approved_by, is labelled PROVISIONAL and its severity is capped at moderate. References are ids in PHASE2_SPEC §12.",
- "version": "2026.11-s2",
+ "version": "2026.11-s3",
  "values": [
   {
    "id": "climate.SU",
@@ -723,6 +723,129 @@
     "R-27"
    ],
    "applicability": "False-discovery rate for the local Gi* tests (Benjamini–Hochberg)",
+   "approved_by": null,
+   "approved_on": null
+  },
+  {
+   "id": "interventions.tree",
+   "value": {
+    "spacings_m": [
+     6,
+     9,
+     12
+    ],
+    "canopy_radius_m": 3,
+    "height_m": 6,
+    "building_clearance_m": 2
+   },
+   "unit": "m",
+   "used_in": "interventions",
+   "basis_type": "project_choice",
+   "references": [
+    "PHASE2_SPEC §6.1 (I1)"
+   ],
+   "applicability": "Generated trees: grid spacings, modelled canopy radius and height, trunk clearance from façades",
+   "reason": "Young-to-mid-size street tree; awaiting team approval (§13)",
+   "approved_by": null,
+   "approved_on": null
+  },
+  {
+   "id": "interventions.shade",
+   "value": {
+    "coverages": [
+     0.5,
+     1.0
+    ],
+    "height_m": 3.5
+   },
+   "unit": "fraction, m",
+   "used_in": "interventions",
+   "basis_type": "project_choice",
+   "references": [
+    "PHASE2_SPEC §6.1 (I2)"
+   ],
+   "applicability": "Generated shade structures: share of the hotspot covered and canopy height",
+   "reason": "Same height as the sample plaza canopy; awaiting team approval",
+   "approved_by": null,
+   "approved_on": null
+  },
+  {
+   "id": "interventions.convert_shares",
+   "value": [
+    0.25,
+    0.5
+   ],
+   "unit": "fraction",
+   "used_in": "interventions",
+   "basis_type": "project_choice",
+   "references": [
+    "PHASE2_SPEC §6.1 (I3)"
+   ],
+   "applicability": "Share of the hotspot's paving re-typed to planting",
+   "approved_by": null,
+   "approved_on": null
+  },
+  {
+   "id": "interventions.reduce_parking_shares",
+   "value": [
+    0.25,
+    0.5
+   ],
+   "unit": "fraction",
+   "used_in": "interventions",
+   "basis_type": "project_choice",
+   "references": [
+    "PHASE2_SPEC §6.1 (I5)"
+   ],
+   "applicability": "Share of the hotspot's parking removed",
+   "approved_by": null,
+   "approved_on": null
+  },
+  {
+   "id": "interventions.parking_space_m2",
+   "value": 25,
+   "unit": "m² per space",
+   "used_in": "interventions",
+   "basis_type": "project_choice",
+   "references": [],
+   "applicability": "Gross parking area per space (bay plus aisle share), used only to report lost spaces",
+   "reason": "Typical gross figure for surface car parks; awaiting team approval",
+   "approved_by": null,
+   "approved_on": null
+  },
+  {
+   "id": "interventions.max_hotspots",
+   "value": 5,
+   "unit": "hotspots",
+   "used_in": "interventions",
+   "basis_type": "project_choice",
+   "references": [],
+   "applicability": "Hotspots optimised per run (highest priority first)",
+   "reason": "Run time; decided in S3 planning (2026-11-07)",
+   "approved_by": null,
+   "approved_on": null
+  },
+  {
+   "id": "interventions.water_l_per_tree_day",
+   "value": null,
+   "unit": "litres/day",
+   "used_in": "interventions",
+   "basis_type": "provisional",
+   "references": [],
+   "applicability": "Irrigation water per tree",
+   "reason": "No sourced value yet: reported as 'value required'",
+   "approved_by": null,
+   "approved_on": null
+  },
+  {
+   "id": "interventions.water_l_per_m2_day",
+   "value": null,
+   "unit": "litres/day per m²",
+   "used_in": "interventions",
+   "basis_type": "provisional",
+   "references": [],
+   "applicability": "Irrigation water per m² of planting",
+   "reason": "No sourced value yet: reported as 'value required'",
    "approved_by": null,
    "approved_on": null
   }

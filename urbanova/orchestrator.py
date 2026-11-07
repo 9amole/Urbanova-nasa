@@ -18,7 +18,7 @@ OBJECTIVE_MODULES = {
     "main_concerns": set(RUNNABLE),
     "surface_heat": {"climate_baseline", "surface_heat", "urban_form", "vegetation", "solar_shade", "heat_stress", "hotspots"},
     "vegetation": {"vegetation", "urban_form"},
-    "shade": {"climate_baseline", "solar_shade", "urban_form", "heat_stress", "hotspots"},
+    "shade": {"climate_baseline", "solar_shade", "urban_form", "heat_stress", "hotspots", "interventions"},
     "compare_alternatives": {"urban_form", "solar_shade", "planning_compliance", "climate_baseline"},
     "planning_compliance": {"urban_form", "planning_compliance"},
     "data_gaps": set(),
@@ -34,18 +34,20 @@ DEPENDS = {
     "heat_stress": {"location", "design", "boundary", "period"},
     "planning_compliance": {"design", "boundary", "rules", "site_area_basis"},
     "hotspots": {"location", "design", "boundary", "period", "rules", "site_area_basis"},
+    "interventions": {"location", "design", "boundary", "period", "rules", "site_area_basis", "rates"},
 }
 # Modules whose results a module consumes (added automatically when it is selected).
 NEEDS = {
     "planning_compliance": ("urban_form",),
     "heat_stress": ("climate_baseline", "solar_shade"),
     "hotspots": ("urban_form", "solar_shade", "heat_stress", "climate_baseline"),  # H4 uses planning_compliance only when selected
+    "interventions": ("hotspots",),
 }
 DEFAULT_CONFIG = {
     "context_buffer_m": 500, "lst_buffer_m": 1000, "ndvi_buffer_m": 500, "satellite_years": 3, "lst_max_scenes": 6,
     "ndvi_max_scenes": 4, "ndvi_lookback_days": 365, "max_scene_cloud_pct": 40, "min_valid_site_fraction": 0.6,
 }
-ALLOWED_CONFIG = set(DEFAULT_CONFIG) | {"modules", "hot_months", "solar_date", "climate_period"}
+ALLOWED_CONFIG = set(DEFAULT_CONFIG) | {"modules", "hot_months", "solar_date", "climate_period", "budget_amount", "budget_currency"}
 
 _executor = ThreadPoolExecutor(max_workers=settings.workers, thread_name_prefix="urbanova-job")
 
@@ -65,6 +67,8 @@ def fingerprint(project: dict, scenario: dict | None, config: dict) -> dict:
         "boundary": _h(project.get("boundary")),
         "design": scenario["design_hash"] if scenario else None,
         "rules": _h(rules),
+        "rates": _h([sorted((r["quantity_type"], r["rate"], r["currency"], r["price_date"], r.get("maintenance_per_year")) for r in db.select("rate_items", "project_id = ?", [project["id"]])),
+                     config.get("budget_amount"), config.get("budget_currency")]),
         "site_area_basis": _h(project.get("verified_site_area_m2")),
         "period": _h([project.get("analysis_period"), config.get("climate_period"), config.get("hot_months"), config.get("solar_date")]),
         "analysis_version": ANALYSIS_VERSION,
@@ -110,6 +114,17 @@ def resolve_config(project: dict, payload: dict) -> dict:
             _d.fromisoformat(str(cfg["solar_date"]))
         except ValueError:
             raise RunError("solar_date must be a date in YYYY-MM-DD format.")
+    if (cfg.get("budget_amount") is None) != (not cfg.get("budget_currency")):
+        raise RunError("Give both budget_amount and budget_currency, or neither.")
+    if cfg.get("budget_amount") is not None:
+        try:
+            cfg["budget_amount"] = float(cfg["budget_amount"])
+        except (TypeError, ValueError):
+            raise RunError("budget_amount must be a number.")
+        cur = str(cfg["budget_currency"]).strip().upper()
+        if cfg["budget_amount"] <= 0 or len(cur) != 3 or not cur.isalpha():
+            raise RunError("budget_amount must be positive and budget_currency a 3-letter ISO code.")
+        cfg["budget_currency"] = cur
     if cfg.get("hot_months") and not all(isinstance(m, int) and 1 <= m <= 12 for m in cfg["hot_months"]):
         raise RunError("hot_months must be month numbers 1–12.")
     modules = payload.get("modules")
@@ -195,7 +210,8 @@ def execute(run_id: str, site_cache: dict | None = None) -> None:
     db.update("runs", "id", run_id, {"status": "running", "started_at": db.now()})
     db.update("jobs", "id", run["job_id"], {"status": "running", "started_at": db.now()})
     ctx = Context(project=project, scenario=scenario, config=cfg, run_id=run_id, out_dir=files.outputs_dir(project["id"], run_id),
-                  rules=documents.rules_for_analysis(project["id"]), site_cache=site_cache if site_cache is not None else {})
+                  rules=documents.rules_for_analysis(project["id"]), site_cache=site_cache if site_cache is not None else {},
+                  rates=db.select("rate_items", "project_id = ?", [project["id"]]))
 
     def progress(mod: str, i: int) -> None:
         db.update("jobs", "id", run["job_id"], {"stage": ANALYSES[mod], "progress": round(i / len(RUNNABLE), 2)})

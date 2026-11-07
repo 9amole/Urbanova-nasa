@@ -494,7 +494,8 @@ async function tabScenarios(el, data, extra) {
    ${list.map((s) => `<tr><td><a href="#/p/${pid}/scenarios/${s.id}">${esc(s.name)}</a></td><td>${s.kind === "baseline" ? badge(["Baseline (reference)", "b-info"]) : "Alternative"}</td><td>${s.feature_count}</td>
      <td>${badge([s.status, s.status === "active" ? "b-ok" : "b-mute"])}</td>
      <td>${s.latest_run ? `${badge(RUN_STATUS[s.latest_run.status])} ${Object.keys(s.latest_run.stale).length ? badge(["out of date", "b-warn"]) : ""}` : '<span class="muted">not analysed</span>'}</td>
-     <td>${canEdit && s.kind === "alternative" && s.status === "active" ? `<button class="small danger arch" data-sid="${s.id}">Archive</button>` : ""}</td></tr>`).join("") || `<tr><td colspan="6">No scenarios. Upload plan geometry and create the baseline on the Inputs tab.</td></tr>`}
+     <td>${canEdit && s.kind === "alternative" && s.status === "active" ? `<button class="small danger arch" data-sid="${s.id}">Archive</button>` : ""}
+       ${canEdit && s.status === "draft" ? `<button class="small primary appr" data-sid="${s.id}">Approve draft</button>` : ""}</td></tr>`).join("") || `<tr><td colspan="6">No scenarios. Upload plan geometry and create the baseline on the Inputs tab.</td></tr>`}
    </tbody></table>
    ${canEdit && base ? `<form id="f-alt" class="row"><div style="flex:1"><label for="alt-name">New alternative name</label><input id="alt-name" type="text" required placeholder="e.g. More shade and trees"></div>
      <div style="flex:2"><label for="alt-desc">Description</label><input id="alt-desc" type="text"></div><div><button class="primary" type="submit">Create alternative from baseline</button></div></form>` : ""}
@@ -519,6 +520,7 @@ async function tabScenarios(el, data, extra) {
     const lay = addFeatures(map, sel.features); try { map.fitBounds(lay.getBounds(), { padding: [20, 20] }); } catch (_) {}
     legendControl(map, typeLegend());
   }
+  el.querySelectorAll(".appr").forEach((b) => (b.onclick = () => guarded(async () => { if (!confirm("Approve this draft? It becomes an active alternative that can be analysed.")) return; await api(`/scenarios/${b.dataset.sid}/approve`, { method: "POST" }); route(); }, b)));
   el.querySelectorAll(".arch").forEach((b) => (b.onclick = () => guarded(async () => { if (!confirm("Archive this alternative? It stays in history but can no longer be edited.")) return; await api(`/scenarios/${b.dataset.sid}/archive`, { method: "POST" }); route(); }, b)));
   const fa = document.getElementById("f-alt");
   if (fa) fa.onsubmit = (e) => { e.preventDefault(); guarded(async () => {
@@ -600,21 +602,47 @@ async function tabAnalysis(el, data) {
 
 const SEV_COLORS = { high: "#b2182b", moderate: "#ef8a62", low: "#e0a96d" };
 
-function hotspotsPanel(hotspots, context, profile, mod) {
+const ROLE_LABELS = { best_value: "best value", largest_benefit: "largest benefit", cheapest_effective: "cheapest effective" };
+
+function costText(c) {
+  if (!c || c.status === "not_applicable") return "—";
+  if (c.status !== "priced") return "price required";
+  return `${fmt(c.low, 0)}–${fmt(c.high, 0)} ${esc(c.currency)} (typ. ${fmt(c.typical, 0)})${c.maintenance_per_year != null ? `, +${fmt(c.maintenance_per_year, 0)}/yr` : ""}${c.stale ? " — old price" : ""}`;
+}
+
+function optionsTable(recs) {
+  if (!recs.length) return "";
+  const rows = recs.flatMap((r) => r.options.map((o) => { const e = o.effect;
+    return `<tr><td>${esc(o.title)}<div class="muted">${esc(o.intensity_label)}</div></td>
+      <td>${o.separate ? `${fmt(e.treated_m2, 0)} m² treated <span class="muted">(not ranked; heat effect not modelled)</span>` : `${fmt(e.before, 0)} → ${fmt(e.after, 0)} ${esc(e.unit)} <strong>(−${fmt(e.change_pct, 1)} %)</strong>`}</td>
+      <td>${fmt(o.quantity.value, 0)} ${esc(o.quantity.unit || "")}${o.lost_parking_spaces ? `<div class="muted">−${o.lost_parking_spaces} spaces</div>` : ""}${o.water ? `<div class="muted">${esc(o.water.note || `${fmt(o.water.litres_per_day, 0)} L/day`)}</div>` : ""}</td>
+      <td>${costText(o.cost)}</td>
+      <td>effect ${esc(o.effect_confidence.level)} · cost ${esc((o.cost.confidence || {}).level || "—")}</td>
+      <td>${o.pareto ? badge(["Pareto", "b-ok"]) : ""} ${o.roles.map((x) => badge([ROLE_LABELS[x] || x, "b-info"])).join(" ")}</td></tr>`; })).join("");
+  return `<details open><summary>Measured options (${recs.reduce((n, r) => n + r.options.length, 0)})</summary><table class="opts"><thead><tr><th>Option</th><th>Measured effect</th><th>Quantity, water</th><th>Cost</th><th>Confidence</th><th></th></tr></thead><tbody>${rows}</tbody></table>
+    <p class="hint">${recs.some((r) => r.options.some((o) => o.ranking_mode === "benefit_and_cost")) ? "Priced options are ranked on measured benefit and typical cost. " : ""}${recs.some((r) => r.options.some((o) => o.ranking_mode === "benefit_per_quantity")) ? "Options without a comparable price are compared only within their own intervention, on benefit per unit of quantity." : ""}</p></details>`;
+}
+
+function hotspotsPanel(hotspots, context, profile, mod, recs = [], intv = null, runId = "", canEdit = false) {
   if (!mod || mod.status === "skipped") return "";
   const notes = mod.details?.notes || [];
   const sm = (h, n) => h.supporting_metrics.find((s) => s.name === n);
   return `<section class="panel"><h2>Design hotspots (${hotspots.length})</h2>
    <p class="hint">Places on the drawing with a measured problem, numbered by priority (severity, then area) and shown on the map. Severity: PHASE2_SPEC §4.2 table; heat stress on the UTCI scale.</p>
    ${hotspots.length ? "" : `<p>No design hotspots. ${esc(notes.join(" ") || mod.reason || "")}</p>`}
-   <div class="cards">${hotspots.map((h) => { const su = sm(h, "utci_sun_peak_c"), sh = sm(h, "utci_shade_peak_c");
+   <div class="hs-list">${hotspots.map((h) => { const su = sm(h, "utci_sun_peak_c"), sh = sm(h, "utci_shade_peak_c");
      return `<div class="panel hs"><h3><span class="hs-badge">${h.number}</span> <span class="badge sev-${esc(h.severity)}">${esc(h.severity.toUpperCase())}${h.severity_capped ? " (PROVISIONAL)" : ""}</span> ${esc(h.type_labels.join(" + "))}</h3>
       <p>${fmt(h.area_m2, 0)} m² (${fmt(h.site_share_pct, 1)} % of the site${h.site_wide ? ", site-wide" : ""}) · size ${esc(h.size_class)} · intensity ${esc(h.intensity)}</p>
       ${su && sh ? `<p>UTCI in sun up to <strong>${fmt(su.value, 1)} °C</strong>, in shade ${fmt(sh.value, 1)} °C</p>` : ""}
       ${h.likely_causes.length ? `<ul>${h.likely_causes.map((c) => `<li><span class="mono">${esc(c.code)}</span> ${esc(c.text)}</li>`).join("")}</ul>` : `<p class="muted">None of the listed cause rules matched.</p>`}
       <details><summary>Severity basis and measurements</summary><p class="muted">${esc(h.severity_basis)}</p>
        <table>${h.supporting_metrics.map((s) => `<tr><td>${esc(s.label)}</td><td>${typeof s.value === "object" && s.value !== null ? esc(Object.entries(s.value).map(([k, v]) => `${k} ${v} %`).join(", ")) : s.value === null ? esc(s.note || "—") : `${fmt(s.value, 2)} ${esc(s.unit || "")}`}</td></tr>`).join("")}</table>
-       <p class="muted">Confidence: ${esc(h.confidence)} — ${esc(h.confidence_reason)}</p></details></div>`; }).join("")}</div>
+       <p class="muted">Confidence: ${esc(h.confidence)} — ${esc(h.confidence_reason)}</p></details>
+      ${optionsTable(recs.filter((r) => r.hotspot_id === h.id && (r.options || []).length))}</div>`; }).join("")}</div>
+   ${(intv?.details?.not_optimised || []).map((n) => `<p class="muted">${esc(n)}</p>`).join("")}
+   ${intv?.details?.package ? `<div class="alert info"><strong>Package within budget (${fmt(intv.details.package.budget.amount, 0)} ${esc(intv.details.package.budget.currency)}):</strong> ${esc(intv.details.package.note)}
+     ${intv.details.package.cost ? ` Typical cost ${fmt(intv.details.package.cost.typical, 0)} ${esc(intv.details.package.cost.currency)}; ${intv.details.package.option_ids.length} option(s).` : ""}
+     ${canEdit && intv.details.package.status === "draft" ? ` <button class="small primary" id="pkg-draft" data-rid="${runId}">Save as draft alternative</button>` : ""}</div>` : ""}
    ${context.map((c) => `<div class="alert info"><strong>Site context (today's land):</strong> ${esc(c.statement)}<div class="muted">${esc(c.note)}</div></div>`).join("")}
    ${profile.length ? `<details><summary>Hot-day heat stress, hour by hour (UTCI in sun vs shade)</summary><table><thead><tr><th>Solar time</th><th>Air °C</th><th>UTCI sun °C</th><th>UTCI shade °C</th><th>Category in sun</th></tr></thead><tbody>
      ${profile.map((r) => `<tr><td>${String(r.hour).padStart(2, "0")}:00</td><td>${fmt(r.ta_c, 1)}</td><td>${fmt(r.utci_sun_c, 1)}</td><td>${fmt(r.utci_shade_c, 1)}</td><td>${esc(r.category_sun || "outside UTCI range")}</td></tr>`).join("")}</tbody></table></details>` : ""}
@@ -655,7 +683,7 @@ async function tabResults(el, data, runId) {
      ${o.not_available?.length ? `<div class="muted">${o.not_available.map(esc).join("<br>")}</div>` : ""}</li>`).join("")}</ul></section>
   <section class="panel"><h2>Map</h2><div class="grid"><div id="rs-map" class="map" style="height:520px"></div><div><div id="rs-layers" class="layerctl"></div><div id="rs-legend"></div>
    <p class="hint">Colours of value kinds: ${Object.keys(KIND).map(kindBadge).join(" ")}</p></div></div></section>
-  ${hotspotsPanel(hotspots, context, profile, ms.hotspots)}
+  ${hotspotsPanel(hotspots, context, profile, ms.hotspots, b.recommendations, ms.interventions, rid, p.role !== "viewer")}
   <section class="panel"><h2>Findings (${concerns.length})</h2>
    ${concerns.length ? "" : `<p>No rule-based findings were triggered by the available evidence. This is not proof that the site has no issues — check the analyses that could not run.</p>`}
    ${concerns.map((f) => { const prov = f.threshold?.status === "provisional_not_approved"; return `<div class="panel"><h3><span class="badge sev-${esc(f.severity)}">${esc(f.severity.toUpperCase())}${prov ? " (PROVISIONAL)" : ""}</span> ${prov ? badge([f.threshold.severity_capped ? `Provisional threshold — not approved; capped from ${f.threshold.band_level}` : "Provisional threshold — not approved", "b-warn"]) : ""} ${esc(f.title)}</h3>
@@ -688,6 +716,8 @@ async function tabResults(el, data, runId) {
      <td class="mono">${esc(d.time_coverage?.start ? `${d.time_coverage.start} – ${d.time_coverage.end}` : (d.time_coverage?.scenes || []).map((x) => x.slice(0, 10)).join(", ") || d.time_coverage?.osm_snapshot || "")}</td><td>${esc(d.license || "")}<div class="muted">${esc(d.attribution || "")}</div></td><td>${badge([d.approval_label || "unknown", (["approved", "fr_recommended"].includes(d.approval_status) && d.terms_confirmed) || d.approval_status === "fr_required" ? "b-ok" : "b-warn"])}<div class="muted">usage: ${esc(d.usage_context || "")}</div></td></tr>`).join("") || `<tr><td colspan="6">No external datasets in this run.</td></tr>`}</tbody></table>
    <details><summary>Run configuration and fingerprint</summary><pre class="mono">${esc(JSON.stringify({ configuration: run.configuration, fingerprint: run.fingerprint, analysis_version: run.analysis_version, software_version: run.software_version }, null, 1))}</pre></details></section>`;
   document.getElementById("rs-run").onchange = (e) => (location.hash = `#/p/${pid}/results/${e.target.value}`);
+  const pkgBtn = document.getElementById("pkg-draft");
+  if (pkgBtn) pkgBtn.onclick = () => guarded(async () => { const s = await api(`/analysis-runs/${pkgBtn.dataset.rid}/package/draft`, { method: "POST" }); location.hash = `#/p/${pid}/scenarios/${s.id}`; }, pkgBtn);
   // map with toggleable layers
   const map = makeMap("rs-map", p.latitude, p.longitude, 16);
   const overlays = [];

@@ -110,6 +110,20 @@ def exposure_stats(geom, sol: dict, hs: dict, surf_hard, shade_sources) -> dict:
             "utci_sun_peak": max(sun_utci) if sun_utci else None, "utci_shade_peak": max(shade_utci) if shade_utci else None, "lit15": lit15}
 
 
+def shade_deficit(surf: dict, sol: dict, within=None):
+    """H3 area: open and green space (optionally within a polygon) farther than D from any canopy or shade structure,
+    in sun at the afternoon hour. One definition for detection and for measuring options."""
+    far = surf["open"] if within is None else surf["open"].intersection(within)
+    if not surf["shade_sources"].is_empty:
+        far = far.difference(surf["shade_sources"].buffer(cfg("deficit_distance_m")))
+    return sunlit(far, sol["shade_by_hour"].get(cfg("cause_thresholds")["afternoon_hour"]))
+
+
+def setback_band(site, limit: float):
+    """The strip of the site within `limit` metres of its boundary."""
+    return site.difference(site.buffer(-limit))
+
+
 # ---------------------------------------------------------------- H4
 def h4_candidates(checks: list[dict], surf: dict, site_area: float) -> list[dict]:
     """Located or site-wide planning-violation hotspots from failed verified-rule checks."""
@@ -121,7 +135,7 @@ def h4_candidates(checks: list[dict], surf: dict, site_area: float) -> list[dict
         rel = abs(limit - measured) / abs(limit) if limit else 1.0
         geom, area, note = None, None, None
         if rtype == "min_setback_m":
-            band = surf["site"].difference(surf["site"].buffer(-limit))
+            band = setback_band(surf["site"], limit)
             geom = surf["buildings"].intersection(band)
             note = f"Building parts within {limit:g} m of the site boundary"
         elif rtype in ("max_height_m", "max_floors"):
@@ -293,8 +307,7 @@ def run(ctx: Context) -> dict:
         elif u15 is None or u15 < VERY_STRONG or sh15 is None:
             notes.append(f"H3 not produced: UTCI in sun at {hour}:00 is {'unknown' if u15 is None else f'{u15:.1f} °C'}, below very strong heat stress ({VERY_STRONG:g} °C).")
         else:
-            far = surf["open"].difference(surf["shade_sources"].buffer(cfg("deficit_distance_m"))) if not surf["shade_sources"].is_empty else surf["open"]
-            lit = sunlit(far, sh15)
+            lit = shade_deficit(surf, sol)
             if lit.area > 0:
                 for g, lvl in components(exposure_pieces(lit, sol["shade_by_hour"], sol["positions"], vs, s), {"high", "moderate"}):
                     cands.append({"types": ["H3"], "geom": g, "area": g.area, "intensity": lvl, "site_wide": False})
@@ -325,6 +338,7 @@ def run(ctx: Context) -> dict:
             "severity": shown, "severity_uncapped": sev, "severity_capped": capped, "provisional_basis": provisional,
             "severity_basis": f"§4.2 table: intensity {h['intensity']} ({why}) × size {size} → {sev}" + (f"; capped at {CAP} while {', '.join(provisional)} are not approved" if capped else ""),
             "supporting_metrics": _supporting(h, stats, surf, site_area), "likely_causes": cs, "rule": h.get("rule"), "merged_from": h.get("merged_from", 1),
+            "_geom": h["geom"],  # local CRS, for the interventions module; removed below
             "confidence": "limited" if (sol or {}).get("buildings_without_height") else "adequate",
             "confidence_reason": ("Some buildings have no height, so their shade is missing." if (sol or {}).get("buildings_without_height")
                                   else "Design geometry and computed shadows; no satellite dependency."),
@@ -332,6 +346,8 @@ def run(ctx: Context) -> dict:
     out.sort(key=lambda r: (-LEVEL[r["severity"]], -r["area_m2"]))
     for n, r in enumerate(out, start=1):
         r["number"] = n
+    # Hotspots with their local geometry, in priority order, for the interventions module (A10).
+    ctx.shared["hotspots"] = [{"record": r, "geom": r.pop("_geom")} for r in out]
     count_label, area_label = "Design hotspots (H1, H3, H4 after merging)", "Total area of located design hotspots"
     if sol and hs_data:
         m = [V.metric("hotspot_count", count_label, len(out), "count", method="Count of design hotspots after merging (§4)"),

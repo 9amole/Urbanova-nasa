@@ -60,7 +60,37 @@ def _confidence(module_status: str, metric: dict) -> tuple[str, str]:
     return "adequate", "Inputs passed the module's quality checks."
 
 
-HOTSPOT_RECS = {"H1": ["reduce_hard_surface", "shade_public_space", "add_vegetation"], "H3": ["shade_public_space", "add_vegetation"], "H4": ["review_compliance"]}
+ROLE_ORDER = ("best_value", "largest_benefit", "cheapest_effective")
+
+
+def option_recommendations(run_id: str, finding: dict, hotspot: dict, evaluated: dict | None) -> list[dict]:
+    """Recommendations from measured options only (PHASE2_SPEC §6.2): one per intervention with a positive effect."""
+    from .interventions import catalogue
+
+    if not evaluated:
+        return []
+    out = []
+    for iid, item in catalogue().items():
+        opts = [o for o in evaluated["options"] if o["intervention_id"] == iid]
+        if not opts:
+            continue
+        lead = next((o for role in ROLE_ORDER for o in opts if role in o["roles"]), opts[0])
+        cause = next((c for c in hotspot["likely_causes"] if c["code"] in item["applies_to"]["causes"]), None)
+        eff = lead["effect"]
+        effect_txt = (f"{eff['treated_m2']:g} m² treated (effect on pedestrian heat not modelled)" if lead["separate"]
+                      else f"{eff['label']}: {eff['before']:g} → {eff['after']:g} {eff['unit']} (−{eff['change_pct']:g} %)")
+        out.append({
+            "id": db.new_id("rec"), "run_id": run_id, "finding_id": finding["id"], "title": item["title"],
+            "problem": f"Hotspot {hotspot['number']}" + (f": {cause['text']}" if cause else ""), "evidence": finding["evidence"],
+            "intervention": f"{item['intervention']} Recommended size: {lead['intensity_label']}. Measured: {effect_txt}.",
+            "target": {"description": f"Hotspot {hotspot['number']}", "geometry": hotspot["geometry"], "hotspot_id": hotspot["id"]},
+            "expected_direction": item["expected_direction"], "required_inputs": item["required_inputs"], "tradeoffs": item["tradeoffs"],
+            "evaluation_method": item["evaluation_method"], "review_status": "proposed", "created_at": db.now(),
+            "intervention_id": iid, "hotspot_id": hotspot["id"], "options": opts, "cost": lead["cost"],
+            "confidence": {"effect": lead["effect_confidence"], "cost": lead["cost"].get("confidence") or {"level": "low", "reasons": ["No priced quantity"]}},
+            "literature": [{**x, "note": "Literature context; not modelled for this site"} for x in item["literature"]],
+        })
+    return out
 
 
 def generate(run: dict, project: dict, module_results: dict[str, dict], metric_rows: list[dict], shared: dict,
@@ -153,6 +183,8 @@ def generate(run: dict, project: dict, module_results: dict[str, dict], metric_r
         }, [] if existing else rule["recommendation_keys"], target={"description": area, "geometry": geom})
 
     hotspots = hotspots or []
+    evaluated = (module_results.get("interventions") or {}).get("options_by_hotspot") or {}
+    options_run = "interventions" in module_results and module_results["interventions"].get("status") in ("completed", "partial")
     h4_by_rule = {h["rule"]["rule_id"]: h["id"] for h in hotspots if h.get("rule")}
     for h in hotspots:
         if h["types"] == ["H4"]:
@@ -167,6 +199,13 @@ def generate(run: dict, project: dict, module_results: dict[str, dict], metric_r
         if h["severity_capped"]:
             limitations.append(f"Severity is capped at '{h['severity']}' while these values are not approved: {', '.join(h['provisional_basis'])} "
                                f"(the table gives '{h['severity_uncapped']}').")
+        ev = evaluated.get(h["number"])
+        if not options_run:
+            limitations.append("Intervention options were not evaluated in this run, so no recommendation is made (recommendations need a measured effect).")
+        elif not ev:
+            limitations.append("Intervention options were not evaluated for this hotspot (only the highest-priority hotspots are optimised).")
+        elif not ev["options"]:
+            limitations.append("No catalogue intervention improved this hotspot when measured, so no recommendation is made.")
         add({
             "category": "heat", "classification": "modelled_outcome",
             "title": f"Hotspot {h['number']}: {' + '.join(h['type_labels'])}",
@@ -178,8 +217,10 @@ def generate(run: dict, project: dict, module_results: dict[str, dict], metric_r
                           "basis": [basis.get(i) for i in ["heat_stress.utci_categories", *h["provisional_basis"]]],
                           "band_level": h["severity_uncapped"], "severity_capped": h["severity_capped"]},
             "evidence": evidence, "sources": [], "confidence": h["confidence"], "limitations": limitations, "hotspot_ids": [h["id"]],
-        }, sorted({k for t in h["types"] for k in HOTSPOT_RECS.get(t, [])}, key=lambda k: list(templates).index(k)),
-            target={"description": f"Hotspot {h['number']}", "geometry": h["geometry"], "hotspot_id": h["id"]})
+        }, [])
+        recs.extend(option_recommendations(run["id"], findings[-1], h, ev))
+        if ev and ev["checks"]:
+            findings[-1]["checks"] = ev["checks"]
 
     for check in shared.get("compliance_checks", []):
         if check["status"] == "fails":
@@ -195,6 +236,9 @@ def generate(run: dict, project: dict, module_results: dict[str, dict], metric_r
                 "limitations": ["This is a geometric check against a user-verified rule, not a statutory determination."],
                 "hotspot_ids": [hid] if hid else [],
             }, ["review_compliance"])
+            h4 = next((h for h in hotspots if h["id"] == hid), None)
+            if h4:
+                recs.extend(option_recommendations(run["id"], findings[-1], h4, evaluated.get(h4["number"])))
         elif check["status"] == "not_assessed":
             add({
                 "category": "planning", "classification": "data_quality_issue", "title": f"Planning check not assessed: {check['label']}",

@@ -71,3 +71,5 @@ details summary { cursor: pointer; color: var(--info); font-size: 13px; }
 .hs-badge { display: inline-block; min-width: 1.6em; padding: 0 .35em; border-radius: 1em; background: #5a0000; color: #fff; text-align: center; font-weight: 700; }
 .leaflet-tooltip.hs-num { background: #5a0000; color: #fff; border: 0; border-radius: 1em; font-weight: 700; padding: 0 .45em; box-shadow: none; }
 .leaflet-tooltip.hs-num::before { display: none; }
+.hs-list { display: grid; gap: 12px; }
+table.opts td { vertical-align: top; }

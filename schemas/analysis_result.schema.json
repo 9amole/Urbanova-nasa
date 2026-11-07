@@ -195,6 +195,20 @@
           },
           "title": "Site Context",
           "type": "array"
+        },
+        "package": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Site-wide package of best-value options within the budget, re-evaluated together, as a DRAFT design (features) to be approved before it is analysed (contract 1.1).",
+          "title": "Package"
         }
       },
       "required": [
@@ -336,6 +350,15 @@
             "type": "string"
           },
           "title": "Hotspot Ids",
+          "type": "array"
+        },
+        "checks": {
+          "description": "Check-only results (e.g. I7 street orientation) for the hotspot (contract 1.1).",
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Checks",
           "type": "array"
         }
       },
@@ -1045,6 +1068,76 @@
         "review_status": {
           "title": "Review Status",
           "type": "string"
+        },
+        "intervention_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Catalogue intervention (I1–I7) for a measured recommendation (contract 1.1).",
+          "title": "Intervention Id"
+        },
+        "hotspot_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Hotspot Id"
+        },
+        "options": {
+          "description": "Measured options: intensity, quantity, effect before → after, cost range or 'price required', confidences, water, roles (best_value, largest_benefit, cheapest_effective), Pareto flag, recipe.",
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Options",
+          "type": "array"
+        },
+        "confidence": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Two separate confidences with reasons: effect and cost (never combined).",
+          "title": "Confidence"
+        },
+        "cost": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cost"
+        },
+        "literature": {
+          "description": "Literature context; never attached to the site as a number.",
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Literature",
+          "type": "array"
         }
       },
       "required": [
