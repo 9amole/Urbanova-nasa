@@ -238,7 +238,8 @@ async def upload(pid: str, file: UploadFile = File(...), category: str = Form(..
             outcome = plans.import_plan(p, rec, content, epsg)
             if previous:
                 outcome["plan_mode"] = plan_mode
-                if plan_mode == "replace":
+                # A reference-only drawing (PDF/image) adds no features, so it never replaces any.
+                if plan_mode == "replace" and outcome.get("features_extracted"):
                     outcome["replaced_features"] = plans.deactivate_features(previous, user, f"replaced by plan file {rec['original_filename']}")
         elif category == "planning_document":
             outcome = documents.ingest_document(p, rec)

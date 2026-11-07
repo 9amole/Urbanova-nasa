@@ -132,8 +132,9 @@ def write_cache(provider_id: str, key: str, params: Any, body: Any) -> str:
     return str(path)
 
 
-_key_locks: dict[str, threading.Lock] = {}
-_key_locks_guard = threading.Lock()
+# A fixed set of locks, chosen by key: identical requests always share a lock, and memory stays bounded
+# however many distinct requests a long-running server makes (unrelated keys rarely share one).
+_KEY_LOCKS = [threading.Lock() for _ in range(64)]
 
 
 def http_json(provider_id: str, method: str, url: str, *, params: dict | None = None, data: dict | None = None,
@@ -142,9 +143,7 @@ def http_json(provider_id: str, method: str, url: str, *, params: dict | None = 
     if not cache:
         return _http_json(provider_id, method, url, params=params, data=data, json_body=json_body, cache=False, cache_params=cache_params)
     key = cache_key(provider_id, cache_params if cache_params is not None else {"url": url, "params": params, "data": data, "json": json_body})
-    with _key_locks_guard:
-        lock = _key_locks.setdefault(key, threading.Lock())
-    with lock:
+    with _KEY_LOCKS[int(key[:8], 16) % len(_KEY_LOCKS)]:
         return _http_json(provider_id, method, url, params=params, data=data, json_body=json_body, cache=True, cache_params=cache_params)
 
 

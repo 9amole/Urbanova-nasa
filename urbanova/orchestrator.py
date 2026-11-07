@@ -9,7 +9,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 from . import ANALYSIS_VERSION, __version__, db, documents, files, findings
 from .analysis.common import SKIPPED, Context
-from .engine.core import MODULES, jsonable, run_design
+from .engine.core import MODULES, run_design
 from .readiness import ANALYSES, RUNNABLE
 from .settings import settings
 
@@ -151,9 +151,15 @@ def start_runs(project: dict, scenarios: list[dict | None], user: dict, payload:
 
 
 def _execute_group(run_ids: list[str]) -> None:
+    """The first run fetches the site data into the shared cache; the remaining runs only add their
+    design-specific work on top of it, so they run in parallel and read the cache without writing to it."""
     site_cache: dict = {}
-    for run_id in run_ids:
-        _safe_execute(run_id, site_cache)
+    if not run_ids:
+        return
+    _safe_execute(run_ids[0], site_cache)
+    if len(run_ids) > 1:
+        with ThreadPoolExecutor(max_workers=max(1, settings.workers), thread_name_prefix="urbanova-design") as pool:
+            list(pool.map(lambda rid: _safe_execute(rid, site_cache), run_ids[1:]))
 
 
 def _safe_execute(run_id: str, site_cache: dict | None = None) -> None:
@@ -194,9 +200,6 @@ def execute(run_id: str, site_cache: dict | None = None) -> None:
                                      "input_dataset_ids": out["dataset_ids"], "warnings": out["warnings"]})
     db.update("jobs", "id", run["job_id"], {"status": out["status"], "progress": 1.0, "stage": "done", "completed_at": db.now(),
                                             "output": {"run_id": run_id, "findings": len(out["findings"]), "recommendations": len(out["recommendations"])}})
-
-
-_jsonable = jsonable
 
 
 def run_bundle(run: dict) -> dict:

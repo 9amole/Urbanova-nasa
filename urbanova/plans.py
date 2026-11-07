@@ -444,6 +444,17 @@ def geometry_quality_for(feats: list[dict], project: dict) -> dict:
     }
 
 
+def has_unconfirmed_units(items: list[dict]) -> bool:
+    """True if any item comes from a DXF whose drawing units are not confirmed (FR-02: no areas from an
+    unresolved scale). Accepts stored feature records ("attributes"), scenario GeoJSON features
+    ("properties") or bare property dicts, so every path checks the same rule."""
+    for it in items:
+        bag = it.get("attributes") or it.get("properties") or it
+        if (bag or {}).get("units_unconfirmed"):
+            return True
+    return False
+
+
 def deactivate_features(feats: list[dict], user: dict, reason: str) -> int:
     """Deactivate features (kept in the database and history, never deleted)."""
     for f in feats:

@@ -28,7 +28,7 @@ def create_baseline(project: dict, user: dict, name: str | None = None) -> dict:
     feats = plans.active_features(project["id"])
     if not feats:
         raise ScenarioError("There are no plan features. Upload an urban plan (GeoJSON or DXF) first.")
-    unconfirmed = [f for f in feats if (f.get("attributes") or {}).get("units_unconfirmed")]
+    unconfirmed = [f for f in feats if plans.has_unconfirmed_units([f])]
     if unconfirmed:
         # FR-02: areas from a drawing with unresolved scale are never presented as reliable.
         raise ScenarioError(

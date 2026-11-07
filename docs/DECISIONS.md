@@ -10,7 +10,7 @@ The project assigned the data science lead as decision maker for Phase 1. These 
 | C2 | **Thresholds stay provisional.** No scientific review has happened, so every band marked `provisional_not_approved` keeps its label and the moderate severity cap. | Data science lead: review before any client-facing release |
 | C3 | **Scope of the data-science deliverable.** The analysis side (Modules 3–9: inputs, data acquisition, analyses, findings, comparison, explanation) is handed over as the `urbanova.engine` component with a versioned JSON contract. Authentication, projects, users, storage, jobs, UI, reports in the product UI, notifications, billing, organisations and administration (Modules 1, 2, 10–14) belong to the backend platform. Module 3 allowlist: GeoJSON, and DXF with an EPSG code in metres; PDF and image plans are reference-only. Module 4: satellite data is in Phase 1. | Backend team (platform); data science lead (engine) |
 | C4 | **Language.** All output is English. Planning documents in Arabic are parsed from their text layer, including Arabic-Indic digits; extracted values and notes are in English, and the original wording is kept verbatim as evidence. OCR of scanned pages is not in Phase 1; scanned pages are reported as unread. | Data science lead |
-| C5 | **Explanations.** Deterministic, record-linked templates only. No generative AI in Phase 1. | Data science lead |
+| C5 | ~~**Explanations.** Deterministic, record-linked templates only. No generative AI in Phase 1.~~ **Replaced on 2026-11-04** by the approved smart-upgrade spec ([PHASE2_SPEC.md](PHASE2_SPEC.md), decision S-1): AI is part of Phase 1. It runs as a server-side, free, provider-neutral service (Groq → OpenRouter → deterministic fallback; Ollama for development). It only explains evidence computed by the engine, and an automatic check verifies every claim. | Data science lead |
 | C6 | **Production stack.** Chosen by the backend team. The prototype web app (FastAPI, SQLite, local accounts, Leaflet UI) is a reference demo, not the integration target. | Backend team |
 | D1 | Arabic text-layer extraction (per C4). | Data science lead (done in this build) |
 | D2 | Real-input validation. Calculations are checked against known-answer geometry, and the engine is exercised on real OpenStreetMap building footprints. **Still open:** a real project (real plan or DXF, planning document, quoted rates). | Data science lead, when real files exist |
@@ -19,6 +19,7 @@ The project assigned the data science lead as decision maker for Phase 1. These 
 | D5 | Security, accounts, rate limiting and secrets management. | Backend team |
 | D6 | Accessibility and browser support of the product UI. The engine returns legends with text labels so colour is never the only cue. | Backend/frontend team |
 | D7 | Commercial licensing (see C1) and the production basemap provider. | Product/backend team |
+| S | **Smart upgrade of Phase 1 approved** (2026-11-04): hotspot detection, design optimiser, AI engineering insights, chat assistant, reference cost library, new free data sources; stages S1–S7 as in [PHASE2_SPEC.md](PHASE2_SPEC.md) §11. Not started. | Data science lead |
 
 ## 1. Rebuild instead of extending the earlier prototype
 

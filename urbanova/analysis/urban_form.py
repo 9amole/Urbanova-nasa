@@ -15,7 +15,7 @@ import statistics
 from shapely.geometry import Point, shape
 from shapely.ops import unary_union
 
-from .. import geo
+from .. import geo, plans
 from .. import values as V
 from .common import BLOCKED, COMPLETED, PARTIAL, Context, result
 
@@ -158,7 +158,7 @@ def compute(ctx: Context) -> dict:
 def run(ctx: Context) -> dict:
     if not ctx.scenario or not ctx.scenario.get("features", {}).get("features"):
         return result(BLOCKED, reason="No design geometry. Upload an urban plan (GeoJSON or DXF) and create the baseline scenario.")
-    if any(f["properties"].get("units_unconfirmed") for f in ctx.scenario["features"]["features"]):
+    if plans.has_unconfirmed_units(ctx.scenario["features"]["features"]):
         return result(BLOCKED, reason="The design comes from a DXF drawing whose units are not confirmed, so areas are not reliable. Confirm the units are metres on the Inputs tab.")
     out = compute(ctx)
     ctx.shared["urban_form"] = {mm["metric_name"]: mm for mm in out["metrics"]}

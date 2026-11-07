@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any
 
 from pydantic import ValidationError
+import shapely
 from shapely.geometry import shape
 
 from .. import ANALYSIS_VERSION, __version__, comparison, cost, documents, files, findings, geo, plans, recording
@@ -57,13 +58,15 @@ def analyse(request: dict[str, Any], output_dir: str | os.PathLike) -> dict[str,
     rates = _rates(req)
     designs = _designs(req, project)
     cfg = _settings(req, project)
+    compare_designs = _check_compare(req, designs) if req.compare else None  # before any analysis runs
     fingerprint = _fingerprint(request)
     site_cache: dict = {}
     design_results, design_raw = [], {}
     with recording.use(recording.MemoryRecorder()) as rec:
-        for d in designs or [None]:
+        for index, d in enumerate(designs or [None]):
             key = d["id"] if d else "site"
-            run_dir = out_root / _safe(key)
+            # The index keeps folders unique even when two ids sanitise to the same name ("a:b", "a_b").
+            run_dir = out_root / f"{index:02d}_{_safe(key)}"
             run_dir.mkdir(parents=True, exist_ok=True)
             run_id = recording.new_id("run")
             ctx = Context(project=project, scenario=d, config=cfg, run_id=run_id, out_dir=run_dir, rules=rules, site_cache=site_cache)
@@ -82,7 +85,7 @@ def analyse(request: dict[str, Any], output_dir: str | os.PathLike) -> dict[str,
             })
         datasets = [_dataset(ds, out_root) for ds in rec.datasets.values()]
         requests = [dict(r) for r in rec.requests]
-    comp = _compare(req, project, designs, design_raw, rates) if req.compare else None
+    comp = _compare(req, project, compare_designs, design_raw, rates) if compare_designs else None
     statuses = [d["status"] for d in design_results]
     status = "succeeded" if all(s == "succeeded" for s in statuses) else "failed" if all(s == "failed" for s in statuses) else "partially_succeeded"
     return jsonable({
@@ -180,7 +183,9 @@ def _designs(req: AnalysisRequest, project: dict) -> list[dict]:
         clean = []
         for j, f in enumerate(fc["features"]):
             loc = ["designs", i, "features", "features", j]
-            props = (f or {}).get("properties") or {}
+            if not isinstance(f, dict):
+                raise _err(loc, "Each feature must be a GeoJSON Feature object.")
+            props = f.get("properties") or {}
             ftype = props.get("feature_type")
             if ftype not in plans.FEATURE_TYPES:
                 raise _err(loc + ["properties", "feature_type"], f"Unknown or missing feature_type {ftype!r}. Use one of: {', '.join(plans.FEATURE_TYPES)}.")
@@ -194,9 +199,9 @@ def _designs(req: AnalysisRequest, project: dict) -> list[dict]:
                 raise _err(loc + ["geometry"], str(exc))
             if g.is_empty or not g.is_valid:
                 raise _err(loc + ["geometry"], "The geometry is empty or invalid (for example self-intersecting). Run extract_plan(), which repairs and flags such shapes.")
-            if (props.get("units_unconfirmed")):
+            if plans.has_unconfirmed_units([props]):
                 raise _err(loc + ["properties", "units_unconfirmed"], "The feature comes from a drawing with unconfirmed units; confirm the units are metres first.")
-            vertices += len(json.dumps(f["geometry"]["coordinates"])) // 8  # cheap upper-bound proxy
+            vertices += shapely.get_num_coordinates(g)  # works for every geometry type, incl. GeometryCollection
             attrs, issues = plans._attributes(props)
             if issues:
                 raise _err(loc + ["properties"], " ".join(issues))
@@ -211,8 +216,6 @@ def _designs(req: AnalysisRequest, project: dict) -> list[dict]:
 
 def _settings(req: AnalysisRequest, project: dict) -> dict:
     payload = {k: v for k, v in req.settings.model_dump().items() if v is not None}
-    if req.site.climate_period:
-        payload.pop("climate_period", None)
     try:
         return resolve_config(project, payload)
     except RunError as exc:
@@ -269,7 +272,8 @@ def _dataset(ds: dict, root: Path) -> dict:
     return out | approval_info(ds["source_id"])
 
 
-def _compare(req: AnalysisRequest, project: dict, designs: list[dict], raw: dict, rates: list[dict]) -> dict:
+def _check_compare(req: AnalysisRequest, designs: list[dict]) -> tuple[dict, list[dict]]:
+    """Validate the comparison block up front, so a bad request fails before any analysis runs."""
     c = req.compare
     by_id = {d["id"]: d for d in designs}
     base = by_id.get(c.baseline_id)
@@ -281,6 +285,15 @@ def _compare(req: AnalysisRequest, project: dict, designs: list[dict], raw: dict
         if not a or a["kind"] != "alternative":
             raise _err(["compare", "alternative_ids", i], f"{aid} is not an alternative design of this request.")
         alts.append(a)
+    for i, cr in enumerate(c.criteria or []):
+        if cr.metric not in comparison.PREFERRED:
+            raise _err(["compare", "criteria", i, "metric"], f"'{cr.metric}' has no agreed preferred direction and cannot be used as a ranking criterion.")
+    return base, alts
+
+
+def _compare(req: AnalysisRequest, project: dict, compare_designs: tuple[dict, list[dict]], raw: dict, rates: list[dict]) -> dict:
+    c = req.compare
+    base, alts = compare_designs
     ids = [base["id"]] + [a["id"] for a in alts]
     metrics = {i: {m["metric_name"]: m for m in raw[i]["metrics"]} for i in ids}
     checks = {i: ((raw[i]["module_status"].get("planning_compliance") or {}).get("details") or {}).get("checks", []) for i in ids}
@@ -308,7 +321,14 @@ def extract_plan(filename: str, content: bytes, site: dict[str, Any], epsg: str 
         detected, warnings = files.validate_upload(filename, content, "urban_plan")
     except files.UploadError as exc:
         raise _err(["file"], str(exc))
-    proj = {"id": None, "latitude": float(site["latitude"]), "longitude": float(site["longitude"]), "boundary": site.get("boundary")}
+    # Validate the site the same way analyse() does, so a Feature / FeatureCollection boundary works
+    # and a bad one is a located input error rather than a crash.
+    try:
+        lat, lon = geo.validate_coordinates(site.get("latitude"), site.get("longitude"))
+        boundary = geo.validate_boundary(site["boundary"], lat, lon)[0] if site.get("boundary") is not None else None
+    except geo.GeometryError as exc:
+        raise _err(["site"], str(exc))
+    proj = {"id": None, "latitude": lat, "longitude": lon, "boundary": boundary}
     with tempfile.TemporaryDirectory(prefix="urbanova_plan_") as tmp:
         path = Path(tmp) / ("plan" + Path(filename).suffix.lower())
         path.write_bytes(content)
