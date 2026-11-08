@@ -16,7 +16,7 @@ OBJECTIVES = {
     "planning_compliance": "Does the design comply with the verified planning rules?",
     "data_gaps": "What data is still needed for a reliable assessment?",
 }
-EDITABLE = {"name", "description", "project_type", "country", "city_or_address", "objectives", "analysis_period"}
+EDITABLE = {"name", "description", "project_type", "country", "city_or_address", "objectives", "analysis_period", "ai_enabled"}
 
 
 class ProjectError(ValueError):
@@ -91,6 +91,10 @@ def update_project(project: dict, user: dict, payload: dict) -> tuple[dict, list
             val = (val or "").strip()
             if not val:
                 raise ProjectError("A project name is required.")
+        elif key == "ai_enabled":
+            if not isinstance(val, bool):
+                raise ProjectError("ai_enabled must be true or false.")
+            val = int(val)
         elif key == "project_type" and val and val not in PROJECT_TYPES:
             raise ProjectError(f"Project type must be one of: {', '.join(PROJECT_TYPES)}.")
         elif key == "objectives":
@@ -161,6 +165,7 @@ def missing_information(project: dict) -> list[dict]:
 def public_project(project: dict, role: str | None = None) -> dict:
     out = {k: v for k, v in project.items() if k != "history"}
     out["location_confirmed"] = bool(project.get("location_confirmed"))
+    out["ai_enabled"] = bool(project.get("ai_enabled"))
     out["site_area_m2"] = site_area_m2(project)
     out["local_crs"] = geo.utm_crs_for(project["latitude"], project["longitude"])
     if role:

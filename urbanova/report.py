@@ -255,6 +255,19 @@ def _basis_rows(run: dict) -> list[list[str]]:
 BASIS_HEADER = ["Value", "Setting", "Basis", "References", "Applies to", "Status"]
 
 
+def _insights(run: dict) -> dict | None:
+    rows = db.select("insights", "run_id = ?", [run["id"]], order="created_at DESC")
+    return rows[0] if rows else None
+
+
+def _insight_lines(ins: dict) -> list[tuple[str, list[str]]]:
+    """(heading, ["text [ids]", ...]) for the executive insights block."""
+    titles = (("site_status", "Site status"), ("top_issues", "Main problems (priority order)"), ("attention_first", "What needs attention first"),
+              ("limitations", "Limitations"))
+    out = [(t, [f"{c['text']} [{', '.join(c.get('evidence_ids') or []) or 'run summary'}]" for c in ins["blocks"].get(k) or []]) for k, t in titles]
+    return [x for x in out if x[1]]
+
+
 def _html(project, run, bundle, scenario, files_, rules, comparison, summary, map_png, clim_png) -> str:
     ms = run.get("module_status") or {}
     rows = []
@@ -262,6 +275,13 @@ def _html(project, run, bundle, scenario, files_, rules, comparison, summary, ma
     sec.append(f"<h1>URBANOVA analysis report — {_e(project['name'])}</h1>")
     banner = "ok" if summary["complete"] else "warn"
     sec.append(f'<p class="banner {banner}"><strong>Report status: {_e(summary["label"])}.</strong> URBANOVA is a decision-support tool; this report is not a statutory approval, engineering design or professional sign-off.</p>')
+    ins = _insights(run)
+    if ins:
+        label = ins["label"] + (f" ({ins['model']})" if ins.get("model") else "")
+        sec.append(f"<section class='insights'><h2>Insights</h2><p><em>{_e(label)}. Evidence ids in brackets refer to records in this report.</em></p>")
+        for head, lines in _insight_lines(ins):
+            sec.append(f"<h3>{_e(head)}</h3><ul>" + "".join(f"<li>{_e(x)}</li>" for x in lines) + "</ul>")
+        sec.append("</section>")
     sec.append("<h2>" + SECTIONS[0] + "</h2><table>")
     for k, v in (("Project ID", project["id"]), ("Type", project.get("project_type") or "not stated"), ("Location", f"{project['latitude']:.5f}, {project['longitude']:.5f} (WGS 84)"),
                  ("Country / address", " / ".join(x for x in (project.get("country"), project.get("city_or_address")) if x) or "not stated"),
@@ -448,8 +468,17 @@ def _pdf(path: Path, project, run, bundle, scenario, files_, rules, comparison, 
     ms = run.get("module_status") or {}
     h = lambda i: Paragraph(SECTIONS[i], ss["Heading2"])
     bullet = lambda t: Paragraph(f"• {_e(t)}", small)
-    story.insert(3, h(0))
-    story.insert(4, table([["Item", "Value"]] + [
+    ins = _insights(run)
+    block = []
+    if ins:
+        label = ins["label"] + (f" ({ins['model']})" if ins.get("model") else "")
+        block = [Paragraph("Insights", ss["Heading2"]), Paragraph(f"<i>{_e(label)}</i>", small)]
+        for head, lines in _insight_lines(ins):
+            block.append(Paragraph(f"<b>{_e(head)}</b>", small))
+            block += [Paragraph(f"• {_e(x)}", small) for x in lines]
+        story[3:3] = block
+    story.insert(3 + len(block), h(0))
+    story.insert(4 + len(block), table([["Item", "Value"]] + [
         ["Project", f"{project['name']} ({project['id']})"], ["Type", project.get("project_type") or "not stated"],
         ["Location", f"{project['latitude']:.5f}, {project['longitude']:.5f} (WGS 84)"],
         ["Site boundary", "supplied" if project.get("boundary") else "not supplied — point-buffer statistics"],

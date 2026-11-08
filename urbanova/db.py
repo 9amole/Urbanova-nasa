@@ -132,6 +132,11 @@ CREATE INDEX IF NOT EXISTS ix_features_project ON features(project_id);
 CREATE INDEX IF NOT EXISTS ix_metrics_run ON metrics(run_id);
 CREATE INDEX IF NOT EXISTS ix_findings_run ON findings(run_id);
 CREATE INDEX IF NOT EXISTS ix_hotspots_run ON hotspots(run_id);
+CREATE TABLE IF NOT EXISTS insights (
+    id TEXT PRIMARY KEY, run_id TEXT NOT NULL, pack_hash TEXT NOT NULL, blocks TEXT NOT NULL, generated_by TEXT NOT NULL,
+    provider TEXT, model TEXT, prompt_version TEXT, label TEXT, reason TEXT, attempts TEXT, created_by TEXT, created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS ix_insights_run ON insights(run_id);
 CREATE INDEX IF NOT EXISTS ix_datasets_cache ON datasets(cache_key);
 """
 
@@ -148,13 +153,16 @@ MIGRATIONS: list[tuple[str, str, str]] = [
     ("recommendations", "cost", "TEXT"),
     ("recommendations", "literature", "TEXT"),
     ("findings", "checks", "TEXT"),
+    ("projects", "ai_enabled", "INTEGER DEFAULT 0"),
+    ("features", "suggestion", "TEXT"),
 ]
 
 # Columns holding JSON documents, decoded automatically on read.
 JSON_COLUMNS: dict[str, set[str]] = {
     "projects": {"boundary", "objectives", "analysis_period", "history"},
     "files": {"validation", "source_metadata"},
-    "features": {"geometry", "original_geometry", "attributes", "correction_history"},
+    "features": {"geometry", "original_geometry", "attributes", "correction_history", "suggestion"},
+    "insights": {"blocks", "attempts"},
     "datasets": {
         "request_params", "spatial_coverage", "time_coverage", "variables", "units", "quality",
         "provenance", "parent_ids", "scene_ids",

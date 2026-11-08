@@ -73,3 +73,6 @@ details summary { cursor: pointer; color: var(--info); font-size: 13px; }
 .leaflet-tooltip.hs-num::before { display: none; }
 .hs-list { display: grid; gap: 12px; }
 table.opts td { vertical-align: top; }
+/* Insights (S4) */
+.flash { outline: 3px solid #f9a825; transition: outline-color 1s; }
+a.ev { font-size: .8em; }

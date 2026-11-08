@@ -270,6 +270,8 @@ async function tabOverview(el, data) {
      <div class="row"><div style="flex:1"><label for="ed-sy">Climate period start year</label><input id="ed-sy" type="number" value="${p.analysis_period?.start_year || ""}" placeholder="default: last 5 full years"></div>
      <div style="flex:1"><label for="ed-ey">End year</label><input id="ed-ey" type="number" value="${p.analysis_period?.end_year || ""}"></div></div>
      </div><div><fieldset><legend>Analysis objectives</legend>${Object.entries(state.meta.objectives).map(([k, q]) => `<label class="check"><input type="checkbox" name="eobj" value="${k}" ${p.objectives.includes(k) ? "checked" : ""}> ${esc(q)}</label>`).join("")}</fieldset>
+     <fieldset><legend>AI text</legend><label class="check"><input type="checkbox" id="ed-ai" ${p.ai_enabled ? "checked" : ""}> Allow AI-written insights and suggestions for this project</label>
+      <p class="hint">When on, a compact summary of this project's results (metric values, hotspot summaries and record ids; for suggestions, the planning document's page text or CAD layer names) is sent to the configured AI provider (${esc((state.meta.ai?.providers || []).filter((x) => x.configured).map((x) => x.name).join(", ") || "none configured")}). Files, drawings and personal data are never sent. Every AI output is checked against the evidence and replaced by an automatic summary when it fails.</p></fieldset>
      <p><button type="submit">Save changes</button></p><p id="ed-err" class="err" role="alert"></p></div></form></section>` : ""}
    <section class="panel"><details><summary>Project history (${data.history.length} events)</summary><table>${data.history.map((h) => `<tr><td class="mono">${esc(h.at)}</td><td>${esc(h.event)}</td><td class="mono">${esc((h.fields || []).join(", "))}</td></tr>`).join("")}</table></details></section>`;
   const map = makeMap("ov-map", p.latitude, p.longitude, p.boundary ? 16 : 15);
@@ -282,7 +284,7 @@ async function tabOverview(el, data) {
     e.preventDefault();
     const errEl = document.getElementById("ed-err"); errEl.textContent = "";
     try {
-      const body = { name: e.target["ed-name"].value, objectives: [...document.querySelectorAll("input[name=eobj]:checked")].map((x) => x.value) };
+      const body = { name: e.target["ed-name"].value, objectives: [...document.querySelectorAll("input[name=eobj]:checked")].map((x) => x.value), ai_enabled: document.getElementById("ed-ai").checked };
       const lat = parseFloat(e.target["ed-lat"].value), lon = parseFloat(e.target["ed-lon"].value);
       if (lat !== p.latitude || lon !== p.longitude) { body.latitude = lat; body.longitude = lon; }
       const text = await readFileText(document.getElementById("ed-boundary"));
@@ -295,6 +297,15 @@ async function tabOverview(el, data) {
       notify("Project updated.", "ok"); route();
     } catch (err) { errEl.textContent = err.message; }
   };
+}
+
+function wireSuggest(el) {
+  el.querySelectorAll(".ai-sug").forEach((b) => (b.onclick = () => guarded(async () => {
+    const r = await api(`/files/${b.dataset.fid}/suggest-${b.dataset.kind}`, { method: "POST" });
+    notify(b.dataset.kind === "rules" ? `${r.added?.length || 0} candidate rule(s) suggested; ${r.rejected?.length || 0} rejected (quote not found on the page or invalid). Verify them on the Planning rules screen.`
+      : `${r.suggested || 0} feature(s) got a suggested type. Review them below.`, "ok");
+    route();
+  }, b)));
 }
 
 async function tabInputs(el, data) {
@@ -322,7 +333,9 @@ async function tabInputs(el, data) {
      <td>${badge([f.status, f.status === "failed" ? "b-bad" : f.status.startsWith("flagged") || f.status === "stored_reference_only" ? "b-warn" : "b-ok"])}</td>
      <td>${[...(f.validation?.errors || []).map((x) => `<div class="err">${esc(x)}</div>`), ...(f.validation?.warnings || []).map((x) => `<div>${esc(x)}</div>`),
         f.validation?.outcome?.message ? `<div>${esc(f.validation.outcome.message)}</div>` : "", ...(f.validation?.outcome?.notes || []).map((x) => `<div class="muted">${esc(x)}</div>`),
-        ...(f.validation?.outcome?.issues || []).map((x) => `<div class="muted">${esc(typeof x === "string" ? x : x.message)}</div>`)].join("")}</td></tr>`).join("") || `<tr><td colspan="5">No files. A coordinate-only project can still run climate, context and satellite analyses.</td></tr>`}
+        ...(f.validation?.outcome?.issues || []).map((x) => `<div class="muted">${esc(typeof x === "string" ? x : x.message)}</div>`)].join("")}
+       ${canEdit && p.ai_enabled && f.category === "planning_document" ? `<button class="small ai-sug" data-kind="rules" data-fid="${f.id}">Suggest rules with AI</button>` : ""}
+       ${canEdit && p.ai_enabled && f.category === "urban_plan" ? `<button class="small ai-sug" data-kind="layers" data-fid="${f.id}">Suggest layer types with AI</button>` : ""}</td></tr>`).join("") || `<tr><td colspan="5">No files. A coordinate-only project can still run climate, context and satellite analyses.</td></tr>`}
   </tbody></table></section>
   <section class="panel"><h2>Extracted plan features (${active.length})</h2>
    <p class="hint">Review the classification of every feature before creating the baseline. Corrections are stored as explicit changes; the original extraction is kept.</p>
@@ -338,7 +351,8 @@ async function tabInputs(el, data) {
      <td><select aria-label="Feature type" data-k="feature_type" ${canEdit ? "" : "disabled"}>${Object.entries(state.meta.feature_types).map(([k, v]) => `<option value="${k}" ${k === f.feature_type ? "selected" : ""}>${esc(v)}</option>`).join("")}</select></td>
      <td><input aria-label="Height in metres" data-k="height_m" type="number" step="any" min="0" value="${f.attributes?.height_m ?? ""}" style="width:80px" ${canEdit ? "" : "disabled"}></td>
      <td><input aria-label="Floors" data-k="floors" type="number" step="1" min="0" value="${f.attributes?.floors ?? ""}" style="width:64px" ${canEdit ? "" : "disabled"}></td>
-     <td>${badge([f.review_status.replace("_", " "), f.review_status === "needs_review" ? "b-warn" : "b-ok"])}<div class="muted">${esc(f.classification_confidence)}</div></td>
+     <td>${badge([f.review_status.replace("_", " "), f.review_status === "needs_review" ? "b-warn" : "b-ok"])}<div class="muted">${esc(f.classification_confidence)}</div>
+       ${f.suggestion ? `<div class="muted">AI suggests: <strong>${esc(state.meta.feature_types[f.suggestion.feature_type] || f.suggestion.feature_type)}</strong> — ${esc(f.suggestion.reason)} (choose it in the list and save to apply)</div>` : ""}</td>
      <td>${canEdit ? `<button class="small save-f">Save</button>` : ""}</td></tr>`).join("") || `<tr><td colspan="6">No plan features. Upload a GeoJSON or DXF plan.</td></tr>`}
    </tbody></table></div></div>
    ${canEdit && active.length ? `<p><button id="mk-base" class="primary">${baselineExists ? "Replace baseline with current features" : "Create baseline scenario from these features"}</button>
@@ -386,6 +400,7 @@ async function tabInputs(el, data) {
       } catch (err) { errEl.textContent = err.message; btn.disabled = false; btn.textContent = "Upload"; }
     };
   }
+  wireSuggest(el);
   el.querySelectorAll(".save-f").forEach((b) => (b.onclick = () => guarded(async () => {
     const tr = b.closest("tr");
     const f = active.find((x) => x.id === tr.dataset.fid);
@@ -623,6 +638,34 @@ function optionsTable(recs) {
     <p class="hint">${recs.some((r) => r.options.some((o) => o.ranking_mode === "benefit_and_cost")) ? "Priced options are ranked on measured benefit and typical cost. " : ""}${recs.some((r) => r.options.some((o) => o.ranking_mode === "benefit_per_quantity")) ? "Options without a comparable price are compared only within their own intervention, on benefit per unit of quantity." : ""}</p></details>`;
 }
 
+const BLOCK_TITLES = { site_status: "Site status", top_issues: "Main problems (priority order)", attention_first: "What needs attention first", limitations: "Limitations" };
+
+function claimHtml(c) {
+  const ids = (c.evidence_ids || []).map((i) => `<a href="#" class="ev mono" data-ev="${esc(i)}">${esc(i)}</a>`).join(" ");
+  return `<li>${esc(c.text)} ${ids ? `<span class="muted">[${ids}]</span>` : ""}</li>`;
+}
+
+async function renderInsights(rid, p) {
+  const box = document.getElementById("ins-body");
+  if (!box) return;
+  const ins = await api(`/analysis-runs/${rid}/insights`);
+  const canEdit = p.role !== "viewer";
+  const btn = canEdit ? `<button class="small" id="ins-make">${ins ? "Regenerate" : "Write insights"}</button>` : "";
+  if (!ins) { box.innerHTML = `<p>No insights yet. ${p.ai_enabled ? "AI text is on for this project." : "AI text is off for this project, so an automatic summary is written."}</p>${btn}`; }
+  else {
+    const qs = Object.fromEntries((state.meta.objectives ? Object.entries(state.meta.objectives) : []).map(([k, v]) => [`q_${k}`, v]));
+    box.innerHTML = `<p>${badge([ins.generated_by === "ai" ? `AI-written (${ins.model})` : "AI text unavailable — automatic summary", ins.generated_by === "ai" ? "b-info" : "b-mute"])}
+      <span class="muted">${esc(ins.label)}${ins.reason ? ` — ${esc(ins.reason)}` : ""}</span></p>
+      ${["site_status", "top_issues", "attention_first"].map((b) => (ins.blocks[b] || []).length ? `<h3>${BLOCK_TITLES[b]}</h3><ul>${ins.blocks[b].map(claimHtml).join("")}</ul>` : "").join("")}
+      ${(ins.blocks.answers || []).length ? `<h3>Your questions</h3>${ins.blocks.answers.map((a) => `<p><strong>${esc(qs[a.question_id] || a.question_id)}</strong></p><ul>${a.claims.map(claimHtml).join("")}</ul>`).join("")}` : ""}
+      <details><summary>${BLOCK_TITLES.limitations} (${(ins.blocks.limitations || []).length})</summary><ul>${(ins.blocks.limitations || []).map(claimHtml).join("")}</ul></details>
+      <p class="hint">Generated ${esc(ins.created_at)} · evidence pack ${esc(ins.pack_hash)} · prompt ${esc(ins.prompt_version)}</p>${btn}`;
+  }
+  box.querySelectorAll(".ev").forEach((a) => (a.onclick = (e) => { e.preventDefault(); const t = document.getElementById(`ev-${a.dataset.ev}`); if (t) { t.scrollIntoView({ behavior: "smooth", block: "center" }); t.classList.add("flash"); setTimeout(() => t.classList.remove("flash"), 1500); } else notify("That record is listed in the evidence pack (see Metrics, Findings or Hotspots).", "info"); }));
+  const mk = document.getElementById("ins-make");
+  if (mk) mk.onclick = () => guarded(async () => { mk.textContent = "Writing…"; await api(`/analysis-runs/${rid}/insights`, { method: "POST" }); await renderInsights(rid, p); }, mk);
+}
+
 function hotspotsPanel(hotspots, context, profile, mod, recs = [], intv = null, runId = "", canEdit = false) {
   if (!mod || mod.status === "skipped") return "";
   const notes = mod.details?.notes || [];
@@ -631,7 +674,7 @@ function hotspotsPanel(hotspots, context, profile, mod, recs = [], intv = null, 
    <p class="hint">Places on the drawing with a measured problem, numbered by priority (severity, then area) and shown on the map. Severity: PHASE2_SPEC §4.2 table; heat stress on the UTCI scale.</p>
    ${hotspots.length ? "" : `<p>No design hotspots. ${esc(notes.join(" ") || mod.reason || "")}</p>`}
    <div class="hs-list">${hotspots.map((h) => { const su = sm(h, "utci_sun_peak_c"), sh = sm(h, "utci_shade_peak_c");
-     return `<div class="panel hs"><h3><span class="hs-badge">${h.number}</span> <span class="badge sev-${esc(h.severity)}">${esc(h.severity.toUpperCase())}${h.severity_capped ? " (PROVISIONAL)" : ""}</span> ${esc(h.type_labels.join(" + "))}</h3>
+     return `<div class="panel hs" id="ev-${esc(h.id)}"><h3><span class="hs-badge">${h.number}</span> <span class="badge sev-${esc(h.severity)}">${esc(h.severity.toUpperCase())}${h.severity_capped ? " (PROVISIONAL)" : ""}</span> ${esc(h.type_labels.join(" + "))}</h3>
       <p>${fmt(h.area_m2, 0)} m² (${fmt(h.site_share_pct, 1)} % of the site${h.site_wide ? ", site-wide" : ""}) · size ${esc(h.size_class)} · intensity ${esc(h.intensity)}</p>
       ${su && sh ? `<p>UTCI in sun up to <strong>${fmt(su.value, 1)} °C</strong>, in shade ${fmt(sh.value, 1)} °C</p>` : ""}
       ${h.likely_causes.length ? `<ul>${h.likely_causes.map((c) => `<li><span class="mono">${esc(c.code)}</span> ${esc(c.text)}</li>`).join("")}</ul>` : `<p class="muted">None of the listed cause rules matched.</p>`}
@@ -681,12 +724,13 @@ async function tabResults(el, data, runId) {
     ${skipped.length ? ` Not selected for this run: ${skipped.map((s) => esc(s.label)).join("; ")}.` : ""}</div>
    <h3>Your questions</h3><ul>${b.objectives.map((o) => `<li>${esc(o.question)} — ${!o.answerable ? badge(["cannot be answered with available data", "b-bad"]) : o.not_available?.length ? badge(["partly answered — some evidence unavailable", "b-warn"]) : badge(["answered with available evidence", "b-ok"])}
      ${o.not_available?.length ? `<div class="muted">${o.not_available.map(esc).join("<br>")}</div>` : ""}</li>`).join("")}</ul></section>
+  <section class="panel" id="insights-panel"><h2>Insights</h2><div id="ins-body" aria-live="polite"><p class="muted">Loading…</p></div></section>
   <section class="panel"><h2>Map</h2><div class="grid"><div id="rs-map" class="map" style="height:520px"></div><div><div id="rs-layers" class="layerctl"></div><div id="rs-legend"></div>
    <p class="hint">Colours of value kinds: ${Object.keys(KIND).map(kindBadge).join(" ")}</p></div></div></section>
   ${hotspotsPanel(hotspots, context, profile, ms.hotspots, b.recommendations, ms.interventions, rid, p.role !== "viewer")}
   <section class="panel"><h2>Findings (${concerns.length})</h2>
    ${concerns.length ? "" : `<p>No rule-based findings were triggered by the available evidence. This is not proof that the site has no issues — check the analyses that could not run.</p>`}
-   ${concerns.map((f) => { const prov = f.threshold?.status === "provisional_not_approved"; return `<div class="panel"><h3><span class="badge sev-${esc(f.severity)}">${esc(f.severity.toUpperCase())}${prov ? " (PROVISIONAL)" : ""}</span> ${prov ? badge([f.threshold.severity_capped ? `Provisional threshold — not approved; capped from ${f.threshold.band_level}` : "Provisional threshold — not approved", "b-warn"]) : ""} ${esc(f.title)}</h3>
+   ${concerns.map((f) => { const prov = f.threshold?.status === "provisional_not_approved"; return `<div class="panel" id="ev-${esc(f.id)}"><h3><span class="badge sev-${esc(f.severity)}">${esc(f.severity.toUpperCase())}${prov ? " (PROVISIONAL)" : ""}</span> ${prov ? badge([f.threshold.severity_capped ? `Provisional threshold — not approved; capped from ${f.threshold.band_level}` : "Provisional threshold — not approved", "b-warn"]) : ""} ${esc(f.title)}</h3>
      ${f.affected_area ? `<p class="muted">Affected area: <strong>${esc(f.affected_area)}</strong></p>` : ""}<p>${esc(f.summary)}</p><p class="muted">${esc(f.classification.replace(/_/g, " "))} · confidence: ${esc(f.confidence)} · ${esc(f.severity_rule)}</p>
      <details><summary>Evidence, sources and limitations</summary><ul>${(f.evidence || []).map((e) => `<li>${esc(e.label || e.metric || "")}: ${e.value !== undefined ? `${fmt(e.value, 3)} ${esc(e.unit || "")}` : esc(e.reason || "")} ${e.output_kind ? kindBadge(e.output_kind) : ""} <span class="muted">${esc(e.method || e.rule_text || "")}</span></li>`).join("")}</ul>
        <p><strong>Threshold:</strong> ${esc(f.threshold?.justification || JSON.stringify(f.threshold || "") )}</p><ul>${(f.limitations || []).map((x) => `<li>${esc(x)}</li>`).join("")}</ul>
@@ -704,7 +748,7 @@ async function tabResults(el, data, runId) {
    ${Object.entries(ms).map(([mod, s]) => `<div class="panel"><h3>${esc(s.label)} ${condBadge(mod)} ${badge(MOD_STATUS[s.status])} ${run.stale_modules[mod] ? badge(["out of date", "b-warn"]) : ""}</h3>
      ${s.reason ? `<p class="state">${esc(s.reason)}</p>` : ""}${(s.warnings || []).map((w) => `<div class="alert warn">${esc(w)}</div>`).join("")}
      ${(s.provider_failures || []).length ? `<p class="muted">Provider failures: ${s.provider_failures.map((x) => esc(`${x.provider}: ${x.message}`)).join("; ")}</p>` : ""}
-     ${(byMod[mod] || []).length ? `<table>${byMod[mod].map((m) => `<tr><td>${esc(m.label)}${modCondition(mod) === "design" && metricCondition(m) === "existing" ? ` <span class="muted">(same for every design)</span>` : ""}<details><summary>method</summary><span class="muted">${esc(m.method)}</span></details></td><td>${metricValue(m)}</td><td>${kindBadge(m.output_kind)}</td></tr>`).join("")}</table>` : ""}
+     ${(byMod[mod] || []).length ? `<table>${byMod[mod].map((m) => `<tr id="ev-${esc(m.id)}"><td>${esc(m.label)}${modCondition(mod) === "design" && metricCondition(m) === "existing" ? ` <span class="muted">(same for every design)</span>` : ""}<details><summary>method</summary><span class="muted">${esc(m.method)}</span></details></td><td>${metricValue(m)}</td><td>${kindBadge(m.output_kind)}</td></tr>`).join("")}</table>` : ""}
      ${(s.limitations || []).length ? `<details><summary>Limitations</summary><ul>${s.limitations.map((x) => `<li>${esc(x)}</li>`).join("")}</ul></details>` : ""}
      ${s.details?.accepted_scenes ? `<details><summary>Satellite scenes used (${s.details.accepted_scenes.length}) / excluded (${s.details.excluded_scenes.length})</summary><ul>${s.details.accepted_scenes.map((x) => `<li class="mono">✓ ${esc(x.scene_id)} ${esc(x.datetime.slice(0, 10))} cloud ${fmt(x.cloud_cover_pct, 1)}%, site valid ${fmt(x.valid_site_fraction * 100, 0)}%</li>`).join("")}${s.details.excluded_scenes.map((x) => `<li class="mono muted">✗ ${esc(x.scene_id)} ${esc(x.datetime.slice(0, 10))}: ${esc(x.reason)}</li>`).join("")}</ul></details>` : ""}
    </div>`).join("")}</div></section>
@@ -716,6 +760,7 @@ async function tabResults(el, data, runId) {
      <td class="mono">${esc(d.time_coverage?.start ? `${d.time_coverage.start} – ${d.time_coverage.end}` : (d.time_coverage?.scenes || []).map((x) => x.slice(0, 10)).join(", ") || d.time_coverage?.osm_snapshot || "")}</td><td>${esc(d.license || "")}<div class="muted">${esc(d.attribution || "")}</div></td><td>${badge([d.approval_label || "unknown", (["approved", "fr_recommended"].includes(d.approval_status) && d.terms_confirmed) || d.approval_status === "fr_required" ? "b-ok" : "b-warn"])}<div class="muted">usage: ${esc(d.usage_context || "")}</div></td></tr>`).join("") || `<tr><td colspan="6">No external datasets in this run.</td></tr>`}</tbody></table>
    <details><summary>Run configuration and fingerprint</summary><pre class="mono">${esc(JSON.stringify({ configuration: run.configuration, fingerprint: run.fingerprint, analysis_version: run.analysis_version, software_version: run.software_version }, null, 1))}</pre></details></section>`;
   document.getElementById("rs-run").onchange = (e) => (location.hash = `#/p/${pid}/results/${e.target.value}`);
+  renderInsights(rid, p);
   const pkgBtn = document.getElementById("pkg-draft");
   if (pkgBtn) pkgBtn.onclick = () => guarded(async () => { const s = await api(`/analysis-runs/${pkgBtn.dataset.rid}/package/draft`, { method: "POST" }); location.hash = `#/p/${pid}/scenarios/${s.id}`; }, pkgBtn);
   // map with toggleable layers

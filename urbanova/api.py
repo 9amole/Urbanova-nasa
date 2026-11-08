@@ -11,6 +11,11 @@ from fastapi import Depends, FastAPI, File, Form, Header, Request, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 
+from starlette.concurrency import run_in_threadpool
+
+from .ai import insights as ai_insights
+from .ai import llm as ai_llm
+from .ai import suggest as ai_suggest
 from . import __version__, comparison, cost, db, documents, explain, files, geo, orchestrator, plans, projects, readiness, report, scenarios, security, supplementary
 from .catalog import public_dataset
 from .providers import geocode
@@ -22,7 +27,8 @@ app = FastAPI(title="URBANOVA Phase 1 API", version=__version__, docs_url="/api/
 API = "/api/v1"
 
 DOMAIN_ERRORS = (projects.ProjectError, geo.GeometryError, plans.PlanError, documents.DocumentError, scenarios.ScenarioError,
-                 orchestrator.RunError, comparison.ComparisonError, cost.CostError, supplementary.SupplementaryError, geocode.GeocodeError)
+                 orchestrator.RunError, comparison.ComparisonError, cost.CostError, supplementary.SupplementaryError, geocode.GeocodeError,
+                 ai_suggest.SuggestError)
 
 
 class NotFound(Exception):
@@ -125,7 +131,7 @@ def meta():
         "feature_types": plans.FEATURE_TYPES, "rule_types": documents.RULE_TYPES, "quantity_types": cost.QUANTITY_TYPES,
         "upload_categories": {k: {**v, "capabilities": {t: files.CAPABILITIES[t] for t in v["types"]}} for k, v in files.ALLOWLIST.items()},
         "max_upload_mb": settings.max_upload_mb, "analyses": readiness.ANALYSES, "runnable_modules": readiness.RUNNABLE,
-        "default_config": orchestrator.DEFAULT_CONFIG, "module_condition": readiness.CONDITION,
+        "default_config": orchestrator.DEFAULT_CONFIG, "module_condition": readiness.CONDITION, "ai": ai_llm.status(),
         "basemap": {"url": settings.tile_url, "attribution": settings.tile_attribution, "max_zoom": settings.tile_max_zoom,
                     "is_osm_volunteer_service": "tile.openstreetmap.org" in settings.tile_url},
     }
@@ -545,10 +551,66 @@ def explain_finding(fid: str, user: dict = Depends(current_user)):
     return explain.explain_finding(f, db.select("recommendations", "finding_id = ?", [fid]))
 
 
+def _ai_allowed(project: dict, role: str) -> bool:
+    """The single AI policy: the project switched AI text on, and the user may edit (model calls spend the shared budget)."""
+    return bool(project.get("ai_enabled")) and role != "viewer"
+
+
+def _suggest_target(fid: str, user: dict, category: str) -> tuple[dict, dict]:
+    f, p = _owned("files", fid, user, "editor")
+    if f["category"] != category:
+        raise ai_suggest.SuggestError(f"This needs a file of category '{category}'.")
+    if not p.get("ai_enabled"):
+        raise ai_suggest.SuggestError("Switch AI text on for this project first (Project settings).")
+    return f, p
+
+
+@app.post(f"{API}/analysis-runs/{{rid}}/insights", status_code=201)
+def make_insights(rid: str, user: dict = Depends(current_user)):
+    """Generate the run's insights (AI when the project switched it on and a provider is available, else the automatic summary)."""
+    r, _ = _run(rid, user, "editor")
+    p, role = _project(r["project_id"], user, "editor")
+    out = ai_insights.generate(orchestrator.run_bundle(r), _ai_allowed(p, role))
+    rec = {"id": db.new_id("ins"), "run_id": rid, "pack_hash": out["pack_hash"], "blocks": out["blocks"], "generated_by": out["generated_by"],
+           "provider": out["provider"], "model": out["model"], "prompt_version": out["prompt_version"], "label": out["label"],
+           "reason": out.get("reason"), "attempts": out["attempts"], "created_by": user["id"], "created_at": db.now()}
+    db.insert("insights", rec)
+    return rec
+
+
+@app.get(f"{API}/analysis-runs/{{rid}}/insights")
+def get_insights(rid: str, user: dict = Depends(current_user)):
+    _run(rid, user)
+    rows = db.select("insights", "run_id = ?", [rid], order="created_at DESC")
+    return rows[0] if rows else None
+
+
+@app.post(f"{API}/files/{{fid}}/suggest-rules")
+def suggest_rules(fid: str, user: dict = Depends(current_user)):
+    f, p = _suggest_target(fid, user, "planning_document")
+    return ai_suggest.suggest_rules(p, f)
+
+
+@app.post(f"{API}/files/{{fid}}/suggest-layers")
+def suggest_layers(fid: str, user: dict = Depends(current_user)):
+    f, p = _suggest_target(fid, user, "urban_plan")
+    return ai_suggest.suggest_layers(p, f)
+
+
 @app.post(f"{API}/analysis-runs/{{rid}}/ask")
 async def ask(rid: str, request: Request, user: dict = Depends(current_user)):
     r, _ = _run(rid, user)
-    return explain.answer((await _json(request)).get("question", ""), orchestrator.run_bundle(r))
+    p, role = _project(r["project_id"], user)
+    question = (await _json(request)).get("question", "")
+    if explain.PREDICTION.search(question or ""):
+        return explain.answer(question, {})  # prediction questions get the fixed refusal, never a model
+    bundle = await run_in_threadpool(orchestrator.run_bundle, r)
+    # The model call is blocking network I/O: keep it off the event loop.
+    ai = await run_in_threadpool(ai_insights.answer, bundle, question, _ai_allowed(p, role))
+    if ai and ai.get("answer"):
+        return ai
+    out = explain.answer(question, bundle)
+    return {**out, "generated_by": "fallback"} if ai is not None else out
 
 
 @app.post(f"{API}/recommendations/{{rec_id}}/review")

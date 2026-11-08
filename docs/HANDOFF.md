@@ -77,6 +77,8 @@ Exit codes: 0 success, 2 invalid input (the errors are printed as JSON), 1 unexp
 
 ## 4. The contract
 
+**AI text (S4).** `urbanova.ai.generate_insights(bundle, ai_allowed)` and `urbanova.ai.answer_question(bundle, question, ai_allowed)` turn a run bundle (the keys of `urbanova.orchestrator.run_bundle`) into validated insight blocks, labelled `generated_by: "ai" | "fallback"`. `analyse()` itself makes no model calls. Configure providers with `URBANOVA_LLM_PROVIDERS` and `URBANOVA_LLM_<NAME>_BASE_URL / _MODEL / _API_KEY` (server-side environment only), `URBANOVA_LLM_ENABLED`, `URBANOVA_LLM_TIMEOUT_S`, `URBANOVA_LLM_MAX_CALLS_PER_DAY`.
+
 The contract is defined in `urbanova/engine/contract.py` and exported as JSON Schema (`schemas/analysis_request.schema.json`, `schemas/analysis_result.schema.json`). A test fails if the exported schemas fall out of date. `contract_version` is `1.1` (1.1 added `condition` to every metric, and `hotspots`, `site_context`, `package` and `findings[].hotspot_ids` to each design result, and `intervention_id`, `hotspot_id`, `options`, `confidence`, `cost` and `literature` to recommendations; all additive, and requests marked 1.0 are still accepted): a breaking change raises the major number, and an addition raises the minor.
 
 Rules the UI must respect:
