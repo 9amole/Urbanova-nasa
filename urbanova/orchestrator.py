@@ -9,7 +9,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 from . import ANALYSIS_VERSION, __version__, db, documents, files, findings
 from .analysis.common import SKIPPED, Context
-from .engine.core import MODULES, run_design
+from .engine.core import CONTEXT_MODULES, MODULES, run_design
 from .readiness import ANALYSES, RUNNABLE
 from .settings import settings
 
@@ -27,6 +27,7 @@ OBJECTIVE_MODULES = {
 DEPENDS = {
     "climate_baseline": {"location", "period"},
     "site_context": {"location", "boundary"},
+    "land_cover": {"location", "boundary"},
     "urban_form": {"design", "boundary", "site_area_basis"},
     "vegetation": {"location", "boundary", "design"},
     "surface_heat": {"location", "boundary"},
@@ -43,11 +44,13 @@ NEEDS = {
     "hotspots": ("urban_form", "solar_shade", "heat_stress", "climate_baseline"),  # H4 uses planning_compliance only when selected
     "interventions": ("hotspots",),
 }
+# Extra inputs when LST downscaling is on (S7): the Sentinel-2 predictors and the land-cover classes.
+DOWNSCALE_NEEDS = ("vegetation", "land_cover")
 DEFAULT_CONFIG = {
     "context_buffer_m": 500, "lst_buffer_m": 1000, "ndvi_buffer_m": 500, "satellite_years": 3, "lst_max_scenes": 6,
     "ndvi_max_scenes": 4, "ndvi_lookback_days": 365, "max_scene_cloud_pct": 40, "min_valid_site_fraction": 0.6,
 }
-ALLOWED_CONFIG = set(DEFAULT_CONFIG) | {"modules", "hot_months", "solar_date", "climate_period", "budget_amount", "budget_currency"}
+ALLOWED_CONFIG = set(DEFAULT_CONFIG) | {"modules", "hot_months", "solar_date", "climate_period", "budget_amount", "budget_currency", "lst_downscale"}
 
 _executor = ThreadPoolExecutor(max_workers=settings.workers, thread_name_prefix="urbanova-job")
 
@@ -125,6 +128,8 @@ def resolve_config(project: dict, payload: dict) -> dict:
         if cfg["budget_amount"] <= 0 or len(cur) != 3 or not cur.isalpha():
             raise RunError("budget_amount must be positive and budget_currency a 3-letter ISO code.")
         cfg["budget_currency"] = cur
+    if "lst_downscale" in cfg and not isinstance(cfg["lst_downscale"], bool):
+        raise RunError("lst_downscale must be true or false.")
     if cfg.get("hot_months") and not all(isinstance(m, int) and 1 <= m <= 12 for m in cfg["hot_months"]):
         raise RunError("hot_months must be month numbers 1–12.")
     modules = payload.get("modules")
@@ -138,7 +143,8 @@ def resolve_config(project: dict, payload: dict) -> dict:
     # Modules consume the results of earlier ones; add what a selected module needs (transitively).
     todo = list(selected)
     while todo:
-        for m in NEEDS.get(todo.pop(), ()):
+        mod = todo.pop()
+        for m in NEEDS.get(mod, ()) + (DOWNSCALE_NEEDS if mod == "surface_heat" and cfg.get("lst_downscale") else ()):
             if m not in selected:
                 selected.append(m)
                 todo.append(m)
@@ -255,9 +261,9 @@ def run_bundle(run: dict) -> dict:
 
 
 def site_context(run: dict) -> list[dict]:
-    """Existing-land context records (H2 hot cluster), kept apart from the design hotspots."""
-    sc = (((run.get("module_status") or {}).get("surface_heat") or {}).get("details") or {}).get("site_context")
-    return [sc] if sc else []
+    """Existing-land context records (H2 hot cluster, land cover), kept apart from the design hotspots."""
+    ms = run.get("module_status") or {}
+    return [sc for m in CONTEXT_MODULES if (sc := ((ms.get(m) or {}).get("details") or {}).get("site_context"))]
 
 
 APPROVAL_LABELS = {

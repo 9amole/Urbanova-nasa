@@ -1,5 +1,8 @@
 """Vegetation indicator from Sentinel-2 L2A NDVI (FR-20).
 
+When LST downscaling is on (run setting `lst_downscale`, S7), B11 (SWIR, 20 m) is read as well and an NDBI composite,
+(SWIR − NIR) / (SWIR + NIR), is shared with the downscaling over the larger LST study area.
+
 Reflectance = (DN − offset) / 10000 with offset 1000 for processing baseline ≥ 04.00
 (ESA harmonisation, January 2022). Pixels flagged by the Scene Classification Layer
 as no-data, saturated, cloud shadow, cloud (medium/high), cirrus or snow are masked.
@@ -52,7 +55,7 @@ def run(ctx: Context) -> dict:
             m.append(V.metric("ndvi_planned_green_currently_vegetated_pct", "Share of planned green space currently showing vegetation (NDVI ≥ 0.2)", round(share, 1), "%", output_kind=V.CLASSIFIED,
                               method="Valid pixels inside planned green-space polygons with NDVI ≥ 0.2", sources=src, quality=q))
             details["planned_vs_observed_note"] = "A planned park may not yet exist on the ground; a low share is expected for proposed green space."
-    ctx.shared["ndvi"] = {"composite": comp, "transform": transform, "crs": local}
+    ctx.shared["ndvi"] = {"composite": comp, "ndbi": site.get("ndbi"), "transform": transform, "crs": local}
     return result(site["status"], metrics=m, layers=site["layers"], datasets=[src[0]], warnings=site["warnings"], limitations=site["limitations"],
                   details=details, failures=site["failures"])
 
@@ -61,7 +64,9 @@ def _site_composite(ctx: Context) -> dict:
     """Design-independent part: scene search, masking, median composite, site/ring metrics, outputs.
     Returns {"early": result} when no composite can be produced."""
     cfg = ctx.config
-    buffer_m = float(cfg.get("ndvi_buffer_m", 500))
+    with_ndbi = bool(cfg.get("lst_downscale"))
+    # Downscaling needs the predictors over the whole LST study area.
+    buffer_m = float(cfg.get("lst_buffer_m", 1000) if with_ndbi else cfg.get("ndvi_buffer_m", 500))
     max_scenes = int(cfg.get("ndvi_max_scenes", 4))
     min_valid = float(cfg.get("min_valid_site_fraction", 0.6))
     site, study, basis = ctx.site_and_study(buffer_m)
@@ -80,7 +85,7 @@ def _site_composite(ctx: Context) -> dict:
         return {"early": result(UNAVAILABLE, reason="No Sentinel-2 L2A scenes below the cloud limit cover the site in the look-back period.")}
     transform, shape_ = grid_for(study_l, 10)
     site_mask, study_mask = mask_for(site_l, transform, shape_), mask_for(study_l, transform, shape_)
-    accepted, excluded, stack, failures = [], [], [], []
+    accepted, excluded, stack, ndbi_stack, failures = [], [], [], [], []
     seen_dates = set()
     for it in items:
         if len(accepted) >= max_scenes:
@@ -93,6 +98,7 @@ def _site_composite(ctx: Context) -> dict:
             scl = read_to_grid(PROVIDER, it["assets"]["SCL"]["href"], summ["epsg"], local, transform, shape_, src_nodata=-1)
             red = read_to_grid(PROVIDER, it["assets"]["B04"]["href"], summ["epsg"], local, transform, shape_, src_nodata=0)
             nir = read_to_grid(PROVIDER, it["assets"]["B08"]["href"], summ["epsg"], local, transform, shape_, src_nodata=0)
+            b11 = read_to_grid(PROVIDER, it["assets"]["B11"]["href"], summ["epsg"], local, transform, shape_, src_nodata=0) if with_ndbi else None
         except ProviderError as exc:
             failures.append({**exc.as_dict(), "scene_id": summ["scene_id"]})
             excluded.append({**summ, "reason": f"read failed ({exc.kind})"})
@@ -110,11 +116,21 @@ def _site_composite(ctx: Context) -> dict:
         seen_dates.add(day)
         accepted.append({**summ, "valid_site_fraction": round(valid, 3), "reflectance_offset": off})
         stack.append(ndvi)
+        if with_ndbi:
+            s = (b11 - off) / 10000.0
+            with np.errstate(divide="ignore", invalid="ignore"):
+                ndbi = (s - n) / (s + n)
+            ndbi[bad | (s <= 0) | np.isnan(s)] = np.nan
+            ndbi_stack.append(ndbi)
     if not accepted:
         return {"early": result(UNAVAILABLE, reason="No sufficiently cloud-free Sentinel-2 observations of the site; no vegetation values were produced.",
                                 details={"excluded_scenes": excluded}, failures=failures)}
     comp = np.nanmedian(np.stack(stack), axis=0)
     comp[~study_mask] = np.nan
+    ndbi_comp = None
+    if ndbi_stack:
+        ndbi_comp = np.nanmedian(np.stack(ndbi_stack), axis=0)
+        ndbi_comp[~study_mask] = np.nan
     v = ~np.isnan(comp)
     site_vals = comp[site_mask & v]
     ring_vals = comp[study_mask & ~site_mask & v]
@@ -126,7 +142,7 @@ def _site_composite(ctx: Context) -> dict:
         variables=["ndvi"], units={"ndvi": "unitless"}, crs=local, scene_ids=[a["scene_id"] for a in accepted],
         quality={"accepted": len(accepted), "excluded": len(excluded), "mask": f"SCL classes {sorted(SCL_MASK)}"},
         provenance=["STAC discovery", "Windowed COG read", "Reprojected to local UTM 10 m (nearest)", "BOA offset by processing baseline", "SCL mask", "NDVI", "Per-pixel median"],
-        product_id="Sentinel-2 L2A B04/B08/SCL", data_nature="observed",
+        product_id="Sentinel-2 L2A B04/B08/SCL" + (" + B11 (NDBI)" if with_ndbi else ""), data_nature="observed",
     )
     src = [ds_id]
     q = {"scenes": len(accepted), "dates": [a["datetime"][:10] for a in accepted], "valid_site_pixels": int(site_vals.size)}
@@ -148,5 +164,5 @@ def _site_composite(ctx: Context) -> dict:
         "NDVI indicates vegetation-related spectral characteristics; it does not measure tree health, shade quality, irrigation or cooling.",
         "Observed vegetation describes current conditions at the image dates, not the proposed design.",
     ]
-    return {"comp": comp, "transform": transform, "shape": shape_, "valid": v, "local": local, "src": src, "quality": q, "metrics": m,
+    return {"comp": comp, "ndbi": ndbi_comp, "transform": transform, "shape": shape_, "valid": v, "local": local, "src": src, "quality": q, "metrics": m,
             "details": details, "layers": layers, "status": status, "warnings": warnings, "limitations": limitations, "failures": failures}

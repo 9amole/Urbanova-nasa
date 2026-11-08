@@ -18,7 +18,7 @@ from ..settings import settings
 
 STAC_URL = "https://planetarycomputer.microsoft.com/api/stac/v1"
 SAS_URL = "https://planetarycomputer.microsoft.com/api/sas/v1/token/{collection}"
-COLLECTIONS = {"pc_landsat_c2_l2": "landsat-c2-l2", "pc_sentinel2_l2a": "sentinel-2-l2a"}
+COLLECTIONS = {"pc_landsat_c2_l2": "landsat-c2-l2", "pc_sentinel2_l2a": "sentinel-2-l2a", "pc_esa_worldcover": "esa-worldcover"}
 
 _tokens: dict[str, tuple[str, float]] = {}
 
@@ -38,6 +38,16 @@ def search(provider_id: str, geometry: dict, start: str, end: str, max_cloud: fl
     if not isinstance(resp, dict) or "features" not in resp:
         raise ProviderError(provider_id, "invalid_response", "STAC search returned no feature list.")
     return resp["features"]
+
+
+def search_static(provider_id: str, geometry: dict, limit: int = 10) -> list[dict]:
+    """STAC search for products without cloud cover or a time series (e.g. land-cover maps); newest first."""
+    provider(provider_id)
+    body = {"collections": [COLLECTIONS[provider_id]], "intersects": geometry, "limit": limit}
+    resp, _ = http_json(provider_id, "POST", f"{STAC_URL}/search", json_body=body)
+    if not isinstance(resp, dict) or "features" not in resp:
+        raise ProviderError(provider_id, "invalid_response", "STAC search returned no feature list.")
+    return sorted(resp["features"], key=lambda f: (f.get("properties") or {}).get("start_datetime") or "", reverse=True)
 
 
 def _token(provider_id: str) -> str:

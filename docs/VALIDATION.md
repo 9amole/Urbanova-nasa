@@ -77,6 +77,25 @@ The LST module reports *partial* at all three points, which is expected. A 100 m
 
 **What this check does not cover:** absolute accuracy. Landsat C2 L2 surface temperature has its own published uncertainty, and no ground measurements were compared.
 
+### 2b. Land cover and LST downscaled to 30 m (S7, 8 Nov 2026)
+
+`scripts/plausibility_satellite.py --downscale` → `validation/satellite_plausibility_downscaled.json`. Same three points and settings, with `lst_downscale` on (adds the land-cover module and the Sentinel-2 NDBI predictor; LST study area 1 km).
+
+| Site | WorldCover 2021, ring (main classes) | LST site median, 100 m → 30 m | Training blocks | Aggregation error | Leave-one-scene-out RMSE, out-of-bag (6 scenes) | Scale check 270 → 90 m |
+|---|---|---|---|---|---|---|
+| Open water, Lake Qarun | water 100 % | 31.47 → 31.45 °C | 438 | 1e-14 °C | 0.22 °C | 0.08 °C |
+| Irrigated farmland, Nile Delta | cropland 83 %, built-up 12 % | 37.76 → 37.65 °C | 435 | 1e-14 °C | 1.72 °C | 0.88 °C |
+| Bare desert, sample point | bare / sparse vegetation 99.9 % | 53.13 → 52.95 °C | 435 | 2e-14 °C | 0.82 °C | 0.35 °C |
+
+| Expected relation | Result |
+|---|---|
+| Land cover matches the known surface (water, cropland, bare) | **pass** |
+| Downscaled field averages back to the 90 m LST within 0.1 °C (acceptance gate) | **pass** at all three points |
+| Daytime hot-season LST at 30 m: water < farmland < desert | **pass** (31.45 < 37.65 < 52.95 °C) |
+| Scale-check error within or below the published urban range of about 1–3.5 °C [R-32] | **pass** (0.08–0.88 °C) |
+
+**Reading the figures:** the leave-one-scene-out error is largest on farmland, where crop stage and irrigation change between overpasses, and smallest on water. The scale-check errors are below the published *urban* range because these three surfaces are homogeneous; a mixed urban site is expected to sit inside the range. **Not covered:** a comparison of the 30 m field with an independent fine-scale thermal measurement (for example an airborne survey or ECOSTRESS at 70 m). The 30 m values stay labelled "ML-downscaled, modelled" and existing-land only.
+
 ## 3. Real-world geometry through the full engine path (D2, partial)
 
 `scripts/validate_real_geometry.py` → `validation/real_geometry_check.json`.

@@ -236,6 +236,11 @@ def build(project: dict, run: dict, bundle: dict, scenario: dict | None, compari
         m = metrics.get(name)
         if m:
             lines.append(f"{m['label']}: {m['value']:g} {m['unit'] or ''}".rstrip() + "." + _ids(m["id"]))
+    ds = metrics.get("lst_ds_site_median_c")
+    if ds:
+        q = ds.get("quality") or {}
+        scale = "" if q.get("scale_check_rmse_c") is None else f"; scale-check error {q['scale_check_rmse_c']:g} °C against a published urban range of {q['published_rmse_range_c'][0]:g}–{q['published_rmse_range_c'][1]:g} °C"
+        lines.append(f"{ds['label']}: {ds['value']:g} °C ({q.get('label', 'ML-downscaled, modelled')}{scale})." + _ids(ds["id"]))
     blocks.append(("ul", lines or ["No existing-land analysis produced values in this run (see Appendix L)."]))
     sections.append((MAIN_SECTIONS[2], blocks))
 

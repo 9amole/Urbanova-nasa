@@ -1,6 +1,6 @@
 {
  "_comment": "Basis record for every threshold, band, coefficient and default the analysis uses (PHASE2_SPEC §3.1). basis_type: standard | regulatory | literature | statistical | project_choice | provisional. A provisional value, or a project_choice without approved_by, is labelled PROVISIONAL and its severity is capped at moderate. References are ids in PHASE2_SPEC §12.",
- "version": "2026.11-s3",
+ "version": "2026.11-s7",
  "values": [
   {
    "id": "climate.SU",
@@ -846,6 +846,125 @@
    "references": [],
    "applicability": "Irrigation water per m² of planting",
    "reason": "No sourced value yet: reported as 'value required'",
+   "approved_by": null,
+   "approved_on": null
+  },
+  {
+   "id": "lst_downscale.rf_trees",
+   "value": 200,
+   "unit": "trees",
+   "used_in": "surface_heat",
+   "basis_type": "literature",
+   "references": [
+    "R-30"
+   ],
+   "applicability": "Number of trees of the random forest that downscales LST; beyond ~100–200 trees the error no longer improves (R-30). Seed fixed at 0 so the same data gives the same field.",
+   "approved_by": null,
+   "approved_on": null
+  },
+  {
+   "id": "lst_downscale.rf_min_samples_leaf",
+   "value": 3,
+   "unit": "blocks",
+   "used_in": "surface_heat",
+   "basis_type": "project_choice",
+   "references": [
+    "R-30"
+   ],
+   "applicability": "Smallest number of 90 m blocks per leaf",
+   "reason": "Avoids leaves fitted to a single block when the study area has only a few hundred blocks",
+   "approved_by": null,
+   "approved_on": null
+  },
+  {
+   "id": "lst_downscale.consistency_gate_c",
+   "value": 0.1,
+   "unit": "°C",
+   "used_in": "surface_heat",
+   "basis_type": "standard",
+   "references": [
+    "PHASE2_SPEC §3.4"
+   ],
+   "applicability": "Acceptance gate: the 30 m field must average back to every 90 m block within this difference, otherwise the field is not used",
+   "approved_by": null,
+   "approved_on": null
+  },
+  {
+   "id": "lst_downscale.scale_check_m",
+   "value": 270,
+   "unit": "m",
+   "used_in": "surface_heat",
+   "basis_type": "literature",
+   "references": [
+    "R-30",
+    "R-31"
+   ],
+   "applicability": "Scale check: train at 270 m and predict 90 m (the same 3× ratio as 90 m → 30 m), compared with the 90 m observation",
+   "approved_by": null,
+   "approved_on": null
+  },
+  {
+   "id": "lst_downscale.published_rmse_range_c",
+   "value": [
+    1.0,
+    3.5
+   ],
+   "unit": "°C",
+   "used_in": "surface_heat",
+   "basis_type": "literature",
+   "references": [
+    "R-32"
+   ],
+   "applicability": "Published RMSE range of Landsat + Sentinel-2 LST downscaling in urban areas; the scale-check error is compared with its upper end",
+   "approved_by": null,
+   "approved_on": null
+  },
+  {
+   "id": "lst_downscale.min_scenes",
+   "value": 2,
+   "unit": "scenes",
+   "used_in": "surface_heat",
+   "basis_type": "project_choice",
+   "references": [],
+   "applicability": "Fewest clear-sky scenes for downscaling",
+   "reason": "Leave-one-scene-out validation needs at least two scenes",
+   "approved_by": null,
+   "approved_on": null
+  },
+  {
+   "id": "lst_downscale.min_blocks",
+   "value": 30,
+   "unit": "blocks",
+   "used_in": "surface_heat",
+   "basis_type": "project_choice",
+   "references": [],
+   "applicability": "Fewest complete 90 m blocks to train the model",
+   "reason": "Below 30 training pairs a random forest has too little data to learn a relation",
+   "approved_by": null,
+   "approved_on": null
+  },
+  {
+   "id": "lst_downscale.min_scale_blocks",
+   "value": 10,
+   "unit": "blocks",
+   "used_in": "surface_heat",
+   "basis_type": "project_choice",
+   "references": [],
+   "applicability": "Fewest complete 270 m blocks for the scale check",
+   "reason": "Matches the minimum block count used elsewhere in the surface-heat analysis",
+   "approved_by": null,
+   "approved_on": null
+  },
+  {
+   "id": "land_cover.worldcover_classes",
+   "value": "ESA WorldCover v200 classes 10–100",
+   "unit": "class",
+   "used_in": "land_cover",
+   "basis_type": "standard",
+   "references": [
+    "ESA WorldCover Product User Manual v2.0"
+   ],
+   "applicability": "Class codes, names and colours exactly as published by ESA; shares are % of valid 10 m pixels",
    "approved_by": null,
    "approved_on": null
   }

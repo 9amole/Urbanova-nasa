@@ -5,8 +5,9 @@ irrigated farmland in the Nile Delta, open water (Lake Qarun) and bare desert (t
 point). Expected: NDVI water < desert < farmland (farmland well above 0.2); hot-season daytime LST
 water < farmland < desert. This is a plausibility check, not a validation against ground truth.
 
-Run (needs internet):  .venv/Scripts/python scripts/plausibility_satellite.py
-Writes validation/satellite_plausibility.json.
+Run (needs internet):  .venv/Scripts/python scripts/plausibility_satellite.py [--downscale]
+Writes validation/satellite_plausibility.json. With --downscale (S7) the runs use `lst_downscale` and land cover, add the
+30 m downscaled site median and its checks, and write validation/satellite_plausibility_downscaled.json.
 """
 
 from __future__ import annotations
@@ -35,19 +36,24 @@ def _metric(design: dict, name: str):
 
 
 def main() -> int:
+    downscale = "--downscale" in sys.argv[1:]
     rows = []
     with tempfile.TemporaryDirectory(prefix="urbanova_plaus_") as tmp:
         for s in SITES:
             req = {"contract_version": "1.1", "request_id": f"plausibility-{s['key']}",
                    "site": {"latitude": s["latitude"], "longitude": s["longitude"]},
-                   "settings": {"modules": ["climate_baseline", "vegetation", "surface_heat"]}}
+                   "settings": {"modules": ["climate_baseline", "vegetation", "surface_heat"] + (["land_cover"] if downscale else []),
+                                **({"lst_downscale": True} if downscale else {})}}
             res = analyse(req, Path(tmp) / s["key"])
             d = res["designs"][0]
             rows.append({**s, "modules": {k: v["status"] for k, v in d["modules"].items() if v["status"] != "skipped"},
                          "reasons": {k: v.get("reason") for k, v in d["modules"].items() if v["status"] in ("unavailable", "failed", "blocked")},
                          "ndvi_site_mean": _metric(d, "ndvi_site_mean"), "ndvi_surroundings_mean": _metric(d, "ndvi_surroundings_mean"),
                          "lst_site_median_c": _metric(d, "lst_site_median_c"), "lst_surroundings_median_c": _metric(d, "lst_surroundings_median_c"),
-                         "lst_scenes_used": _metric(d, "lst_scenes_used")})
+                         "lst_scenes_used": _metric(d, "lst_scenes_used"),
+                         **({"lst_ds_site_median_c": _metric(d, "lst_ds_site_median_c"),
+                             "downscale": d["modules"]["surface_heat"].get("details", {}).get("downscale"),
+                             "land_cover_surroundings_pct": (d["modules"].get("land_cover", {}).get("details") or {}).get("surroundings_shares_pct")} if downscale else {})})
     by = {r["key"]: r for r in rows}
 
     def order(metric: str, keys: list[str]) -> bool | None:
@@ -59,14 +65,19 @@ def main() -> int:
         "ndvi_farmland_above_0.2": None if by["farmland"]["ndvi_site_mean"] is None else by["farmland"]["ndvi_site_mean"] > 0.2,
         "lst_water_lt_farmland_lt_desert": order("lst_site_median_c", ["water", "farmland", "desert"]),
     }
+    if downscale:
+        checks["lst_downscaled_water_lt_farmland_lt_desert"] = order("lst_ds_site_median_c", ["water", "farmland", "desert"])
     out = {"generated_at": recording.now(), "method": __doc__.strip().splitlines()[0], "sites": rows, "checks": checks,
            "note": "None means a value was unavailable (for example no clear scene); it is not counted as a pass."}
-    path = ROOT / "validation" / "satellite_plausibility.json"
+    path = ROOT / "validation" / ("satellite_plausibility_downscaled.json" if downscale else "satellite_plausibility.json")
     path.parent.mkdir(exist_ok=True)
     path.write_text(json.dumps(out, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     for r in rows:
         print(f"{r['label']:45s} NDVI {r['ndvi_site_mean']} (ring {r['ndvi_surroundings_mean']})  LST {r['lst_site_median_c']} °C "
               f"(ring {r['lst_surroundings_median_c']}, scenes {r['lst_scenes_used']})  {r['modules']} {r['reasons'] or ''}")
+        if downscale:
+            ds = r.get("downscale") or {}
+            print(f"{'':45s} downscaled {r.get('lst_ds_site_median_c')} °C, accepted {ds.get('accepted')}, checks {ds.get('checks')}, reason {ds.get('reason')}")
     print("checks:", checks)
     print("wrote", path)
     return 0 if all(v is True for v in checks.values()) else 3

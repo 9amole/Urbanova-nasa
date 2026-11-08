@@ -11,6 +11,8 @@ Method (documented in docs/METHODOLOGY.md):
 7. Statistical position of the site: the ring is aggregated to 90 m blocks (3 × 3 pixels, close to
    the 100 m native thermal resolution) and the site's mean is placed among the block means
    (percentile and standardised difference).
+8. Optional (run setting `lst_downscale`, S7): random-forest downscaling to 30 m with residual correction
+   (analysis/lst_downscale.py); the field is kept only if it averages back to the 90 m blocks within 0.1 °C.
 """
 
 from __future__ import annotations
@@ -25,7 +27,8 @@ from .. import basis, catalog, geo
 from .. import values as V
 from ..providers.base import ProviderError, availability
 from ..providers.satellite import item_summary, read_to_grid, search
-from .common import BLOCKED, COMPLETED, PARTIAL, UNAVAILABLE, Context, grid_for, layer, mask_for, result, save_geojson, save_geotiff, save_overlay_png
+from .common import (BLOCKED, COMPLETED, PARTIAL, UNAVAILABLE, Context, average_to_grid, block_mean, grid_for, layer, mask_for, result, save_geojson,
+                     save_geotiff, save_overlay_png)
 
 PROVIDER = "pc_landsat_c2_l2"
 SCALE, OFFSET = 0.00341802, 149.0
@@ -79,12 +82,7 @@ def site_position(comp: np.ndarray, site_mask: np.ndarray, ring_mask: np.ndarray
 
 def block_grid(comp: np.ndarray, mask: np.ndarray) -> np.ndarray:
     """90 m block means (BLOCK × BLOCK pixels); a block is NaN unless all its pixels are valid and inside `mask`."""
-    rows, cols = (comp.shape[0] // BLOCK) * BLOCK, (comp.shape[1] // BLOCK) * BLOCK
-    shape4 = (rows // BLOCK, BLOCK, cols // BLOCK, BLOCK)
-    full = (mask[:rows, :cols] & ~np.isnan(comp[:rows, :cols])).reshape(shape4).all(axis=(1, 3))
-    out = comp[:rows, :cols].reshape(shape4).mean(axis=(1, 3))
-    out[~full] = np.nan
-    return out
+    return block_mean(comp, mask & ~np.isnan(comp), BLOCK)
 
 
 def hot_cluster(comp: np.ndarray, site_mask: np.ndarray, study_mask: np.ndarray) -> dict:
@@ -113,11 +111,7 @@ def _colocate_with_ndvi(ctx: Context, comp, classes, transform, shape_, study_ma
     nd = ctx.shared.get("ndvi")
     if not nd:
         return []
-    from rasterio.warp import Resampling, reproject
-
-    ndvi30 = np.full(shape_, np.nan, dtype="float32")
-    reproject(nd["composite"].astype("float32"), ndvi30, src_transform=nd["transform"], src_crs=nd["crs"], dst_transform=transform, dst_crs=local,
-              src_nodata=np.nan, dst_nodata=np.nan, resampling=Resampling.average)
+    ndvi30 = average_to_grid(nd["composite"], nd["transform"], nd["crs"], transform, local, shape_)
     valid = study_mask & ~np.isnan(ndvi30) & ~np.isnan(classes)
     hot, rest = valid & (classes == 4), valid & (classes < 4)
     if hot.sum() < 3 or rest.sum() < 3:
@@ -130,6 +124,50 @@ def _colocate_with_ndvi(ctx: Context, comp, classes, transform, shape_, study_ma
         V.metric("lst_ndvi_mean_elsewhere", "Mean NDVI of the other study-area pixels", round(float(ndvi30[rest].mean()), 3), "NDVI",
                  method="NDVI composite averaged onto the 30 m LST grid; mean over pixels below P90", sources=src, quality=q),
     ]
+
+
+def _downscaled(ctx: Context, comp, stack, transform, shape_, study_mask, site_mask, local, src) -> dict:
+    """S7: ML downscaling of the composite to 30 m. Returns metrics, layers, warnings, limitations and details to merge."""
+    from . import lst_downscale as D
+
+    preds = D.predictors_from(ctx.shared, transform, local, shape_)
+    if "ndvi" not in preds:
+        reason = "Not run: downscaling needs the Sentinel-2 vegetation composite, which is not available in this run."
+        return {"metrics": [], "layers": [], "warnings": [f"LST downscaling: {reason}"], "limitations": [], "details": {"accepted": False, "reason": reason}}
+    res = D.downscale(comp, stack, preds, study_mask)
+    ck = res["checks"]
+    details = {k: res[k] for k in ("accepted", "reason", "predictors", "scenes", "blocks", "checks")}
+    if not res["accepted"]:
+        return {"metrics": [], "layers": [], "warnings": [f"LST downscaling: {res['reason']} The 100 m results stand."], "limitations": [], "details": details}
+    field = res["field"]
+    field[~study_mask] = np.nan
+    site_vals = field[site_mask & ~np.isnan(field)]
+    if not site_vals.size:
+        details.update(accepted=False, reason="No downscaled cell lies on the site.")
+        return {"metrics": [], "layers": [], "warnings": ["LST downscaling: no downscaled cell lies on the site."], "limitations": [], "details": details}
+    loso = "n/a" if ck["loso_rmse_c"] is None else f"{ck['loso_rmse_c']:.2f} °C"
+    label = f"ML-downscaled, modelled; leave-one-scene-out RMSE {loso}"
+    q = {"label": label, **ck, "predictors": res["predictors"], "basis": "lst_downscale.consistency_gate_c"}
+    method = (f"Random forest ({int(D.setting('rf_trees'))} trees, seed 0) trained on {res['blocks']} 90 m blocks of the composite with "
+              f"{', '.join(res['predictors'])}; predicted at 30 m; 90 m residual added back (max aggregation error {ck['coarse_consistency_max_c']:.4f} °C)")
+    tif = save_geotiff(ctx.out_dir / "lst_downscaled_30m_c.tif", field, transform, local, "LST downscaled to 30 m (°C), random forest, modelled")
+    lo, hi = float(np.nanpercentile(field, 2)), float(np.nanpercentile(field, 98))
+    png = save_overlay_png(ctx.out_dir / "lst_downscaled.png", field, transform, local, "inferno", lo, hi)
+    metrics = [
+        V.metric("lst_ds_site_median_c", "Median land surface temperature on the site, downscaled to 30 m (ML, modelled)", round(float(np.median(site_vals)), 2), "°C",
+                 output_kind=V.MODELLED, method=method, sources=src, quality=q),
+        V.metric("lst_ds_site_p90_c", "90th percentile land surface temperature on the site, downscaled to 30 m (ML, modelled)", round(float(np.percentile(site_vals, 90)), 2), "°C",
+                 output_kind=V.MODELLED, method=method, sources=src, quality=q),
+    ]
+    lay = layer(f"LST downscaled to 30 m ({label})", "raster", V.MODELLED, str(ctx.out_dir / "lst_downscaled.png"), png,
+                legend={"type": "continuous", "cmap": "inferno", "min": round(lo, 1), "max": round(hi, 1), "unit": "°C"}, meta={"geotiff": tif, "label": label})
+    lim = [f"{label}. The 30 m field is a statistical estimate from Sentinel-2 and land-cover predictors, not a 30 m measurement; "
+           "it describes today's land and is never used for design hotspots or scenario differences."]
+    warnings = []
+    if ck["scale_check_within_published_range"] is False:
+        warnings.append(f"LST downscaling: the scale-check error ({ck['scale_check_rmse_c']:.2f} °C) is above the published urban range "
+                        f"({ck['published_rmse_range_c'][0]:g}–{ck['published_rmse_range_c'][1]:g} °C); read the 30 m detail with caution.")
+    return {"metrics": metrics, "layers": [lay], "warnings": warnings, "limitations": lim, "details": {**details, "label": label, "geotiff": tif}}
 
 
 def run(ctx: Context) -> dict:
@@ -282,7 +320,6 @@ def run(ctx: Context) -> dict:
 
     hot_polys = [shape(g) for g, val in shapes((classes == 4).astype("uint8"), mask=(classes == 4) & site_mask, transform=transform) if val == 1]
     hotspot_geom = mapping(geo.to_wgs84(unary_union(hot_polys), local)) if hot_polys else None
-    ctx.shared["site_context"] = [site_context]
     ctx.shared["lst"] = {"composite": comp, "transform": transform, "shape": shape_, "site_mask": site_mask, "hot_class": classes, "hotspot_geometry": hotspot_geom}
     lst_png = save_overlay_png(ctx.out_dir / "lst_composite.png", comp, transform, local, "inferno", float(np.nanpercentile(comp, 2)), float(np.nanpercentile(comp, 98)))
     cls_png = save_overlay_png(ctx.out_dir / "lst_classes.png", classes, transform, local, "", 0, 0, categorical=CLASS_COLORS)
@@ -310,14 +347,19 @@ def run(ctx: Context) -> dict:
         warnings.append(f"The site covers only about {native_px:.1f} native 100 m thermal pixels. Site values are dominated by mixed pixels "
                         "that include surrounding surfaces; treat the site-versus-surroundings comparison as indicative only.")
     m.extend(_colocate_with_ndvi(ctx, comp, classes, transform, shape_, study_mask, local, src))
+    ds = _downscaled(ctx, comp, stack, transform, shape_, study_mask, site_mask, local, src) if cfg.get("lst_downscale") else None
+    if ds:
+        m += ds["metrics"]
+        layers += ds["layers"]
+        warnings += ds["warnings"]
     limitations = [
         "Land SURFACE temperature at ~10:30 local solar time on clear days; not air temperature or pedestrian thermal comfort.",
         "Thermal band native resolution is 100 m, so features smaller than ~100 m are not resolved even on the 30 m grid.",
         "Relative classes compare pixels within this study area only; they do not establish a causal link between any building and heating.",
         "Observed conditions describe the existing site, not the proposed design.",
-    ]
+    ] + (ds["limitations"] if ds else [])
     details = {"site_basis": site_basis, "months": months, "month_basis": month_basis, "period": [start, end], "accepted_scenes": accepted,
                "excluded_scenes": excluded, "breaks_c": {"p25": p25, "p75": p75, "p90": p90}, "hotspot_geometry": hotspot_geom,
                "attribution": "Landsat Collection 2 courtesy of the U.S. Geological Survey; accessed via Microsoft Planetary Computer",
-               "max_obs_per_pixel": int(n_obs.max()), "site_context": site_context}
+               "max_obs_per_pixel": int(n_obs.max()), "site_context": site_context, **({"downscale": ds["details"]} if ds else {})}
     return result(status, metrics=m, layers=layers, datasets=[ds_id], warnings=warnings, limitations=limitations, details=details, failures=failures)

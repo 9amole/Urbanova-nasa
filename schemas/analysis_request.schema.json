@@ -327,6 +327,7 @@
                 "enum": [
                   "climate_baseline",
                   "site_context",
+                  "land_cover",
                   "urban_form",
                   "vegetation",
                   "surface_heat",
@@ -484,6 +485,19 @@
           ],
           "default": null,
           "title": "Min Valid Site Fraction"
+        },
+        "lst_downscale": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Experimental (S7): downscale land surface temperature to 30 m with a random forest. Existing land only; kept only when its own checks pass. Default false.",
+          "title": "Lst Downscale"
         },
         "budget_amount": {
           "anyOf": [

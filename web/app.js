@@ -632,7 +632,9 @@ async function tabAnalysis(el, data) {
     <label for="cf-cloud">Maximum scene cloud cover for satellite search (%)</label><input id="cf-cloud" type="number" value="${dc.max_scene_cloud_pct}" min="1" max="80">
     <label for="cf-years">Satellite years (LST)</label><input id="cf-years" type="number" value="${dc.satellite_years}" min="1" max="10">
     <label for="cf-months">Hot months override <span class="hint">e.g. 6,7,8 — default from climate baseline</span></label><input id="cf-months" type="text">
-    <label for="cf-date">Shade analysis date override</label><input id="cf-date" type="date"></details>
+    <label for="cf-date">Shade analysis date override</label><input id="cf-date" type="date">
+    <label class="check"><input type="checkbox" id="cf-ds"> Experimental: downscale land surface temperature to 30 m (machine learning)</label>
+    <p class="hint">Adds the vegetation and land-cover inputs. Existing land only; the 30 m map is kept only if it passes its own checks, and is labelled with its error.</p></details>
     <p><button id="run-one" class="primary" type="submit" ${p.location_confirmed ? "" : "disabled"}>Run for selected scenario</button>
     <button id="run-all" type="button" ${p.location_confirmed && active.length ? "" : "disabled"}>Run all active scenarios with these settings</button></p>
     <p class="hint">Use "Run all" before comparing so the baseline and alternatives share identical settings.</p></div></div></form>
@@ -648,6 +650,7 @@ async function tabAnalysis(el, data) {
       max_scene_cloud_pct: +document.getElementById("cf-cloud").value, satellite_years: +document.getElementById("cf-years").value };
     const months = document.getElementById("cf-months").value.trim(); if (months) c.hot_months = months.split(",").map((x) => parseInt(x, 10));
     const d = document.getElementById("cf-date").value; if (d) c.solar_date = d;
+    if (document.getElementById("cf-ds").checked) c.lst_downscale = true;
     if (!c.modules.length) throw new Error("Select at least one module.");
     return c;
   };
@@ -856,7 +859,7 @@ async function tabResults(el, data, runId) {
     if (lay.layer_kind === "raster") {
       const url = URL.createObjectURL(await (await api(`/layers/${lay.id}/data`, { raw: true })).blob());
       const bb = lay.bounds;
-      const leg = lay.legend?.type === "categorical" ? lay.legend.classes.map((c) => `<div><i style="background:${c.color}"></i>${esc(c.label)}</div>`).join("") + `<div class="muted">Breaks (°C): P25 ${fmt(lay.legend.breaks_c.p25)}, P75 ${fmt(lay.legend.breaks_c.p75)}, P90 ${fmt(lay.legend.breaks_c.p90)}</div>`
+      const leg = lay.legend?.type === "categorical" ? lay.legend.classes.map((c) => `<div><i style="background:${c.color}"></i>${esc(c.label)}</div>`).join("") + (lay.legend.breaks_c ? `<div class="muted">Breaks (°C): P25 ${fmt(lay.legend.breaks_c.p25)}, P75 ${fmt(lay.legend.breaks_c.p75)}, P90 ${fmt(lay.legend.breaks_c.p90)}</div>` : "")
         : `<div>${esc(lay.legend.min)} ${esc(lay.legend.unit)} → ${esc(lay.legend.max)} ${esc(lay.legend.unit)} (${esc(lay.legend.cmap)})</div>`;
       overlays.push([`${lay.name} (${KIND[lay.output_kind]})`, L.imageOverlay(url, [[bb.south, bb.west], [bb.north, bb.east]], { opacity: 0.75 }), false, `<strong>${esc(lay.name)}</strong>${leg}`]);
     } else {

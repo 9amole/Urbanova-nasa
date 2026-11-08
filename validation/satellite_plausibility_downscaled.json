@@ -1,0 +1,186 @@
+{
+  "generated_at": "2026-11-08T02:52:12+00:00",
+  "method": "D3 (satellite part): plausibility check of the NDVI and LST outputs on land covers with known behaviour.",
+  "sites": [
+    {
+      "key": "farmland",
+      "label": "Irrigated farmland, Nile Delta (near Tanta)",
+      "latitude": 30.765,
+      "longitude": 31.035,
+      "modules": {
+        "climate_baseline": "completed",
+        "land_cover": "completed",
+        "vegetation": "completed",
+        "surface_heat": "partial"
+      },
+      "reasons": {},
+      "ndvi_site_mean": 0.448,
+      "ndvi_surroundings_mean": 0.372,
+      "lst_site_median_c": 37.76,
+      "lst_surroundings_median_c": 37.56,
+      "lst_scenes_used": 6.0,
+      "lst_ds_site_median_c": 37.65,
+      "downscale": {
+        "accepted": true,
+        "reason": null,
+        "predictors": [
+          "ndvi",
+          "ndbi",
+          "wc_10",
+          "wc_20",
+          "wc_40",
+          "wc_50"
+        ],
+        "scenes": 6,
+        "blocks": 435,
+        "checks": {
+          "coarse_consistency_max_c": 1.4210854715202004e-14,
+          "gate_c": 0.1,
+          "loso_rmse_c": 1.7226666666666668,
+          "loso_rmse_per_scene_c": [
+            1.901,
+            1.532,
+            1.417,
+            1.796,
+            1.696,
+            1.994
+          ],
+          "scale_check_rmse_c": 0.879,
+          "published_rmse_range_c": [
+            1.0,
+            3.5
+          ],
+          "scale_check_within_published_range": true
+        },
+        "label": "ML-downscaled, modelled (leave-one-scene-out RMSE 1.72 °C)",
+        "geotiff": "C:\\Users\\oven\\AppData\\Local\\Temp\\urbanova_plaus_v0mva8qo\\farmland\\00_site\\lst_downscaled_30m_c.tif"
+      },
+      "land_cover_surroundings_pct": {
+        "Tree cover": 1.3,
+        "Shrubland": 1.37,
+        "Grassland": 0.84,
+        "Cropland": 83.49,
+        "Built-up": 11.69,
+        "Bare / sparse vegetation": 0.42,
+        "Herbaceous wetland": 0.89
+      }
+    },
+    {
+      "key": "water",
+      "label": "Open water, Lake Qarun",
+      "latitude": 29.47,
+      "longitude": 30.65,
+      "modules": {
+        "climate_baseline": "completed",
+        "land_cover": "completed",
+        "vegetation": "completed",
+        "surface_heat": "partial"
+      },
+      "reasons": {},
+      "ndvi_site_mean": -0.329,
+      "ndvi_surroundings_mean": -0.306,
+      "lst_site_median_c": 31.47,
+      "lst_surroundings_median_c": 31.37,
+      "lst_scenes_used": 6.0,
+      "lst_ds_site_median_c": 31.45,
+      "downscale": {
+        "accepted": true,
+        "reason": null,
+        "predictors": [
+          "ndvi",
+          "ndbi",
+          "wc_80"
+        ],
+        "scenes": 6,
+        "blocks": 438,
+        "checks": {
+          "coarse_consistency_max_c": 1.4210854715202004e-14,
+          "gate_c": 0.1,
+          "loso_rmse_c": 0.22066666666666665,
+          "loso_rmse_per_scene_c": [
+            0.183,
+            0.162,
+            0.244,
+            0.375,
+            0.126,
+            0.234
+          ],
+          "scale_check_rmse_c": 0.082,
+          "published_rmse_range_c": [
+            1.0,
+            3.5
+          ],
+          "scale_check_within_published_range": true
+        },
+        "label": "ML-downscaled, modelled (leave-one-scene-out RMSE 0.22 °C)",
+        "geotiff": "C:\\Users\\oven\\AppData\\Local\\Temp\\urbanova_plaus_v0mva8qo\\water\\00_site\\lst_downscaled_30m_c.tif"
+      },
+      "land_cover_surroundings_pct": {
+        "Permanent water bodies": 100.0
+      }
+    },
+    {
+      "key": "desert",
+      "label": "Bare desert (synthetic sample point)",
+      "latitude": 30.12,
+      "longitude": 31.85,
+      "modules": {
+        "climate_baseline": "completed",
+        "land_cover": "completed",
+        "vegetation": "completed",
+        "surface_heat": "partial"
+      },
+      "reasons": {},
+      "ndvi_site_mean": 0.084,
+      "ndvi_surroundings_mean": 0.076,
+      "lst_site_median_c": 53.13,
+      "lst_surroundings_median_c": 52.77,
+      "lst_scenes_used": 6.0,
+      "lst_ds_site_median_c": 52.95,
+      "downscale": {
+        "accepted": true,
+        "reason": null,
+        "predictors": [
+          "ndvi",
+          "ndbi",
+          "wc_60"
+        ],
+        "scenes": 6,
+        "blocks": 435,
+        "checks": {
+          "coarse_consistency_max_c": 2.1316282072803006e-14,
+          "gate_c": 0.1,
+          "loso_rmse_c": 0.8241666666666666,
+          "loso_rmse_per_scene_c": [
+            0.654,
+            0.912,
+            0.837,
+            0.752,
+            1.009,
+            0.781
+          ],
+          "scale_check_rmse_c": 0.351,
+          "published_rmse_range_c": [
+            1.0,
+            3.5
+          ],
+          "scale_check_within_published_range": true
+        },
+        "label": "ML-downscaled, modelled (leave-one-scene-out RMSE 0.82 °C)",
+        "geotiff": "C:\\Users\\oven\\AppData\\Local\\Temp\\urbanova_plaus_v0mva8qo\\desert\\00_site\\lst_downscaled_30m_c.tif"
+      },
+      "land_cover_surroundings_pct": {
+        "Grassland": 0.02,
+        "Built-up": 0.07,
+        "Bare / sparse vegetation": 99.91
+      }
+    }
+  ],
+  "checks": {
+    "ndvi_water_lt_desert_lt_farmland": true,
+    "ndvi_farmland_above_0.2": true,
+    "lst_water_lt_farmland_lt_desert": true,
+    "lst_downscaled_water_lt_farmland_lt_desert": true
+  },
+  "note": "None means a value was unavailable (for example no clear scene); it is not counted as a pass."
+}

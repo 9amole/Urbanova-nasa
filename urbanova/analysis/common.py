@@ -82,6 +82,26 @@ def mask_for(geom_local, transform, shape) -> np.ndarray:
     return geometry_mask([geom_local.__geo_interface__], out_shape=shape, transform=transform, invert=True, all_touched=False)
 
 
+def block_mean(arr: np.ndarray, valid: np.ndarray, k: int) -> np.ndarray:
+    """k × k block means; a block is NaN unless all its cells are valid (partial edge rows/columns are dropped)."""
+    rows, cols = (arr.shape[0] // k) * k, (arr.shape[1] // k) * k
+    s4 = (rows // k, k, cols // k, k)
+    full = valid[:rows, :cols].reshape(s4).all(axis=(1, 3))
+    out = np.where(valid, arr, 0.0)[:rows, :cols].reshape(s4).mean(axis=(1, 3))
+    out[~full] = np.nan
+    return out
+
+
+def average_to_grid(arr: np.ndarray, src_transform, src_crs: str, dst_transform, dst_crs: str, dst_shape: tuple[int, int]) -> np.ndarray:
+    """Area-average a (finer) raster onto another grid, NaN-aware."""
+    from rasterio.warp import Resampling, reproject
+
+    out = np.full(dst_shape, np.nan, dtype="float32")
+    reproject(arr.astype("float32"), out, src_transform=src_transform, src_crs=src_crs, dst_transform=dst_transform, dst_crs=dst_crs,
+              src_nodata=np.nan, dst_nodata=np.nan, resampling=Resampling.average)
+    return out
+
+
 def save_geotiff(path: Path, arr: np.ndarray, transform, crs: str, description: str) -> str:
     import rasterio
 

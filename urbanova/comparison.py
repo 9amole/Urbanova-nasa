@@ -33,7 +33,7 @@ NO_WINNER = ("There is no single best design: the choice depends on the project'
              "or compliance). Set weights to rank the designs under your priorities.")
 DIRECTION_NOTE = "Better/worse labels use a heat-focused preference (more green space and shade, less hard surface and sun exposure in the hot season). They may not suit cold climates or winter conditions."
 EPS = 1e-6
-COMPARABLE_CONFIG_KEYS = ("modules", "climate_period", "hot_months", "solar_date", "context_buffer_m", "lst_buffer_m", "ndvi_buffer_m", "max_scene_cloud_pct", "min_valid_site_fraction")
+COMPARABLE_CONFIG_KEYS = ("modules", "climate_period", "hot_months", "solar_date", "context_buffer_m", "lst_buffer_m", "ndvi_buffer_m", "max_scene_cloud_pct", "min_valid_site_fraction", "lst_downscale")
 
 
 class ComparisonError(ValueError):

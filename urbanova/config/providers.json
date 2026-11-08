@@ -475,6 +475,42 @@
       "approved_by": "Project decision maker (data science lead)",
       "approved_on": "2026-11-07",
       "approval_note": "Local endpoint; no data leaves the machine (PHASE2_SPEC §9)."
+    },
+    {
+      "id": "pc_esa_worldcover",
+      "name": "ESA WorldCover 10 m land cover (via Microsoft Planetary Computer STAC)",
+      "documentation_url": "https://esa-worldcover.org/en",
+      "catalog_url": "https://planetarycomputer.microsoft.com/api/stac/v1",
+      "implementation_status": "implemented",
+      "enabled": true,
+      "priority": 1,
+      "access_method": "catalog_stac",
+      "data_type": "land_cover",
+      "data_nature": "classified",
+      "variables": [
+        "map (land-cover class)"
+      ],
+      "geographic_coverage": "Global land",
+      "spatial_resolution": "10 m",
+      "temporal_resolution": "Single maps for 2020 (v100) and 2021 (v200)",
+      "temporal_coverage": "2020, 2021",
+      "authentication": "none (anonymous SAS token from Planetary Computer)",
+      "usage_limits": "Planetary Computer fair-use; SAS tokens expire after ~1 hour.",
+      "license": "CC BY 4.0",
+      "attribution": "ESA WorldCover project / Contains modified Copernicus Sentinel data (2021) processed by ESA WorldCover consortium; accessed via Microsoft Planetary Computer",
+      "commercial_use": "permitted_with_attribution",
+      "units": {
+        "class": "WorldCover class code (10 tree cover … 100 moss and lichen)"
+      },
+      "suitability": "site_context",
+      "known_limitations": "A 2021 snapshot: newer construction or clearing is not shown. Overall accuracy about 77 % globally (product validation); classes are for context, not for design measurements.",
+      "fallback_ids": [],
+      "approval_status": "approved",
+      "approved_by": "Project decision maker (data science lead)",
+      "approved_on": "2026-11-08",
+      "approval_note": "Approved in the stage S7 plan (PHASE2_SPEC §2.1, §13 item 6). Licence CC BY 4.0 recorded with the required attribution.",
+      "caching_permitted": false,
+      "timeout_s": 60
     }
   ]
 }

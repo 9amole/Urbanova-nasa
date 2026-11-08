@@ -12,21 +12,23 @@ import traceback
 from typing import Callable
 
 from .. import findings, interventions, recording
-from ..analysis import climate, compliance, context, heat_stress, hotspots, solar, surface_heat, urban_form, vegetation
+from ..analysis import climate, compliance, context, heat_stress, hotspots, landcover, solar, surface_heat, urban_form, vegetation
 from ..analysis.common import FAILED, SKIPPED, Context
 from ..readiness import ANALYSES, CONDITION, RUNNABLE
 
 log = logging.getLogger("urbanova.engine")
 
 MODULES = {
-    "climate_baseline": climate.run, "site_context": context.run, "urban_form": urban_form.run, "vegetation": vegetation.run,
+    "climate_baseline": climate.run, "site_context": context.run, "land_cover": landcover.run, "urban_form": urban_form.run, "vegetation": vegetation.run,
     "surface_heat": surface_heat.run, "solar_shade": solar.run, "heat_stress": heat_stress.run, "planning_compliance": compliance.run,
     "hotspots": hotspots.run, "interventions": interventions.run,
 }
 # Modules whose result depends only on the site and settings, never on the design. In a request
 # with several designs they run once and every design receives the same result (remediation D4),
 # together with the values they leave in ctx.shared for later modules.
-SITE_LEVEL = {"climate_baseline", "site_context", "surface_heat"}
+SITE_LEVEL = {"climate_baseline", "site_context", "land_cover", "surface_heat"}
+# Existing-land context records (H2 hot cluster first, then land cover): each lives in its module's details.
+CONTEXT_MODULES = ("surface_heat", "land_cover")
 
 
 def run_design(ctx: Context, selected: list[str], on_module: Callable[[str, int], None] | None = None) -> dict:
@@ -60,7 +62,7 @@ def run_design(ctx: Context, selected: list[str], on_module: Callable[[str, int]
                               "limitations": res["limitations"], "details": jsonable(res["details"]), "provider_failures": res.get("provider_failures", []),
                               "shared_across_designs": bool(res.get("_shared"))}
     hotspots = link_hotspots(results.get("hotspots", {}).get("hotspots") or [], metrics, ctx.run_id)
-    site_context = list(ctx.shared.get("site_context") or [])
+    site_context = [results[m]["details"]["site_context"] for m in CONTEXT_MODULES if (results.get(m, {}).get("details") or {}).get("site_context")]
     fnds, recs = ([], []) if ctx.partial else findings.generate({"id": ctx.run_id}, ctx.project, results, metrics, ctx.shared, hotspots)
     ran = [s["status"] for s in module_status.values() if s["status"] != SKIPPED]
     if ran and all(s == "completed" for s in ran):
