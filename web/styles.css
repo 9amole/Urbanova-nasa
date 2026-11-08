@@ -80,3 +80,10 @@ a.ev { font-size: .8em; }
 .dash .cards { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
 .panel.hs { cursor: pointer; }
 .panel.hs.selected { outline: 3px solid #5a0000; }
+
+/* S8 chat */
+.chat { max-height: 420px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
+.chat .msg.user { align-self: flex-end; background: var(--info-bg); padding: 8px 12px; border-radius: 12px; max-width: 80%; }
+.chat .msg.bot { align-self: flex-start; max-width: 92%; }
+.chip { display: inline-block; font-size: 12px; padding: 1px 8px; margin: 2px 2px 0 0; border-radius: 10px; border: 1px solid currentColor; text-decoration: none; }
+.flash { outline: 3px solid #e09a00; outline-offset: 2px; transition: outline-color 1s; }

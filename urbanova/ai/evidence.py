@@ -110,7 +110,7 @@ def pack_hash(pack: dict) -> str:
 def index(pack: dict) -> dict[str, dict]:
     """Every citable id → its entry in the pack ("site" is the run summary block)."""
     out = {"site": pack["site"]}
-    for key in ("hotspots", "site_context", "findings", "metrics", "options", "limitations", "questions"):
+    for key in ("hotspots", "site_context", "findings", "metrics", "options", "limitations", "questions", "records"):  # records: chat tool results
         for e in pack.get(key, []):
             out[e["id"]] = e
     return out

@@ -21,7 +21,10 @@ GLOSSARY = {
     "hottest decile": ("Hottest decile", "The 10% of pixels in the study area with the highest land surface temperature in the composite. A site share far above 10% indicates a relative concentration of hot surfaces."),
     "etccdi": ("ETCCDI indices", "Standard climate-extremes indices defined by the WMO Expert Team on Climate Change Detection and Indices, e.g. SU (days with Tmax > 25 °C) and TR (nights with Tmin > 20 °C)."),
 }
-PREDICTION = re.compile(r"(how much|how many degrees|by how many|reduce .*temperature by|cool(er)? by|predict|forecast|guarantee)", re.I)
+# Questions asking for a quantified future change. "How much" alone is an ordinary question ("how much sunlit paving is there?").
+PREDICTION = re.compile(r"(how many degrees|by how many|reduce .*temperature by|cool(er)? by|predict|forecast|guarantee|"
+                        r"how much (cooler|warmer|hotter|colder|lower|higher)|how much will .*(cool|temperature|warm|heat|utci)|will .*\b(be|get)\b.*(cooler|warmer|°c))", re.I)
+HOTSPOT_Q = re.compile(r"\bhot ?spots?\b|\b(first|priorit|worst|most severe)", re.I)
 TOPICS = [
     (re.compile(r"\b(lst|surface temp|hot ?spot|heat)", re.I), ("surface_heat", "climate_baseline"), "heat"),
     (re.compile(r"\b(ndvi|vegetat|green|tree|plant)", re.I), ("vegetation", "urban_form"), "vegetation"),
@@ -60,6 +63,15 @@ def answer(question: str, bundle: dict) -> dict:
     for key, (term, text) in GLOSSARY.items():
         if re.search(rf"\b(what is|what's|define|meaning of|explain)\b.*{re.escape(key)}", q, re.I):
             return {"answer": f"{term}: {text}", "based_on": ["glossary"], "sufficient_evidence": True}
+    hotspots = sorted(bundle.get("hotspots") or [], key=lambda h: h["number"])  # number 1 = highest priority
+    if hotspots and HOTSPOT_Q.search(q):
+        num = re.search(r"hot ?spot\s*#?(\d+)", q, re.I)
+        picked = [h for h in hotspots if num and h["number"] == int(num.group(1))] or hotspots[:5]
+        lines = [f"Hotspot {h['number']}: {' + '.join(h['type_labels'])}, {h['severity']} severity, {h['area_m2']:g} m²"
+                 + (f"; likely cause: {h['likely_causes'][0]['text']}" if h.get("likely_causes") else "") for h in picked]
+        head = "" if len(picked) == 1 else f"{len(hotspots)} design hotspot(s), highest priority first. "
+        return {"answer": head + " • ".join(lines), "based_on": [h["id"] for h in picked], "sufficient_evidence": True,
+                "note": "Answer assembled only from stored results of this run (no generative AI)."}
     for pattern, modules, category in TOPICS:
         if not pattern.search(q):
             continue
@@ -82,7 +94,7 @@ def answer(question: str, bundle: dict) -> dict:
             ids.append(f["id"])
         if not lines:
             break
-        return {"answer": " • ".join(lines[:14]), "based_on": ids, "sufficient_evidence": True,
+        return {"answer": " • ".join(lines[:14]), "based_on": ids[:14], "sufficient_evidence": True,
                 "note": "Answer assembled only from stored results of this run (no generative AI)."}
     return {"answer": "The analysis results of this run do not contain evidence to answer that question. URBANOVA answers only from its stored metrics, findings and sources.",
             "based_on": [], "sufficient_evidence": False}

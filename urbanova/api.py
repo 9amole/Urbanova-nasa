@@ -13,6 +13,7 @@ from fastapi.staticfiles import StaticFiles
 
 from starlette.concurrency import run_in_threadpool
 
+from .ai import chat as ai_chat
 from .ai import insights as ai_insights
 from .ai import llm as ai_llm
 from .ai import suggest as ai_suggest
@@ -632,6 +633,42 @@ async def ask(rid: str, request: Request, user: dict = Depends(current_user)):
         return ai
     out = explain.answer(question, bundle)
     return {**out, "generated_by": "fallback"} if ai is not None else out
+
+
+def _chat_comparison(run: dict) -> dict | None:
+    """The latest comparison of this project that includes the run (for the chat's read-only compare tool)."""
+    for c in db.select("comparisons", "project_id = ?", [run["project_id"]], order="created_at DESC"):
+        if run["id"] in (c.get("run_ids") or {}).values():
+            scen = {s["id"]: s["name"] for s in db.select("scenarios", "project_id = ?", [run["project_id"]])}
+            return {**c, "scenario_names": scen}
+    return None
+
+
+CHAT_KEEP = ("text", "claims", "based_on", "tool_calls", "generated_by", "label", "provider", "model", "reason")
+
+
+@app.get(f"{API}/analysis-runs/{{rid}}/chat")
+def get_chat(rid: str, user: dict = Depends(current_user)):
+    _run(rid, user)
+    return db.select("chat_messages", "run_id = ?", [rid], order="seq")
+
+
+@app.post(f"{API}/analysis-runs/{{rid}}/chat", status_code=201)
+async def post_chat(rid: str, request: Request, user: dict = Depends(current_user)):
+    """One chat turn about the run (S8): read-only tools, grounding validator, stored per run. Viewers read only."""
+    r, _ = _run(rid, user, "editor")
+    p, role = _project(r["project_id"], user)
+    question = str((await _json(request)).get("question") or "").strip()[:500]
+    if not question:
+        raise projects.ProjectError("Ask a question.")
+    history = [{"role": m["role"], "text": m["text"]} for m in db.select("chat_messages", "run_id = ?", [rid], order="seq")]
+    bundle = await run_in_threadpool(orchestrator.run_bundle, r)
+    reply = await run_in_threadpool(ai_chat.turn, bundle, question, history, _ai_allowed(p, role), _ai_local_only(p), _chat_comparison(r))
+    seq = len(history)
+    for i, (role_, body) in enumerate((("user", {"text": question}), ("assistant", {k: reply.get(k) for k in CHAT_KEEP}))):
+        db.insert("chat_messages", {"id": db.new_id("msg"), "run_id": rid, "seq": seq + i, "role": role_, "created_by": user["id"], "created_at": db.now(),
+                                    **{k: None for k in CHAT_KEEP}, **body, "text": body["text"] or ""})
+    return {**reply, "seq": seq + 1}
 
 
 @app.post(f"{API}/recommendations/{{rec_id}}/review")

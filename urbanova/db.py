@@ -137,6 +137,11 @@ CREATE TABLE IF NOT EXISTS insights (
     provider TEXT, model TEXT, prompt_version TEXT, label TEXT, reason TEXT, attempts TEXT, created_by TEXT, created_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS ix_insights_run ON insights(run_id);
+CREATE TABLE IF NOT EXISTS chat_messages (
+    id TEXT PRIMARY KEY, run_id TEXT NOT NULL, seq INTEGER NOT NULL, role TEXT NOT NULL, text TEXT NOT NULL, claims TEXT, based_on TEXT,
+    tool_calls TEXT, generated_by TEXT, label TEXT, provider TEXT, model TEXT, reason TEXT, created_by TEXT, created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS ix_chat_run ON chat_messages(run_id, seq);
 CREATE INDEX IF NOT EXISTS ix_datasets_cache ON datasets(cache_key);
 """
 
@@ -164,6 +169,7 @@ JSON_COLUMNS: dict[str, set[str]] = {
     "files": {"validation", "source_metadata"},
     "features": {"geometry", "original_geometry", "attributes", "correction_history", "suggestion"},
     "insights": {"blocks", "attempts"},
+    "chat_messages": {"claims", "based_on", "tool_calls"},
     "datasets": {
         "request_params", "spatial_coverage", "time_coverage", "variables", "units", "quality",
         "provenance", "parent_ids", "scene_ids",

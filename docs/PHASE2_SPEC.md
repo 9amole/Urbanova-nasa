@@ -541,7 +541,7 @@ The AI is part of the deployed system, not of a developer's machine. The engine 
 | Budget | `URBANOVA_LLM_MAX_CALLS_PER_DAY` stops before a free tier's daily limit, then the fallback is used |
 | Data minimisation | Metrics, hotspot summaries and ids only; never uploaded files, drawings, personal data or keys. Arabic PDF rule suggestions send only the extracted page text |
 | Model choice | **S4 (2026-11-08): Groq `openai/gpt-oss-120b`.** On 30 evidence packs it passed the validator in 12 of the 13 packs it answered (9 first time, 3 after the retry); 17 packs hit free-tier token caps and used the fallback. Details: docs/AI_EVALUATION.md |
-| Chat assistant (S8, optional) | Same service; read-only tools `get_hotspot`, `get_metric`, `compare`. Drafting alternatives stays in "apply recommendation" (§8.2) |
+| Chat assistant (S8, optional) | Same service; read-only tools `get_hotspot`, `get_metric`, `compare` (plus `list_hotspots`). Drafting alternatives stays in "apply recommendation" (§8.2). **Done 8 Nov 2026:** `urbanova/ai/chat.py`, stored per run; evaluation in docs/CHAT_EVALUATION.md (interim: the ≥ 30-question exit check is still running against the free-tier cap) |
 
 **Settings:**
 

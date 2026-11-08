@@ -819,8 +819,10 @@ async function tabResults(el, data, runId) {
      ${s.details?.accepted_scenes ? `<details><summary>Satellite scenes used (${s.details.accepted_scenes.length}) / excluded (${s.details.excluded_scenes.length})</summary><ul>${s.details.accepted_scenes.map((x) => `<li class="mono">✓ ${esc(x.scene_id)} ${esc(x.datetime.slice(0, 10))} cloud ${fmt(x.cloud_cover_pct, 1)}%, site valid ${fmt(x.valid_site_fraction * 100, 0)}%</li>`).join("")}${s.details.excluded_scenes.map((x) => `<li class="mono muted">✗ ${esc(x.scene_id)} ${esc(x.datetime.slice(0, 10))}: ${esc(x.reason)}</li>`).join("")}</ul></details>` : ""}
    </div>`).join("")}</div></section>
   ${dq.length ? `<section class="panel"><h2>Data-quality issues</h2><ul>${dq.map((f) => `<li><strong>${esc(f.title)}</strong> — ${esc(f.summary)}</li>`).join("")}</ul></section>` : ""}
-  <section class="panel"><h2>Ask about this result</h2><form id="f-ask" class="row"><div style="flex:1"><label for="ask-q">Question</label><input id="ask-q" type="text" placeholder="e.g. Where is vegetation limited? What is LST?"></div><div><button type="submit">Ask</button></div></form>
-   <div id="ask-out" aria-live="polite"></div><p class="hint">Answers are assembled only from this run's stored results — no generative AI is used, and nothing is invented.</p></section>
+  <section class="panel"><h2>Ask about this result</h2>
+   <div id="chat-log" class="chat" aria-live="polite"></div>
+   ${p.role !== "viewer" ? `<form id="f-ask" class="row"><div style="flex:1"><label for="ask-q">Question</label><input id="ask-q" type="text" maxlength="500" placeholder="e.g. Which hotspot comes first, and why? What would trees on hotspot 2 cost?"></div><div><button type="submit" id="ask-send">Send</button></div></form>` : `<p class="hint">Viewers can read the conversation; editors can ask.</p>`}
+   <p class="hint">The assistant only reads this run's stored results (hotspots, metrics, options, comparison). ${p.ai_enabled ? "AI answers are checked by the grounding validator; otherwise an automatic answer is shown." : "AI text is off for this project, so answers are assembled automatically from the results."} It never changes data and does not predict temperatures.</p></section>
   <section class="panel"><h2>Datasets and provenance</h2><table><thead><tr><th>Dataset</th><th>Source</th><th>Nature</th><th>Coverage</th><th>Licence / attribution</th><th>Source status</th></tr></thead><tbody>
    ${b.datasets.filter(Boolean).map((d) => `<tr><td class="mono">${esc(d.id)}<div>${esc(d.dataset_type)}</div></td><td>${esc(d.source_id)}<div class="muted">${esc(d.spatial_resolution || "")}</div></td><td>${esc(d.data_nature)}</td>
      <td class="mono">${esc(d.time_coverage?.start ? `${d.time_coverage.start} – ${d.time_coverage.end}` : (d.time_coverage?.scenes || []).map((x) => x.slice(0, 10)).join(", ") || d.time_coverage?.osm_snapshot || "")}</td><td>${esc(d.license || "")}<div class="muted">${esc(d.attribution || "")}</div></td><td>${badge([d.approval_label || "unknown", (["approved", "fr_recommended"].includes(d.approval_status) && d.terms_confirmed) || d.approval_status === "fr_required" ? "b-ok" : "b-warn"])}<div class="muted">usage: ${esc(d.usage_context || "")}</div></td></tr>`).join("") || `<tr><td colspan="6">No external datasets in this run.</td></tr>`}</tbody></table>
@@ -908,10 +910,34 @@ async function tabResults(el, data, runId) {
     const comment = btn.dataset.s === "flagged_incorrect" ? prompt("What is incorrect? (optional)") || "" : "";
     await api(`/recommendations/${btn.dataset.rec}/review`, { body: { status: btn.dataset.s, comment } }); notify("Feedback recorded. It does not change results.", "ok"); route();
   }, btn)));
-  document.getElementById("f-ask").onsubmit = (e) => { e.preventDefault(); guarded(async () => {
-    const r = await api(`/analysis-runs/${rid}/ask`, { body: { question: document.getElementById("ask-q").value } });
-    document.getElementById("ask-out").innerHTML = `<div class="alert ${r.sufficient_evidence ? "info" : "warn"}">${esc(r.answer)}</div>`;
-  }); };
+  const log = document.getElementById("chat-log");
+  const chip = (id) => `<a href="#" class="chip" data-ev="${esc(id)}">${short(id)}</a>`;
+  const msgHtml = (m) => m.role === "user" ? `<div class="msg user">${esc(m.text)}</div>`
+    : `<div class="msg bot alert ${m.generated_by === "ai" ? "info" : m.generated_by === "rule" ? "warn" : "ok"}">${esc(m.text)}
+       <div class="muted">${esc(m.label || "")}${m.reason ? " — " + esc(m.reason) : ""}${(m.tool_calls || []).length ? ` · looked up: ${m.tool_calls.map((t) => esc(t.tool)).join(", ")}` : ""}</div>
+       ${(m.based_on || []).length ? `<div>${m.based_on.map(chip).join(" ")}</div>` : ""}</div>`;
+  const showChat = (msgs) => {
+    log.innerHTML = msgs.map(msgHtml).join("") || `<p class="muted">No questions yet for this run.</p>`;
+    log.querySelectorAll(".chip").forEach((a) => (a.onclick = (e) => {
+      e.preventDefault();
+      const t = document.getElementById(`ev-${a.dataset.ev}`);
+      if (t) { t.scrollIntoView({ behavior: "smooth", block: "center" }); t.classList.add("flash"); setTimeout(() => t.classList.remove("flash"), 1500); }
+    }));
+    log.scrollTop = log.scrollHeight;
+  };
+  let chat = await api(`/analysis-runs/${rid}/chat`);
+  if (!state.maps.includes(map)) return;
+  showChat(chat);
+  const fa = document.getElementById("f-ask");
+  if (fa) fa.onsubmit = (e) => { e.preventDefault(); const q = document.getElementById("ask-q"); const btn = document.getElementById("ask-send"); guarded(async () => {
+    const text = q.value.trim();
+    if (!text) throw new Error("Type a question first.");
+    showChat([...chat, { role: "user", text }, { role: "assistant", text: "Thinking…", label: "" }]);
+    const r = await api(`/analysis-runs/${rid}/chat`, { body: { question: text } });
+    chat = [...chat, { role: "user", text }, { role: "assistant", ...{ text: r.answer, ...r } }];
+    q.value = "";
+    showChat(chat);
+  }, btn).catch(() => {}).finally(() => showChat(chat)); };
 }
 
 function climateChart(s) {
