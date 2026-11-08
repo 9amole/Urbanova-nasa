@@ -194,10 +194,13 @@ def dashboard(project: dict) -> dict:
     ins = next(iter(db.select("insights", "run_id = ?", [run["id"]], order="created_at DESC")), None)
     answers = {a["question_id"]: " ".join(c["text"] for c in a["claims"]) for a in (ins or {}).get("blocks", {}).get("answers") or []}
     ms = run.get("module_status") or {}
+    hst = ms.get("hotspots") or {}
+    assessed = hst.get("status") in ("completed", "partial")
     return {
         "state": "ready", "run_id": run["id"], "run_status": run["status"], "completed_at": run.get("completed_at"), "stale": bool(b["run"]["stale_modules"]),
         "condition": {"design": {"hotspots": len(hs), **{lvl: sum(1 for h in hs if h["severity"] == lvl) for lvl in ("high", "moderate", "low")},
-                                 "located_area_m2": round(sum(h["area_m2"] for h in hs if not h.get("site_wide")), 1)},
+                                 "located_area_m2": round(sum(h["area_m2"] for h in hs if not h.get("site_wide")), 1), "assessed": assessed,
+                                 "not_assessed_reason": None if assessed else (hst.get("reason") or "Design hotspot detection was not part of this run.")},
                       "existing": [c["statement"] for c in b.get("site_context") or []]},
         "top_hotspots": [{"id": h["id"], "number": h["number"], "type_labels": h["type_labels"], "severity": h["severity"], "area_m2": h["area_m2"],
                           "main_cause": (h["likely_causes"][0]["text"] if h["likely_causes"] else None),

@@ -151,6 +151,8 @@ The results of the last run are in `docs/VERIFICATION.md` and `docs/VALIDATION.m
 
 ## 8. Known limitations and open items
 
+The decisions still needed from the team and supervisors, with recommendations and a form to record them, are in `docs/decisions/SUPERVISOR_DECISIONS.md` (record basis approvals with `scripts/record_approvals.py`).
+
 * **Evidence:** results come from synthetic samples, real OSM geometry, and station and land-cover checks (`docs/VALIDATION.md`). **No real project has been validated** (D2 open). In particular there has been no real CAD export, no real Arabic planning document and no scanned page.
 * **Thresholds:** severity thresholds marked provisional are not approved (decision C2).
 * **Climate data:** ERA5 minimum temperatures were 1.5–2.2 °C warmer than two Egyptian stations, so tropical-night counts can be overstated. This is stated on every climate result.

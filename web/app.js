@@ -62,7 +62,11 @@ const LOADING = `<p class="loading" role="status" aria-busy="true">Loading…</p
 function clearMaps() { state.maps.forEach((m) => m.remove()); state.maps = []; }
 
 function makeMap(el, lat, lon, zoom = 16) {
-  const m = L.map(el).setView([lat, lon], zoom);
+  const m = L.map(el);
+  // Leaflet 1.9.4 schedules the end of a zoom animation with a timer that map.remove() cannot cancel; leaving a tab
+  // mid-animation then throws "_leaflet_pos" on the removed map. Skip that callback once the map is gone.
+  m._onZoomTransitionEnd = function () { if (this._mapPane) L.Map.prototype._onZoomTransitionEnd.call(this); };
+  m.setView([lat, lon], zoom);
   // Tile source comes from server config (URBANOVA_TILE_URL). The referrer policy makes the browser send
   // this site's origin, which the OSM tile usage policy requires; attribution must stay visible.
   const bm = state.meta.basemap;
@@ -255,10 +259,11 @@ function dashboardHtml(d, pid) {
   return `<section class="panel dash"><h2>Site dashboard</h2>
    <p class="muted">Latest baseline run ${esc(d.run_id)} (${esc(d.run_status.replace(/_/g, " "))}, ${esc(d.completed_at || "")})${d.stale ? " — " + badge(["out of date", "b-warn"]) : ""}</p>
    <div class="cards">
-    <div class="panel"><h3>Condition of the design</h3><p><strong>${c.hotspots}</strong> design hotspots: ${c.high} high, ${c.moderate} moderate, ${c.low} low severity; ${fmt(c.located_area_m2, 0)} m² located.</p>
+    <div class="panel"><h3>Condition of the design</h3>${c.assessed ? `<p><strong>${c.hotspots}</strong> design hotspots: ${c.high} high, ${c.moderate} moderate, ${c.low} low severity; ${fmt(c.located_area_m2, 0)} m² located.</p>`
+      : `<p><strong>Not assessed:</strong> ${esc(c.not_assessed_reason)} Run the analysis with "Design hotspots" selected.</p>`}
       ${d.condition.existing.length ? `<p class="muted">Existing land (context): ${d.condition.existing.map(esc).join(" ")}</p>` : ""}</div>
     <div class="panel"><h3>Priority hotspots</h3>${d.top_hotspots.length ? `<ol>${d.top_hotspots.map((h) => `<li>${sevBadge(h.severity)} <a href="#/p/${pid}/results/${esc(d.run_id)}">Hotspot ${h.number}</a>: ${esc(h.type_labels.join(" + "))}, ${fmt(h.area_m2, 0)} m²
-       ${h.main_cause ? `<div class="muted">${esc(h.main_cause)}</div>` : ""}${h.best_option ? `<div>Suited option: ${esc(h.best_option.title)} (${esc(h.best_option.size)}) — ${h.best_option.effect.change_pct !== undefined ? `−${fmt(h.best_option.effect.change_pct, 1)} %` : ""} · ${costText(h.best_option.cost)}</div>` : ""}</li>`).join("")}</ol>` : "<p>No design hotspots.</p>"}</div>
+       ${h.main_cause ? `<div class="muted">${esc(h.main_cause)}</div>` : ""}${h.best_option ? `<div>Suited option: ${esc(h.best_option.title)} (${esc(h.best_option.size)}) — ${h.best_option.effect.change_pct !== undefined ? `−${fmt(h.best_option.effect.change_pct, 1)} %` : ""} · ${costText(h.best_option.cost)}</div>` : ""}</li>`).join("")}</ol>` : (c.assessed ? "<p>No design hotspots.</p>" : "<p class=\"muted\">Not assessed in this run.</p>")}</div>
     <div class="panel"><h3>Your questions</h3><ul>${d.questions.map((q) => `<li>${esc(q.question)} — ${q.answerable ? badge(["answered", "b-ok"]) : badge(["cannot be answered", "b-bad"])}<div class="muted">${esc(q.answer)}</div></li>`).join("")}</ul>
       ${d.insights ? `<p class="hint">${d.insights.generated_by === "ai" ? `AI-written insights (${esc(d.insights.model)})` : "Automatic summary"} — see Results.</p>` : ""}</div>
     <div class="panel"><h3>Data completeness</h3><ul>${Object.values(d.completeness.modules || {}).map((m) => `<li>${badge(MOD_STATUS[m.status] || [m.status, "b-info"])} ${esc(m.label)}</li>`).join("")}</ul>
@@ -872,6 +877,7 @@ async function tabResults(el, data, runId) {
         isShadow ? "<strong>Shade</strong><div>Darker = 15:00, lighter = 09:00/12:00 (solar time)</div>" : `<strong>${esc(lay.name)}</strong><div class="muted">${esc(lay.meta?.attribution || "")}</div>`]);
     }
   }
+  if (!state.maps.includes(map)) return;  // the user left the page while layers were loading; the map is gone
   const hot = b.findings.find((f) => f.rule_id === "HEAT-LST-02" && f.geometry);
   if (hot) overlays.push(["Finding: hottest-decile surfaces (classified)", L.geoJSON(hot.geometry, { style: { color: "#d7191c", weight: 2, fillOpacity: 0.2, dashArray: "4 3" } }), true, null]);
   document.querySelectorAll(".panel.hs").forEach((card) => card.addEventListener("click", (e) => {
@@ -892,7 +898,7 @@ async function tabResults(el, data, runId) {
   });
   ctl.querySelectorAll("input[type=checkbox]").forEach((cb) => (cb.onchange = () => { const l = overlays[cb.dataset.i][1]; cb.checked ? l.addTo(map) : map.removeLayer(l); refreshLegend(); }));
   ctl.querySelectorAll("input[type=range]").forEach((r) => (r.oninput = () => overlays[r.dataset.i][1].setOpacity(+r.value)));
-  if (p.boundary) map.fitBounds(L.geoJSON(p.boundary).getBounds(), { padding: [40, 40] });
+  if (p.boundary) map.fitBounds(L.geoJSON(p.boundary).getBounds(), { padding: [40, 40], animate: false });
   refreshLegend();
   el.querySelectorAll(".explain").forEach((btn) => (btn.onclick = () => guarded(async () => {
     const r = await api(`/findings/${btn.dataset.fid}/explanation`);
@@ -946,7 +952,9 @@ async function tabCompare(el, data) {
   if (f) f.onsubmit = (e) => { e.preventDefault(); guarded(async () => {
     const criteria = [...document.querySelectorAll("input[data-c]")].filter((i) => +i.value > 0).map((i) => ({ metric: i.dataset.c, weight: +i.value }));
     const bud = document.getElementById("cmp-bud").value, cur = document.getElementById("cmp-cur").value.trim();
-    const c = await api(`/projects/${pid}/scenario-comparisons`, { body: { baseline_id: base.id, alternative_ids: [...document.querySelectorAll("input[name=alt]:checked")].map((x) => x.value), criteria: criteria.length ? criteria : null,
+    const altIds = [...document.querySelectorAll("input[name=alt]:checked")].map((x) => x.value);
+    if (!altIds.length) throw new Error("Select at least one alternative to compare with the original design.");
+    const c = await api(`/projects/${pid}/scenario-comparisons`, { body: { baseline_id: base.id, alternative_ids: altIds, criteria: criteria.length ? criteria : null,
       budget_amount: bud ? +bud : null, budget_currency: bud ? cur : null } });
     renderComparison(document.getElementById("cmp-out"), c, pid);
   }); };

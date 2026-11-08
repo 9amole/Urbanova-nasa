@@ -183,3 +183,13 @@ def test_geoman_is_pinned_with_subresource_integrity():
     for asset in ("leaflet-geoman.css", "leaflet-geoman.js"):
         tag = next(t for t in re.findall(r"<(?:script|link)[^>]+>", html) if asset in t)
         assert "@geoman-io/leaflet-geoman-free@2.20.3/" in tag and 'integrity="sha384-' in tag and "crossorigin" in tag
+
+
+def test_dashboard_says_not_assessed_when_hotspots_did_not_run(client, auth, monkeypatch):
+    """Found in the S7 walkthrough: a run without the hotspot module showed '0 design hotspots'."""
+    _fake_climate(monkeypatch)
+    pid = make_project(client, auth)
+    sid = baseline_with_plan(client, auth, pid)["id"]
+    run(client, auth, pid, sid, {"modules": ["urban_form"]})
+    c = client.get(f"/api/v1/projects/{pid}/dashboard", headers=auth).json()["condition"]["design"]
+    assert c["assessed"] is False and c["not_assessed_reason"]
