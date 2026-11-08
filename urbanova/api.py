@@ -406,6 +406,18 @@ def package_draft(rid: str, user: dict = Depends(current_user)):
     return scenarios.public(scenarios.create_draft_from_package(p, user, run), include_features=False)
 
 
+@app.post(f"{API}/analysis-runs/{{rid}}/options/{{oid}}/draft", status_code=201)
+def option_draft(rid: str, oid: str, user: dict = Depends(current_user)):
+    run, p = _owned("runs", rid, user, "editor")
+    return scenarios.public(scenarios.draft_from_option(p, user, run, oid), include_features=False)
+
+
+@app.get(f"{API}/projects/{{pid}}/dashboard")
+def dashboard(pid: str, user: dict = Depends(current_user)):
+    p, _ = _project(pid, user)
+    return projects.dashboard(p)
+
+
 @app.post(f"{API}/scenarios/{{sid}}/archive")
 def archive_scenario(sid: str, user: dict = Depends(current_user)):
     s, _ = _owned("scenarios", sid, user, "editor")

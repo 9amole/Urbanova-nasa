@@ -422,7 +422,11 @@ def run(ctx: Context) -> dict:
     site = geo.to_local(shape(ctx.project["boundary"]), ctx.local_crs)
     limit = int(param("max_hotspots"))
     chosen = entries[:limit]
-    per_hotspot = [evaluate_hotspot(ctx, e, site) for e in chosen]
+    per_hotspot = []
+    for k, e in enumerate(chosen, start=1):
+        if ctx.progress:
+            ctx.progress(f"Intervention options: hotspot {e['record']['number']} ({k} of {len(chosen)})")
+        per_hotspot.append(evaluate_hotspot(ctx, e, site))
     pkg = package(ctx, per_hotspot, {e["record"]["number"]: e for e in chosen}, site)
     notes = [f"Hotspot {e['record']['number']} not optimised: only the {limit} highest-priority hotspots are (basis interventions.max_hotspots)." for e in entries[limit:]]
     n_opts = sum(1 for h in per_hotspot for o in h["options"] if not o["separate"])

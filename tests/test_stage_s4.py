@@ -279,7 +279,7 @@ def test_insights_endpoint_stores_labelled_text_and_report_shows_it(client, auth
     assert client.get(f"/api/v1/analysis-runs/{rid}/insights", headers=auth).json()["id"] == ins["id"]
     rep = client.post(f"/api/v1/analysis-runs/{rid}/reports", headers=auth).json()
     html = client.get(f"/api/v1/reports/{rep['id']}/download?format=html", headers=auth).text
-    assert "<section class='insights'><h2>Insights</h2>" in html and "AI text unavailable" in html
+    assert "<h2>1. Executive summary</h2>" in html and "<h3>Insights</h3>" in html and "AI text unavailable" in html
     other = login(client, "other@example.com")
     assert client.post(f"/api/v1/analysis-runs/{rid}/insights", headers=other).status_code in (403, 404)
     assert client.patch(f"/api/v1/projects/{pid}", headers=auth, json={"ai_enabled": "yes"}).status_code == 422

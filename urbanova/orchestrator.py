@@ -216,6 +216,11 @@ def execute(run_id: str, site_cache: dict | None = None) -> None:
     def progress(mod: str, i: int) -> None:
         db.update("jobs", "id", run["job_id"], {"stage": ANALYSES[mod], "progress": round(i / len(RUNNABLE), 2)})
 
+    def sub_progress(text: str) -> None:  # finer stage text from long modules (the optimiser), never persisted in the run
+        db.update("jobs", "id", run["job_id"], {"stage": text})
+
+    ctx.progress = sub_progress
+
     out = run_design(ctx, cfg["modules"], on_module=progress)
     for row in out["metrics"]:
         db.insert("metrics", row)

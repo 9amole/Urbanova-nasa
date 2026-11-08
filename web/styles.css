@@ -76,3 +76,7 @@ table.opts td { vertical-align: top; }
 /* Insights (S4) */
 .flash { outline: 3px solid #f9a825; transition: outline-color 1s; }
 a.ev { font-size: .8em; }
+/* S6: dashboard and hotspot selection */
+.dash .cards { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+.panel.hs { cursor: pointer; }
+.panel.hs.selected { outline: 3px solid #5a0000; }

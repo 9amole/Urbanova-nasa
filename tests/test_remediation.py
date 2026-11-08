@@ -332,7 +332,8 @@ def test_pdf_report_contains_every_section_heading(client, auth):
     text = " ".join((p.extract_text() or "") for p in PdfReader(io.BytesIO(pdf)).pages)
     flat = " ".join(text.split())
     html = client.get(f"/api/v1/reports/{rep['id']}/download?format=html", headers=auth).text
-    assert len(report.SECTIONS) == 14
+    # Five main sections around the supervisors' questions, then the 14 technical parts as appendices (S6).
+    assert len(report.SECTIONS) == 19 and len(report.APPX) == 14
     for title in report.SECTIONS:
         assert title in flat, title
         assert f"<h2>{title}</h2>" in html, title

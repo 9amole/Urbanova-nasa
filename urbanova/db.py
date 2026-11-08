@@ -154,6 +154,7 @@ MIGRATIONS: list[tuple[str, str, str]] = [
     ("recommendations", "literature", "TEXT"),
     ("findings", "checks", "TEXT"),
     ("projects", "ai_enabled", "INTEGER DEFAULT 0"),
+    ("projects", "synthetic_data", "INTEGER DEFAULT 0"),
     ("features", "suggestion", "TEXT"),
 ]
 

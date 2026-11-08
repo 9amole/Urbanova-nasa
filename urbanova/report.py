@@ -12,7 +12,7 @@ from pathlib import Path
 
 from shapely.geometry import shape
 
-from . import __version__, basis, db, files, plans
+from . import __version__, basis, db, files, plans, report_front
 from .cost import STALE_PRICE_YEARS
 from .orchestrator import run_bundle
 from .readiness import ANALYSES, CONDITION
@@ -212,11 +212,13 @@ def build(project: dict, run: dict, user: dict, comparison: dict | None = None) 
     summary = {"label": label, "complete": complete, "incomplete_modules": incomplete, "stale_modules": stale,
                "findings": len([f for f in bundle["findings"] if f["classification"] != "data_quality_issue"]),
                "data_quality_issues": len([f for f in bundle["findings"] if f["classification"] == "data_quality_issue"])}
-    h = _html(project, run, bundle, scenario, files_, rules, comparison, summary, map_png, clim_png)
+    front = report_front.build(project, run, bundle, scenario, comparison, out, _insights(run))
+    summary["synthetic"] = report_front.is_synthetic(project)
+    h = _html(project, run, bundle, scenario, files_, rules, comparison, summary, map_png, clim_png, front)
     html_path = out / "report.html"
     html_path.write_text(h, encoding="utf-8")
     pdf_path = out / "report.pdf"
-    _pdf(pdf_path, project, run, bundle, scenario, files_, rules, comparison, summary, map_png, clim_png)
+    _pdf(pdf_path, project, run, bundle, scenario, files_, rules, comparison, summary, map_png, clim_png, front)
     rep = {"id": db.new_id("rpt"), "project_id": project["id"], "run_id": run["id"], "comparison_id": (comparison or {}).get("id"),
            "html_path": str(html_path), "pdf_path": str(pdf_path), "status": "complete" if complete else "partial", "summary": summary,
            "created_by": user["id"], "created_at": db.now()}
@@ -233,13 +235,33 @@ def _img_tag(path: str | None, alt: str) -> str:
     return f'<img src="data:image/png;base64,{data}" alt="{_e(alt)}" style="max-width:100%">'
 
 
-# One list of section titles for the HTML and PDF reports, covering FR-33 items 1-15.
-SECTIONS = [
-    "1. Project and site", "2. Objectives", "3. Inputs and verification status", "4. Analyses run", "5. Data sources",
-    "6. Metrics", "7. Findings", "8. Recommendations", "9. Planning checks", "10. Scenario comparison and costs",
-    "11. Assumptions, limitations and uncertainty", "12. Data-quality issues and unavailable analyses", "13. Methodology",
-    "14. Reproducibility record",
+# Report structure (PHASE2_SPEC §8.1): five main sections around the supervisors' questions, then the technical
+# content as appendices (it still covers FR-33 items 1-15). SECTIONS lists every top-level heading in order.
+APPX = [
+    "Appendix A. Project and site", "Appendix B. Objectives", "Appendix C. Inputs and verification status", "Appendix D. Analyses run",
+    "Appendix E. Data sources and licences", "Appendix F. Metrics", "Appendix G. Findings", "Appendix H. Recommendations and measured options",
+    "Appendix I. Planning checks", "Appendix J. Scenario comparison details and costs", "Appendix K. Assumptions, limitations and uncertainty",
+    "Appendix L. Data-quality issues and unavailable analyses", "Appendix M. Methodology and the basis of every value", "Appendix N. Reproducibility record",
 ]
+SECTIONS = report_front.MAIN_SECTIONS + APPX
+
+
+def _blocks_html(sections: list) -> str:
+    out = []
+    for title, blocks in sections:
+        out.append(f"<h2>{_e(title)}</h2>")
+        for b in blocks:
+            kind = b[0]
+            if kind in ("p", "h3", "h4"):
+                out.append(f"<{kind}>{_e(b[1])}</{kind}>")
+            elif kind == "ul":
+                out.append("<ul>" + "".join(f"<li>{_e(x)}</li>" for x in b[1]) + "</ul>")
+            elif kind == "img":
+                out.append(_img_tag(b[1], b[2]))
+            elif kind == "table":
+                out.append("<table><tr>" + "".join(f"<th>{_e(c)}</th>" for c in b[1]) + "</tr>"
+                           + "".join("<tr>" + "".join(f"<td>{_e(c)}</td>" for c in row) + "</tr>" for row in b[2]) + "</table>")
+    return "".join(out)
 
 
 HOTSPOT_HEADER = ["No.", "Type", "Area", "Size", "Intensity", "Severity and basis", "UTCI sun / shade", "Likely causes"]
@@ -338,21 +360,18 @@ def _insight_lines(ins: dict) -> list[tuple[str, list[str]]]:
     return [x for x in out if x[1]]
 
 
-def _html(project, run, bundle, scenario, files_, rules, comparison, summary, map_png, clim_png) -> str:
+def _html(project, run, bundle, scenario, files_, rules, comparison, summary, map_png, clim_png, front=()) -> str:
     ms = run.get("module_status") or {}
     rows = []
     sec = []
     sec.append(f"<h1>URBANOVA analysis report — {_e(project['name'])}</h1>")
     banner = "ok" if summary["complete"] else "warn"
     sec.append(f'<p class="banner {banner}"><strong>Report status: {_e(summary["label"])}.</strong> URBANOVA is a decision-support tool; this report is not a statutory approval, engineering design or professional sign-off.</p>')
-    ins = _insights(run)
-    if ins:
-        label = ins["label"] + (f" ({ins['model']})" if ins.get("model") else "")
-        sec.append(f"<section class='insights'><h2>Insights</h2><p><em>{_e(label)}. Evidence ids in brackets refer to records in this report.</em></p>")
-        for head, lines in _insight_lines(ins):
-            sec.append(f"<h3>{_e(head)}</h3><ul>" + "".join(f"<li>{_e(x)}</li>" for x in lines) + "</ul>")
-        sec.append("</section>")
-    sec.append("<h2>" + SECTIONS[0] + "</h2><table>")
+    if summary.get("synthetic"):
+        sec.append(f'<p class="banner synthetic"><strong>{_e(report_front.SYNTHETIC_LABEL)}</strong></p>')
+    sec.append(_blocks_html(front))
+    sec.append("<hr><p class='appx'><em>Appendices: the technical record behind the sections above.</em></p>")
+    sec.append("<h2>" + APPX[0] + "</h2><table>")
     for k, v in (("Project ID", project["id"]), ("Type", project.get("project_type") or "not stated"), ("Location", f"{project['latitude']:.5f}, {project['longitude']:.5f} (WGS 84)"),
                  ("Country / address", " / ".join(x for x in (project.get("country"), project.get("city_or_address")) if x) or "not stated"),
                  ("Site boundary", "supplied" if project.get("boundary") else "not supplied — point-buffer statistics"),
@@ -363,20 +382,20 @@ def _html(project, run, bundle, scenario, files_, rules, comparison, summary, ma
         sec.append(f"<tr><th>{_e(k)}</th><td>{_e(v)}</td></tr>")
     sec.append("</table>")
     sec.append(_img_tag(map_png, "Map of site boundary and design features"))
-    sec.append("<h2>" + SECTIONS[1] + "</h2><ul>")
+    sec.append("<h2>" + APPX[1] + "</h2><ul>")
     for o in bundle["objectives"]:
         status = ("cannot be answered with the available data" if not o["answerable"]
                   else "partly answered — some evidence unavailable" if o.get("not_available") else "answered with available evidence")
         extra = "" if not o.get("not_available") else " — missing: " + "; ".join(o["not_available"])
         sec.append(f"<li>{_e(o['question'])} <em>({_e(status)})</em>{_e(extra)}</li>")
     sec.append("</ul>")
-    sec.append("<h2>" + SECTIONS[2] + "</h2><table><tr><th>File</th><th>Category</th><th>Detected type</th><th>Status</th><th>SHA-256</th></tr>")
+    sec.append("<h2>" + APPX[2] + "</h2><table><tr><th>File</th><th>Category</th><th>Detected type</th><th>Status</th><th>SHA-256</th></tr>")
     for f in files_:
         sec.append(f"<tr><td>{_e(f['original_filename'])}</td><td>{_e(f['category'])}</td><td>{_e(f['detected_type'])}</td><td>{_e(f['status'])}</td><td><code>{_e(f['checksum'][:16])}…</code></td></tr>")
     if not files_:
         sec.append('<tr><td colspan="5">No files uploaded (coordinate-only project).</td></tr>')
     sec.append("</table>")
-    sec.append("<h2>" + SECTIONS[3] + "</h2><table><tr><th>Analysis</th><th>Status</th><th>Notes</th></tr>")
+    sec.append("<h2>" + APPX[3] + "</h2><table><tr><th>Analysis</th><th>Status</th><th>Notes</th></tr>")
     for mod, st in ms.items():
         notes = st.get("reason") or "; ".join(st.get("warnings") or [])
         stale = bundle["run"]["stale_modules"].get(mod)
@@ -384,7 +403,7 @@ def _html(project, run, bundle, scenario, files_, rules, comparison, summary, ma
             notes += f" OUT OF DATE: inputs changed since this run ({', '.join(stale)})."
         sec.append(f"<tr><td>{_e(st['label'])}</td><td class='st-{_e(st['status'])}'>{_e(STATUS_LABEL.get(st['status'], st['status']))}</td><td>{_e(notes)}</td></tr>")
     sec.append("</table>")
-    sec.append("<h2>" + SECTIONS[4] + "</h2><table><tr><th>Dataset</th><th>Source</th><th>Nature</th><th>Coverage</th><th>Resolution</th><th>Retrieved</th><th>Licence / attribution</th><th>Source status</th></tr>")
+    sec.append("<h2>" + APPX[4] + "</h2><table><tr><th>Dataset</th><th>Source</th><th>Nature</th><th>Coverage</th><th>Resolution</th><th>Retrieved</th><th>Licence / attribution</th><th>Source status</th></tr>")
     for d in bundle["datasets"]:
         if not d:
             continue
@@ -393,7 +412,7 @@ def _html(project, run, bundle, scenario, files_, rules, comparison, summary, ma
         sec.append(f"<tr><td>{_e(d['dataset_type'])}<br><code>{_e(d['id'])}</code></td><td>{_e(d['source_id'])}</td><td>{_e(d.get('data_nature'))}</td><td>{_e(cov_txt)}</td><td>{_e(d.get('spatial_resolution'))}</td><td>{_e(d['created_at'])}</td><td>{_e(d.get('license'))}<br>{_e(d.get('attribution'))}</td><td>{_e(d.get('approval_label'))}; usage: {_e(d.get('usage_context'))}</td></tr>")
     sec.append("</table>")
     sec.append(_img_tag(clim_png, "Monthly climatology chart"))
-    sec.append("<h2>" + SECTIONS[5] + "</h2><p>Kind of value: " + "; ".join(f"<b>{_e(v)}</b>" for v in OUTPUT_KIND_LABELS.values()) + ".</p>")
+    sec.append("<h2>" + APPX[5] + "</h2><p>Kind of value: " + "; ".join(f"<b>{_e(v)}</b>" for v in OUTPUT_KIND_LABELS.values()) + ".</p>")
     for mod in ms:
         mm = [m for m in bundle["metrics"] if m["module"] == mod]
         if not mm:
@@ -403,7 +422,7 @@ def _html(project, run, bundle, scenario, files_, rules, comparison, summary, ma
             note = " <small>(same for every design)</small>" if CONDITION.get(mod) == DESIGN and condition_of(m) == EXISTING else ""
             sec.append(f"<tr><td>{_e(m['label'])}{note}</td><td>{_fmt(m)}</td><td>{_e(OUTPUT_KIND_LABELS.get(m['output_kind']))}</td><td>{_e(m['method'])}</td></tr>")
         sec.append("</table>")
-    sec.append("<h2>" + SECTIONS[6] + "</h2>")
+    sec.append("<h2>" + APPX[6] + "</h2>")
     sec.append("<h3 id='hotspots'>Design hotspots</h3>")
     if bundle.get("hotspots"):
         sec.append("<p>Places on the drawing with a measured problem, numbered by priority (severity, then area) and shown on the map above. "
@@ -424,7 +443,7 @@ def _html(project, run, bundle, scenario, files_, rules, comparison, summary, ma
                    + (f"<p><b>Affected area:</b> {_e(f['affected_area'])}</p>" if f.get("affected_area") else "")
                    + f"<p><b>Classification:</b> {_e(f['classification'].replace('_', ' '))} · <b>Confidence:</b> {_e(f['confidence'])} · <b>Rule:</b> {_e(f['severity_rule'])}</p>"
                    f"<ul>{''.join('<li>' + _e(x) + '</li>' for x in f.get('limitations') or [])}</ul></div>")
-    sec.append("<h2>" + SECTIONS[7] + "</h2>")
+    sec.append("<h2>" + APPX[7] + "</h2>")
     for r in bundle["recommendations"]:
         sec.append(f"<div class='rec'><h3>{_e(r['title'])}</h3><p><b>Problem:</b> {_e(r['problem'])}</p><p><b>Intervention:</b> {_e(r['intervention'])}</p>"
                    f"<p><b>Expected direction (not quantified):</b> {_e(r['expected_direction'])}</p><p><b>Trade-offs:</b> {_e('; '.join(r['tradeoffs']))}</p>"
@@ -436,7 +455,7 @@ def _html(project, run, bundle, scenario, files_, rules, comparison, summary, ma
         sec.append("<h3 id='options'>Measured options per hotspot</h3><p>Each option was applied to a copy of the design and measured by re-running the design analyses. "
                    "Costs come only from supplied rates or the approved cost library; otherwise 'price required'. Effect and cost confidences are kept separate.</p><table><tr>"
                    + "".join(f"<th>{_e(c)}</th>" for c in OPTION_HEADER) + "</tr>" + "".join("<tr>" + "".join(f"<td>{_e(c)}</td>" for c in row) + "</tr>" for row in opt_rows) + "</table>")
-    sec.append("<h2>" + SECTIONS[8] + "</h2>")
+    sec.append("<h2>" + APPX[8] + "</h2>")
     checks = (ms.get("planning_compliance", {}).get("details") or {}).get("checks") or []
     if not checks:
         sec.append(f"<p><b>Not assessed.</b> {_e(ms.get('planning_compliance', {}).get('reason') or 'Planning compliance was not part of this run.')}</p>")
@@ -450,14 +469,10 @@ def _html(project, run, bundle, scenario, files_, rules, comparison, summary, ma
     for r in rules:
         sec.append(f"<tr><td>{_e(r['rule_type'])}</td><td>{_e(r['status'])}</td><td>{_e(r['value'] if r['value'] is not None else r['value_text'])}</td><td>{_e((r['exact_text'] or '')[:220])} ({_e(r['document_name'])}, p.{_e(r['page'])})</td></tr>")
     sec.append("</table>")
-    sec.append("<h2>" + SECTIONS[9] + "</h2>")
+    sec.append("<h2>" + APPX[9] + "</h2>")
     if comparison and comparison["result"].get("comparable"):
         res = comparison["result"]
         names = comparison.get("scenario_names") or {}
-        for head, lines in _comparison_lines(res, names):
-            sec.append(f"<h3>{_e(head)}</h3><ul>" + "".join(f"<li>{_e(x)}</li>" for x in lines) + "</ul>")
-            if head.startswith("Trade-off"):
-                sec.append(_img_tag(comparison.get("_tradeoff_png"), "Trade-off chart: cost against heat stress"))
         sec.append(f"<p>{_e(res['statement'])} {_e(res['direction_note'])}</p><table><tr><th>Alternative</th><th>Metric</th><th>Baseline</th><th>Alternative</th><th>Difference</th><th>Outcome</th></tr>")
         for r in res["rows"]:
             b = r["baseline"].get("value")
@@ -474,32 +489,32 @@ def _html(project, run, bundle, scenario, files_, rules, comparison, summary, ma
         sec.append("<p><b>Comparison not valid:</b> " + _e(" ".join(comparison["result"].get("issues", []))) + "</p>")
     else:
         sec.append("<p>No scenario comparison is included in this report.</p>")
-    sec.append(f"<h2>{SECTIONS[10]}</h2><ul>")
+    sec.append(f"<h2>{APPX[10]}</h2><ul>")
     for lim in _assumptions(run, ms):
         sec.append(f"<li>{_e(lim)}</li>")
-    sec.append(f"</ul><h2>{SECTIONS[11]}</h2><ul>")
+    sec.append(f"</ul><h2>{APPX[11]}</h2><ul>")
     dq = [f for f in bundle["findings"] if f["classification"] == "data_quality_issue"]
     for f in dq:
         sec.append(f"<li><b>{_e(f['title'])}</b> — {_e(f['summary'])}</li>")
     if not dq:
         sec.append("<li>None recorded for this run.</li>")
-    sec.append(f"</ul><h2>{SECTIONS[12]}</h2><p>Analysis methods version {_e(run['analysis_version'])}. The calculation recorded for each metric, by analysis:</p>")
+    sec.append(f"</ul><h2>{APPX[12]}</h2><p>Analysis methods version {_e(run['analysis_version'])}. The calculation recorded for each metric, by analysis:</p>")
     for label, methods in _methodology(run, bundle):
         sec.append(f"<h3>{_e(label)}</h3><ul>" + "".join(f"<li>{_e(x)}</li>" for x in methods) + "</ul>")
     sec.append("<h3>Values used and their basis</h3><table><tr>" + "".join(f"<th>{h}</th>" for h in BASIS_HEADER) + "</tr>"
                + "".join("<tr>" + "".join(f"<td>{_e(c)}</td>" for c in row) + "</tr>" for row in _basis_rows(run)) + "</table>")
     sec.append("<p>Full descriptions, data sources and thresholds: docs/METHODOLOGY.md, urbanova/config/rules.json and urbanova/config/basis.json in the project repository. References are listed in docs/PHASE2_SPEC.md §12.</p>")
-    sec.append(f"<h2>{SECTIONS[13]}</h2><pre>{_e(json.dumps({'run_id': run['id'], 'configuration': run['configuration'], 'fingerprint': run['fingerprint'], 'datasets': run.get('input_dataset_ids')}, indent=1))}</pre>")
+    sec.append(f"<h2>{APPX[13]}</h2><pre>{_e(json.dumps({'run_id': run['id'], 'configuration': run['configuration'], 'fingerprint': run['fingerprint'], 'datasets': run.get('input_dataset_ids')}, indent=1))}</pre>")
     css = """body{font-family:system-ui,Segoe UI,Arial,sans-serif;max-width:960px;margin:24px auto;padding:0 16px;color:#1d1d1d;line-height:1.45}
 table{border-collapse:collapse;width:100%;margin:8px 0 16px;font-size:13px}th,td{border:1px solid #ccc;padding:5px 7px;text-align:left;vertical-align:top}th{background:#f2f2f2}
-.banner{padding:10px 12px;border-radius:6px}.banner.ok{background:#e8f5e9}.banner.warn{background:#fff3e0;border:1px solid #f0a020}
+.banner{padding:10px 12px;border-radius:6px}.banner.ok{background:#e8f5e9}.banner.warn{background:#fff3e0;border:1px solid #f0a020}.banner.synthetic{background:#fdecea;border:1px solid #b2182b;color:#7a0c0c}
 .finding,.rec,.context{border-left:4px solid #888;padding:4px 12px;margin:10px 0;background:#fafafa}.context{border-color:#2c7bb6}.sev-high{border-color:#c62828}.sev-moderate{border-color:#ef6c00}.sev-low{border-color:#f9a825}
 .st-completed{color:#1b5e20}.st-partial{color:#e65100}.st-failed,.st-unavailable,.st-blocked{color:#b71c1c}h2{border-bottom:2px solid #ddd;padding-bottom:3px;margin-top:28px}
 @media print{body{max-width:none}.finding,.rec,table{page-break-inside:avoid}}"""
     return f"<!doctype html><html lang='en'><head><meta charset='utf-8'><title>URBANOVA report — {_e(project['name'])}</title><style>{css}</style></head><body>{''.join(sec)}<footer><p>Generated {_e(db.now())} by URBANOVA {_e(__version__)}.</p></footer></body></html>"
 
 
-def _pdf(path: Path, project, run, bundle, scenario, files_, rules, comparison, summary, map_png, clim_png) -> None:
+def _pdf(path: Path, project, run, bundle, scenario, files_, rules, comparison, summary, map_png, clim_png, front=()) -> None:
     from reportlab.lib import colors
     from reportlab.lib.pagesizes import A4
     from reportlab.lib.styles import getSampleStyleSheet
@@ -540,17 +555,24 @@ def _pdf(path: Path, project, run, bundle, scenario, files_, rules, comparison, 
         return t
 
     ms = run.get("module_status") or {}
-    h = lambda i: Paragraph(SECTIONS[i], ss["Heading2"])
+    h = lambda i: Paragraph(APPX[i], ss["Heading2"])
     bullet = lambda t: Paragraph(f"• {_e(t)}", small)
-    ins = _insights(run)
     block = []
-    if ins:
-        label = ins["label"] + (f" ({ins['model']})" if ins.get("model") else "")
-        block = [Paragraph("Insights", ss["Heading2"]), Paragraph(f"<i>{_e(label)}</i>", small)]
-        for head, lines in _insight_lines(ins):
-            block.append(Paragraph(f"<b>{_e(head)}</b>", small))
-            block += [Paragraph(f"• {_e(x)}", small) for x in lines]
-        story[3:3] = block
+    for title, blocks in front:
+        block.append(Paragraph(_e(title), ss["Heading2"]))
+        for b in blocks:
+            if b[0] == "p":
+                block.append(Paragraph(_e(b[1]), small))
+            elif b[0] in ("h3", "h4"):
+                block.append(Paragraph(f"<b>{_e(b[1])}</b>", small))
+            elif b[0] == "ul":
+                block += [Paragraph(f"• {_e(x)}", small) for x in b[1]]
+            elif b[0] == "img":
+                block.append(Image(b[1], width=7 * cm if "hotspot" in b[2].lower() else 15 * cm, height=6.2 * cm if "hotspot" in b[2].lower() else 8.3 * cm, kind="proportional"))
+            elif b[0] == "table":
+                n = len(b[1])
+                block.append(table([b[1]] + b[2], [17.2 * cm / n] * n))
+    story[3:3] = block
     story.insert(3 + len(block), h(0))
     story.insert(4 + len(block), table([["Item", "Value"]] + [
         ["Project", f"{project['name']} ({project['id']})"], ["Type", project.get("project_type") or "not stated"],
@@ -616,11 +638,6 @@ def _pdf(path: Path, project, run, bundle, scenario, files_, rules, comparison, 
     story.append(h(9))
     if comparison and comparison["result"].get("comparable"):
         names = comparison.get("scenario_names") or {}
-        for head, lines in _comparison_lines(comparison["result"], names):
-            story.append(Paragraph(f"<b>{_e(head)}</b>", small))
-            story += [bullet(x) for x in lines]
-            if head.startswith("Trade-off") and comparison.get("_tradeoff_png"):
-                story.append(Image(comparison["_tradeoff_png"], width=15 * cm, height=8.3 * cm, kind="proportional"))
         story.append(Paragraph(_e(comparison["result"]["statement"] + " " + comparison["result"]["direction_note"]), small))
         story.append(table([["Alternative", "Metric", "Baseline", "Alternative", "Difference", "Outcome"]] + [[names.get(r["alternative_id"], ""), r["label"], str(r["baseline"].get("value", r["baseline"].get("state"))), str(r["alternative"].get("value", r["alternative"].get("state"))), str(r.get("difference", "—")), r["outcome"]] for r in comparison["result"]["rows"]],
                            [2.8 * cm, 5.2 * cm, 2.3 * cm, 2.3 * cm, 2 * cm, 2.6 * cm]))
@@ -650,8 +667,19 @@ def _pdf(path: Path, project, run, bundle, scenario, files_, rules, comparison, 
     story.append(Paragraph("Full descriptions, data sources and thresholds: docs/METHODOLOGY.md, urbanova/config/rules.json and urbanova/config/basis.json in the project repository. References are listed in docs/PHASE2_SPEC.md §12.", small))
     story.append(h(13))
     story.append(Paragraph(_e(json.dumps({"run": run["id"], "analysis_version": run["analysis_version"], "configuration": run["configuration"], "fingerprint": run.get("fingerprint"), "datasets": run.get("input_dataset_ids")})), small))
+    def footer(canvas, doc):
+        # The synthetic-data label on every page (PHASE2_SPEC §8.1 rules), and the page number.
+        canvas.saveState()
+        canvas.setFont("DejaVu", 7)
+        if summary.get("synthetic"):
+            canvas.setFillColor(colors.HexColor("#b2182b"))
+            canvas.drawString(1.6 * cm, 0.8 * cm, report_front.SYNTHETIC_LABEL)
+        canvas.setFillColor(colors.grey)
+        canvas.drawRightString(A4[0] - 1.6 * cm, 0.8 * cm, f"URBANOVA report · page {doc.page}")
+        canvas.restoreState()
+
     SimpleDocTemplate(str(path), pagesize=A4, leftMargin=1.6 * cm, rightMargin=1.6 * cm, topMargin=1.5 * cm, bottomMargin=1.5 * cm,
-                      title=f"URBANOVA report {project['name']}").build(story)
+                      title=f"URBANOVA report {project['name']}").build(story, onFirstPage=footer, onLaterPages=footer)
 
 
 def export_zip(project: dict, run: dict) -> bytes:
@@ -677,6 +705,18 @@ def export_zip(project: dict, run: dict) -> bytes:
         for row, o in zip(_option_rows(bundle), ids):
             ow.writerow(row + [o["id"], o["intervention_id"], o.get("evaluation_run_id") or ""])
         z.writestr("options.csv", opt.getvalue())
+        hs = bundle.get("hotspots") or []
+        z.writestr("hotspots.geojson", json.dumps({"type": "FeatureCollection", "features": [
+            {"type": "Feature", "geometry": h.get("geometry"), "properties": {k: h.get(k) for k in ("id", "number", "types", "area_m2", "site_share_pct", "size_class", "intensity",
+                                                                                               "severity", "severity_basis", "site_wide")}
+             | {"causes": [c["code"] for c in h.get("likely_causes") or []]}} for h in hs]}))
+        hcsv = io.StringIO()
+        hw = csv.writer(hcsv)
+        hw.writerow(["hotspot_id", "number", "types", "area_m2", "site_share_pct", "size_class", "intensity", "severity", "site_wide", "causes", "severity_basis"])
+        for h in hs:
+            hw.writerow([h["id"], h["number"], "+".join(h["types"]), h["area_m2"], h["site_share_pct"], h["size_class"], h["intensity"], h["severity"],
+                         bool(h.get("site_wide")), ";".join(c["code"] for c in h.get("likely_causes") or []), h["severity_basis"]])
+        z.writestr("hotspots.csv", hcsv.getvalue())
         z.writestr("findings.geojson", json.dumps({"type": "FeatureCollection", "features": [
             {"type": "Feature", "geometry": f.get("geometry"), "properties": {k: f.get(k) for k in ("id", "title", "severity", "classification", "rule_id", "summary", "affected_area")}} for f in bundle["findings"]]}))
         for lay in db.select("layers", "run_id = ?", [run["id"]]):

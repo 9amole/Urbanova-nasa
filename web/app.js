@@ -247,10 +247,31 @@ async function viewProject(pid, tab, extra) {
   document.getElementById("main").focus({ preventScroll: true });
 }
 
+function dashboardHtml(d, pid) {
+  if (!d) return "";
+  if (d.state === "empty") return `<section class="panel dash"><h2>Site dashboard</h2><p>No analysed baseline yet. Next step: ${esc(d.next_step)}</p></section>`;
+  const c = d.condition.design;
+  const sevBadge = (s) => `<span class="badge sev-${esc(s)}">${esc(s.toUpperCase())}</span>`;
+  return `<section class="panel dash"><h2>Site dashboard</h2>
+   <p class="muted">Latest baseline run ${esc(d.run_id)} (${esc(d.run_status.replace(/_/g, " "))}, ${esc(d.completed_at || "")})${d.stale ? " — " + badge(["out of date", "b-warn"]) : ""}</p>
+   <div class="cards">
+    <div class="panel"><h3>Condition of the design</h3><p><strong>${c.hotspots}</strong> design hotspots: ${c.high} high, ${c.moderate} moderate, ${c.low} low severity; ${fmt(c.located_area_m2, 0)} m² located.</p>
+      ${d.condition.existing.length ? `<p class="muted">Existing land (context): ${d.condition.existing.map(esc).join(" ")}</p>` : ""}</div>
+    <div class="panel"><h3>Priority hotspots</h3>${d.top_hotspots.length ? `<ol>${d.top_hotspots.map((h) => `<li>${sevBadge(h.severity)} <a href="#/p/${pid}/results/${esc(d.run_id)}">Hotspot ${h.number}</a>: ${esc(h.type_labels.join(" + "))}, ${fmt(h.area_m2, 0)} m²
+       ${h.main_cause ? `<div class="muted">${esc(h.main_cause)}</div>` : ""}${h.best_option ? `<div>Suited option: ${esc(h.best_option.title)} (${esc(h.best_option.size)}) — ${h.best_option.effect.change_pct !== undefined ? `−${fmt(h.best_option.effect.change_pct, 1)} %` : ""} · ${costText(h.best_option.cost)}</div>` : ""}</li>`).join("")}</ol>` : "<p>No design hotspots.</p>"}</div>
+    <div class="panel"><h3>Your questions</h3><ul>${d.questions.map((q) => `<li>${esc(q.question)} — ${q.answerable ? badge(["answered", "b-ok"]) : badge(["cannot be answered", "b-bad"])}<div class="muted">${esc(q.answer)}</div></li>`).join("")}</ul>
+      ${d.insights ? `<p class="hint">${d.insights.generated_by === "ai" ? `AI-written insights (${esc(d.insights.model)})` : "Automatic summary"} — see Results.</p>` : ""}</div>
+    <div class="panel"><h3>Data completeness</h3><ul>${Object.values(d.completeness.modules || {}).map((m) => `<li>${badge(MOD_STATUS[m.status] || [m.status, "b-info"])} ${esc(m.label)}</li>`).join("")}</ul>
+      <p class="muted">Readiness: ${d.completeness.readiness.ready} ready, ${d.completeness.readiness.ready_with_limitations} limited, ${d.completeness.readiness.blocked} blocked.</p></div>
+   </div></section>`;
+}
+
 async function tabOverview(el, data) {
   const p = data.project;
   const canEdit = p.role !== "viewer";
-  el.innerHTML = `<div class="grid">
+  let dash = null;
+  try { dash = await api(`/projects/${p.id}/dashboard`); } catch (_) { dash = null; }
+  el.innerHTML = `${dashboardHtml(dash, p.id)}<div class="grid">
    <section class="panel"><h2>Site</h2>
     <table><tr><th>Project ID</th><td class="mono">${esc(p.id)}</td></tr><tr><th>Coordinates (WGS 84)</th><td class="mono">${fmt(p.latitude, 6)}, ${fmt(p.longitude, 6)}</td></tr>
     <tr><th>Local CRS for areas</th><td class="mono">${esc(p.local_crs)}</td></tr><tr><th>Site boundary</th><td>${p.boundary ? `Supplied — ${fmt(p.site_area_m2, 0)} m² (${fmt(p.site_area_m2 / 10000, 2)} ha)` : "Not supplied"}</td></tr>
@@ -270,6 +291,7 @@ async function tabOverview(el, data) {
      <div class="row"><div style="flex:1"><label for="ed-sy">Climate period start year</label><input id="ed-sy" type="number" value="${p.analysis_period?.start_year || ""}" placeholder="default: last 5 full years"></div>
      <div style="flex:1"><label for="ed-ey">End year</label><input id="ed-ey" type="number" value="${p.analysis_period?.end_year || ""}"></div></div>
      </div><div><fieldset><legend>Analysis objectives</legend>${Object.entries(state.meta.objectives).map(([k, q]) => `<label class="check"><input type="checkbox" name="eobj" value="${k}" ${p.objectives.includes(k) ? "checked" : ""}> ${esc(q)}</label>`).join("")}</fieldset>
+     <label class="check"><input type="checkbox" id="ed-syn" ${p.synthetic_data ? "checked" : ""}> This project uses synthetic or test data (label every report page)</label>
      <fieldset><legend>AI text</legend><label class="check"><input type="checkbox" id="ed-ai" ${p.ai_enabled ? "checked" : ""}> Allow AI-written insights and suggestions for this project</label>
       <p class="hint">When on, a compact summary of this project's results (metric values, hotspot summaries and record ids; for suggestions, the planning document's page text or CAD layer names) is sent to the configured AI provider (${esc((state.meta.ai?.providers || []).filter((x) => x.configured).map((x) => x.name).join(", ") || "none configured")}). Files, drawings and personal data are never sent. Every AI output is checked against the evidence and replaced by an automatic summary when it fails.</p></fieldset>
      <p><button type="submit">Save changes</button></p><p id="ed-err" class="err" role="alert"></p></div></form></section>` : ""}
@@ -284,7 +306,7 @@ async function tabOverview(el, data) {
     e.preventDefault();
     const errEl = document.getElementById("ed-err"); errEl.textContent = "";
     try {
-      const body = { name: e.target["ed-name"].value, objectives: [...document.querySelectorAll("input[name=eobj]:checked")].map((x) => x.value), ai_enabled: document.getElementById("ed-ai").checked };
+      const body = { name: e.target["ed-name"].value, objectives: [...document.querySelectorAll("input[name=eobj]:checked")].map((x) => x.value), ai_enabled: document.getElementById("ed-ai").checked, synthetic_data: document.getElementById("ed-syn").checked };
       const lat = parseFloat(e.target["ed-lat"].value), lon = parseFloat(e.target["ed-lon"].value);
       if (lat !== p.latitude || lon !== p.longitude) { body.latitude = lat; body.longitude = lon; }
       const text = await readFileText(document.getElementById("ed-boundary"));
@@ -496,6 +518,39 @@ async function tabReadiness(el, data) {
   await render();
 }
 
+const DRAW_TYPES = ["building", "road", "parking", "open_space", "green_space", "shade_structure", "tree"];
+
+function askFeature(kind) {
+  const types = kind === "Marker" ? ["tree"] : DRAW_TYPES.filter((t) => t !== "tree");
+  const t = prompt(`Feature type for the new ${kind === "Marker" ? "point" : "shape"} (${types.join(", ")}):`, types[0]);
+  if (!t) return null;
+  if (!types.includes(t.trim())) { notify(`Unknown feature type '${t}'.`, "warn"); return null; }
+  const props = { feature_type: t.trim() };
+  if (["building", "shade_structure", "tree"].includes(props.feature_type)) {
+    const h = prompt("Height in metres (needed for shade):", props.feature_type === "tree" ? "6" : "");
+    if (h) props.height_m = +h;
+  }
+  if (props.feature_type === "tree") { const r = prompt("Canopy radius in metres:", "3"); if (r) props.canopy_radius_m = +r; }
+  return props;
+}
+
+function enableMapEditing(map, layer, sel) {
+  map.pm.addControls({ position: "topleft", drawCircle: false, drawCircleMarker: false, drawPolyline: false, drawText: false, cutPolygon: false, rotateMode: false });
+  const send = (changes, msg) => guarded(async () => { await api(`/scenarios/${sel.id}`, { method: "PATCH", body: { changes } }); notify(msg, "ok"); route(); });
+  map.on("pm:create", (e) => {
+    const props = askFeature(e.shape);
+    if (!props) { map.removeLayer(e.layer); return; }
+    send([{ op: "add", geometry: e.layer.toGeoJSON().geometry, properties: props }], `Added a ${props.feature_type.replace("_", " ")}.`);
+  });
+  layer.eachLayer((l) => {
+    const fid = l.feature && l.feature.id;
+    if (!fid) return;
+    l.on("pm:edit", () => send([{ op: "update", feature_id: fid, geometry: l.toGeoJSON().geometry }], "Feature moved or reshaped."));
+    l.on("pm:remove", () => send([{ op: "remove", feature_id: fid }], "Feature removed."));
+  });
+  legendControl(map, "<strong>Edit on the map</strong><div>Draw, drag, reshape or remove features with the tools on the left. Every edit is logged.</div>");
+}
+
 async function tabScenarios(el, data, extra) {
   const p = data.project, pid = p.id, canEdit = p.role !== "viewer";
   const list = await api(`/projects/${pid}/scenarios`);
@@ -534,6 +589,7 @@ async function tabScenarios(el, data, extra) {
     if (p.boundary) L.geoJSON(p.boundary, { style: { color: "#c62828", weight: 3, fillOpacity: 0 } }).addTo(map);
     const lay = addFeatures(map, sel.features); try { map.fitBounds(lay.getBounds(), { padding: [20, 20] }); } catch (_) {}
     legendControl(map, typeLegend());
+    if (canEdit && sel.kind === "alternative" && sel.status === "active" && map.pm) enableMapEditing(map, lay, sel);
   }
   el.querySelectorAll(".appr").forEach((b) => (b.onclick = () => guarded(async () => { if (!confirm("Approve this draft? It becomes an active alternative that can be analysed.")) return; await api(`/scenarios/${b.dataset.sid}/approve`, { method: "POST" }); route(); }, b)));
   el.querySelectorAll(".arch").forEach((b) => (b.onclick = () => guarded(async () => { if (!confirm("Archive this alternative? It stays in history but can no longer be edited.")) return; await api(`/scenarios/${b.dataset.sid}/archive`, { method: "POST" }); route(); }, b)));
@@ -633,7 +689,8 @@ function optionsTable(recs) {
       <td>${fmt(o.quantity.value, 0)} ${esc(o.quantity.unit || "")}${o.lost_parking_spaces ? `<div class="muted">−${o.lost_parking_spaces} spaces</div>` : ""}${o.water ? `<div class="muted">${esc(o.water.note || `${fmt(o.water.litres_per_day, 0)} L/day`)}</div>` : ""}</td>
       <td>${costText(o.cost)}</td>
       <td>effect ${esc(o.effect_confidence.level)} · cost ${esc((o.cost.confidence || {}).level || "—")}</td>
-      <td>${o.pareto ? badge(["Pareto", "b-ok"]) : ""} ${o.roles.map((x) => badge([ROLE_LABELS[x] || x, "b-info"])).join(" ")}</td></tr>`; })).join("");
+      <td>${o.pareto ? badge(["Pareto", "b-ok"]) : ""} ${o.roles.map((x) => badge([ROLE_LABELS[x] || x, "b-info"])).join(" ")}
+        ${state.canEditRun && !o.separate ? `<button class="small apply-opt" data-oid="${esc(o.id)}">Apply as draft</button>` : ""}</td></tr>`; })).join("");
   return `<details open><summary>Measured options (${recs.reduce((n, r) => n + r.options.length, 0)})</summary><table class="opts"><thead><tr><th>Option</th><th>Measured effect</th><th>Quantity, water</th><th>Cost</th><th>Confidence</th><th></th></tr></thead><tbody>${rows}</tbody></table>
     <p class="hint">${recs.some((r) => r.options.some((o) => o.ranking_mode === "benefit_and_cost")) ? "Priced options are ranked on measured benefit and typical cost. " : ""}${recs.some((r) => r.options.some((o) => o.ranking_mode === "benefit_per_quantity")) ? "Options without a comparable price are compared only within their own intervention, on benefit per unit of quantity." : ""}</p></details>`;
 }
@@ -715,6 +772,7 @@ async function tabResults(el, data, runId) {
   const dq = b.findings.filter((f) => f.classification === "data_quality_issue");
   const climate = ms.climate_baseline?.details?.summary;
   const hotspots = b.hotspots || [], context = b.site_context || [];
+  state.canEditRun = p.role !== "viewer";
   const profile = ms.heat_stress?.details?.profile || [];
   el.innerHTML = `
   <section class="panel"><div class="row"><div><label for="rs-run">Analysis run</label><select id="rs-run">${runs.map((r) => `<option value="${r.id}" ${r.id === rid ? "selected" : ""}>${esc(names[r.scenario_id] || "site only")} — ${esc(r.completed_at)} (${esc(RUN_STATUS[r.status][0])})</option>`).join("")}</select></div></div>
@@ -761,6 +819,11 @@ async function tabResults(el, data, runId) {
    <details><summary>Run configuration and fingerprint</summary><pre class="mono">${esc(JSON.stringify({ configuration: run.configuration, fingerprint: run.fingerprint, analysis_version: run.analysis_version, software_version: run.software_version }, null, 1))}</pre></details></section>`;
   document.getElementById("rs-run").onchange = (e) => (location.hash = `#/p/${pid}/results/${e.target.value}`);
   renderInsights(rid, p);
+  el.querySelectorAll(".apply-opt").forEach((b) => (b.onclick = () => guarded(async () => {
+    const s = await api(`/analysis-runs/${rid}/options/${b.dataset.oid}/draft`, { method: "POST" });
+    notify("Draft alternative created. Review it, then approve it to analyse it.", "ok");
+    location.hash = `#/p/${pid}/scenarios/${s.id}`;
+  }, b)));
   const pkgBtn = document.getElementById("pkg-draft");
   if (pkgBtn) pkgBtn.onclick = () => guarded(async () => { const s = await api(`/analysis-runs/${pkgBtn.dataset.rid}/package/draft`, { method: "POST" }); location.hash = `#/p/${pid}/scenarios/${s.id}`; }, pkgBtn);
   // map with toggleable layers
@@ -768,12 +831,24 @@ async function tabResults(el, data, runId) {
   const overlays = [];
   if (p.boundary) overlays.push(["Site boundary (user-provided)", L.geoJSON(p.boundary, { style: { color: "#c62828", weight: 3, fillOpacity: 0 } }), true, null]);
   if (scen) overlays.push([`Design: ${scen.name} (user-provided)`, L.geoJSON(scen.features, { style: featureStyle, pointToLayer: (f, ll) => L.circleMarker(ll, { radius: 4 }), onEachFeature: (f, l) => l.bindPopup(popupFor(f.properties)) }), true, typeLegend()]);
+  const hsLayers = {};
+  let selected = null;
+  const selectHotspot = (id, layer) => {
+    if (selected) { selected.setStyle({ weight: 1.5, color: "#5a0000" }); }
+    selected = layer || hsLayers[id] || null;
+    if (selected) { selected.setStyle({ weight: 4, color: "#000" }); selected.bringToFront(); }
+    document.querySelectorAll(".panel.hs").forEach((c) => c.classList.toggle("selected", c.id === `ev-${id}`));
+    const card = document.getElementById(`ev-${id}`);
+    if (card) card.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  };
   if (hotspots.some((h) => h.geometry)) {
     const hsLayer = L.geoJSON({ type: "FeatureCollection", features: hotspots.filter((h) => h.geometry).map((h) => ({ type: "Feature", geometry: h.geometry, properties: h })) }, {
       style: (f) => ({ color: "#5a0000", weight: 1.5, fillColor: SEV_COLORS[f.properties.severity] || "#999", fillOpacity: 0.45 }),
       onEachFeature: (f, l) => { const h = f.properties;
         l.bindTooltip(String(h.number), { permanent: true, direction: "center", className: "hs-num" });
-        l.bindPopup(`<strong>Hotspot ${h.number}: ${esc(h.type_labels.join(" + "))}</strong><br>${fmt(h.area_m2, 0)} m² · ${esc(h.size_class)} · severity ${esc(h.severity)}<br>${h.likely_causes.map((c) => esc(c.text)).join("<br>")}`); } });
+        l.bindPopup(`<strong>Hotspot ${h.number}: ${esc(h.type_labels.join(" + "))}</strong><br>${fmt(h.area_m2, 0)} m² · ${esc(h.size_class)} · severity ${esc(h.severity)}<br>${h.likely_causes.map((c) => esc(c.text)).join("<br>")}`);
+        l.on("click", () => selectHotspot(h.id, l)); } });
+    hsLayer.eachLayer((l) => (hsLayers[l.feature.properties.id] = l));
     overlays.push(["Design hotspots (numbered, calculated)", hsLayer, true, `<strong>Design hotspots</strong>${Object.entries(SEV_COLORS).map(([k, c]) => `<div><i style="background:${c}"></i>${esc(k)} severity</div>`).join("")}`]);
   }
   for (const lay of b.layers) {
@@ -796,6 +871,13 @@ async function tabResults(el, data, runId) {
   }
   const hot = b.findings.find((f) => f.rule_id === "HEAT-LST-02" && f.geometry);
   if (hot) overlays.push(["Finding: hottest-decile surfaces (classified)", L.geoJSON(hot.geometry, { style: { color: "#d7191c", weight: 2, fillOpacity: 0.2, dashArray: "4 3" } }), true, null]);
+  document.querySelectorAll(".panel.hs").forEach((card) => card.addEventListener("click", (e) => {
+    if (e.target.closest("button, a, summary")) return;
+    const id = card.id.replace(/^ev-/, "");
+    const l = hsLayers[id];
+    selectHotspot(id, l);
+    if (l) map.fitBounds(l.getBounds(), { maxZoom: 18, padding: [30, 30] });
+  }));
   const ctl = document.getElementById("rs-layers");
   const legendBox = document.getElementById("rs-legend");
   const refreshLegend = () => { legendBox.innerHTML = overlays.filter((o) => map.hasLayer(o[1]) && o[3]).map((o) => `<div class="legend panel">${o[3]}</div>`).join(""); };

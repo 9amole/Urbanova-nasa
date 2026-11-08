@@ -35,6 +35,8 @@ class Context:
     rates: list = field(default_factory=list)
     # A partial re-run that only measures a candidate design (A10): no output files, layers or findings.
     partial: bool = False
+    # Optional stage reporter for long modules (set by the app's job runner; None in the engine).
+    progress: Any = None
 
     @property
     def lat(self) -> float:

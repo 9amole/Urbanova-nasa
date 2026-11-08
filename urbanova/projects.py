@@ -16,7 +16,7 @@ OBJECTIVES = {
     "planning_compliance": "Does the design comply with the verified planning rules?",
     "data_gaps": "What data is still needed for a reliable assessment?",
 }
-EDITABLE = {"name", "description", "project_type", "country", "city_or_address", "objectives", "analysis_period", "ai_enabled"}
+EDITABLE = {"name", "description", "project_type", "country", "city_or_address", "objectives", "analysis_period", "ai_enabled", "synthetic_data"}
 
 
 class ProjectError(ValueError):
@@ -91,9 +91,9 @@ def update_project(project: dict, user: dict, payload: dict) -> tuple[dict, list
             val = (val or "").strip()
             if not val:
                 raise ProjectError("A project name is required.")
-        elif key == "ai_enabled":
+        elif key in ("ai_enabled", "synthetic_data"):
             if not isinstance(val, bool):
-                raise ProjectError("ai_enabled must be true or false.")
+                raise ProjectError(f"{key} must be true or false.")
             val = int(val)
         elif key == "project_type" and val and val not in PROJECT_TYPES:
             raise ProjectError(f"Project type must be one of: {', '.join(PROJECT_TYPES)}.")
@@ -166,8 +166,47 @@ def public_project(project: dict, role: str | None = None) -> dict:
     out = {k: v for k, v in project.items() if k != "history"}
     out["location_confirmed"] = bool(project.get("location_confirmed"))
     out["ai_enabled"] = bool(project.get("ai_enabled"))
+    out["synthetic_data"] = bool(project.get("synthetic_data"))
     out["site_area_m2"] = site_area_m2(project)
     out["local_crs"] = geo.utm_crs_for(project["latitude"], project["longitude"])
     if role:
         out["role"] = role
     return out
+
+
+def dashboard(project: dict) -> dict:
+    """Site dashboard (PHASE2_SPEC §8.2): condition, priority hotspots, question answers and data completeness from the
+    latest successful baseline run; an empty state with the next step when there is none."""
+    from . import comparison, orchestrator, readiness
+
+    base = next(iter(db.select("scenarios", "project_id = ? AND kind = 'baseline' AND status = 'active'", [project["id"]])), None)
+    run = comparison.latest_run(base["id"]) if base else None
+    rd = readiness.assess(project)
+    completeness = {"readiness": {s: sum(1 for a in rd["analyses"] if a["status"] == s) for s in ("ready", "ready_with_limitations", "blocked")}}
+    if not run:
+        step = "Create the baseline scenario on the Inputs tab." if not base else "Run the analysis for the baseline on the Run analysis tab."
+        return {"state": "empty", "next_step": step, "completeness": completeness}
+    b = orchestrator.run_bundle(run)
+    hs = b["hotspots"]
+    from .report_front import _options_by_hotspot, suited
+
+    best = {hid: o for hid, opts in _options_by_hotspot(b).items() for o in [suited(opts)[0]] if o}  # the same choice the report explains
+    ins = next(iter(db.select("insights", "run_id = ?", [run["id"]], order="created_at DESC")), None)
+    answers = {a["question_id"]: " ".join(c["text"] for c in a["claims"]) for a in (ins or {}).get("blocks", {}).get("answers") or []}
+    ms = run.get("module_status") or {}
+    return {
+        "state": "ready", "run_id": run["id"], "run_status": run["status"], "completed_at": run.get("completed_at"), "stale": bool(b["run"]["stale_modules"]),
+        "condition": {"design": {"hotspots": len(hs), **{lvl: sum(1 for h in hs if h["severity"] == lvl) for lvl in ("high", "moderate", "low")},
+                                 "located_area_m2": round(sum(h["area_m2"] for h in hs if not h.get("site_wide")), 1)},
+                      "existing": [c["statement"] for c in b.get("site_context") or []]},
+        "top_hotspots": [{"id": h["id"], "number": h["number"], "type_labels": h["type_labels"], "severity": h["severity"], "area_m2": h["area_m2"],
+                          "main_cause": (h["likely_causes"][0]["text"] if h["likely_causes"] else None),
+                          "best_option": ({"title": best[h["id"]]["title"], "size": best[h["id"]]["intensity_label"], "effect": best[h["id"]]["effect"],
+                                           "cost": best[h["id"]]["cost"]} if h["id"] in best else None)} for h in hs[:3]],
+        "questions": [{"objective": o["objective"], "question": o["question"], "answerable": o["answerable"],
+                       "answer": answers.get(f"q_{o['objective']}") or (("Answered with the available evidence from: " + "; ".join(o.get("supported_by") or []))
+                                                                      if o["answerable"] else "Cannot be answered with the available data: " + "; ".join(o.get("not_available") or [])),
+                       "source": "insights" if f"q_{o['objective']}" in answers else "readiness"} for o in b["objectives"]],
+        "completeness": {**completeness, "modules": {k: {"label": v.get("label"), "status": v["status"]} for k, v in ms.items() if v.get("status") != "skipped"}},
+        "insights": {"generated_by": ins["generated_by"], "model": ins.get("model")} if ins else None,
+    }
