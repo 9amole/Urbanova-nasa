@@ -97,7 +97,10 @@ class Criterion(_Strict):
 class CompareRequest(_Strict):
     baseline_id: str
     alternative_ids: list[str] = Field(min_length=1, max_length=5)
-    criteria: list[Criterion] | None = Field(None, description="Optional weighted scoring; omit for a plain comparison.")
+    criteria: list[Criterion] | None = Field(None, description="Optional weighted scoring; omit for a plain comparison (then there is no winner). "
+                                             "Metric ids from comparison.CRITERIA, incl. the derived 'cost_typical' and 'compliance_failures'.")
+    budget_amount: float | None = Field(None, gt=0, description="Optional budget: a design over it, or without a complete price, cannot be the best.")
+    budget_currency: str | None = Field(None, min_length=3, max_length=3)
 
 
 class Settings(_Strict):

@@ -276,6 +276,14 @@ def _dataset(ds: dict, root: Path) -> dict:
     return out | approval_info(ds["source_id"])
 
 
+def _budget(amount, currency) -> dict | None:
+    if amount is None and not currency:
+        return None
+    if amount is None or not currency or not str(currency).isalpha():
+        raise _err(["compare", "budget_amount"], "Give both budget_amount and a 3-letter budget_currency, or neither.")
+    return {"amount": float(amount), "currency": str(currency).upper()}
+
+
 def _check_compare(req: AnalysisRequest, designs: list[dict]) -> tuple[dict, list[dict]]:
     """Validate the comparison block up front, so a bad request fails before any analysis runs."""
     c = req.compare
@@ -290,7 +298,7 @@ def _check_compare(req: AnalysisRequest, designs: list[dict]) -> tuple[dict, lis
             raise _err(["compare", "alternative_ids", i], f"{aid} is not an alternative design of this request.")
         alts.append(a)
     for i, cr in enumerate(c.criteria or []):
-        if cr.metric not in comparison.PREFERRED:
+        if cr.metric not in comparison.DIRECTIONS:
             raise _err(["compare", "criteria", i, "metric"], f"'{cr.metric}' has no agreed preferred direction and cannot be used as a ranking criterion.")
     return base, alts
 
@@ -303,9 +311,10 @@ def _compare(req: AnalysisRequest, project: dict, compare_designs: tuple[dict, l
     checks = {i: ((raw[i]["module_status"].get("planning_compliance") or {}).get("details") or {}).get("checks", []) for i in ids}
     findings_by = {i: raw[i]["findings"] for i in ids}
     costs = {a["id"]: cost.estimate(project, base, a, rates=rates) for a in alts}
+    hotspots = {i: raw[i].get("hotspots") or [] for i in ids}
     criteria = [x.model_dump() for x in c.criteria] if c.criteria else None
     try:
-        out = comparison.compare_core(base, alts, metrics, checks, findings_by, costs, criteria)
+        out = comparison.compare_core(base, alts, metrics, checks, findings_by, costs, criteria, hotspots=hotspots, budget=_budget(c.budget_amount, c.budget_currency))
     except comparison.ComparisonError as exc:
         raise _err(["compare", "criteria"], str(exc))
     return {"baseline_id": base["id"], "alternative_ids": [a["id"] for a in alts], **out,

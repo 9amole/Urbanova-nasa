@@ -78,6 +78,13 @@ Configured in `urbanova/config/rules.json` with metric, severity bands, status (
 ## Comparison (FR-26/27)
 Requires the latest successful run of each scenario, identical comparable settings and analysis version, and no design change since the run. Only design-dependent metrics are compared; units and method text must match. Optional scoring: min–max normalisation across compared scenarios using the user's weights; missing criteria are excluded (never 0); no ranking without weights.
 
+**Trade-offs and the choice (S5).** Criteria a user may weight: heat stress (sun-exposed hard surface and open space during very strong UTCI, m²·h, lower is better), green-space share and shade hours on open space (higher is better), indicative cost (typical total in one currency; the baseline is 0; lower is better) and failed verified planning rules (fewer is better). Water joins when a sourced litres/day value exists. There are no default weights.
+* **Trade-off chart:** each design at (typical cost, heat-stress m²·h); the Pareto front joins the designs not beaten on both by another. A design without a complete price or heat-stress value is listed, never plotted at zero.
+* **What each alternative gives up:** parking spaces (parking area removed ÷ 25 m²), building footprint and floor area, trees and planting added with irrigation water (litres/day "value required" until sourced), and maintenance per year (from rates with a maintenance column, else "value required").
+* **No weights:** no winner; the trade-offs and per-criterion results are shown with a sentence that the choice depends on the project's priorities.
+* **With weights:** min–max normalised weighted mean (missing values excluded, never scored 0). The best is the highest-scoring design that fails no verified rule and, with a budget, has a complete price within it; excluded designs say why. Labelled "best under your priorities", with the weights used.
+* **Robustness:** the choice is recomputed with each weight at ±20 %, one at a time: "robust" or "sensitive to …". Costs come from single-value rates, so the low/high cost re-test applies only when ranges exist (stated).
+
 ## Costs (FR-28)
 **Option costs (S3):** quantity × low / typical / high unit cost with maintenance per year shown apart. Source priority: the project's own rates (one value, so low = typical = high; an optional `maintenance_per_year` column), then a quotation in `config/cost_library.json`, then a supervisor-approved list in it; otherwise "price required". The library starts empty (no credible public Egyptian unit costs were found); demo prices use the TEST rate table in test currency XTS. Prices older than 2 years are flagged; no inflation adjustment.
 

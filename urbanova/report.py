@@ -92,6 +92,74 @@ def _map_png(project: dict, scenario: dict | None, bundle: dict, out: Path) -> s
     return str(path)
 
 
+def _tradeoff_png(comparison: dict | None, out: Path) -> str | None:
+    """Cost against heat-stress area-hours, Pareto front joined (S5)."""
+    t = ((comparison or {}).get("result") or {}).get("tradeoffs")
+    pts = [p for p in (t or {}).get("points", []) if not p["missing"]]
+    if not pts:
+        return None
+    import matplotlib
+
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    fig, ax = plt.subplots(figsize=(6.5, 3.6), dpi=130)
+    front = [next(p for p in pts if p["id"] == i) for i in t["front"]]
+    if len(front) > 1:
+        ax.plot([p["cost"] for p in front], [p["heat_m2h"] for p in front], "-", color="#2c7bb6", lw=1.5, label="Pareto front")
+    for p in pts:
+        ax.plot(p["cost"], p["heat_m2h"], "o", color="#2c7bb6" if p.get("pareto") else "#999999", ms=7)
+        ax.annotate(p["name"], (p["cost"], p["heat_m2h"]), textcoords="offset points", xytext=(6, 6), fontsize=8)
+    ax.set_xlabel(f"Indicative cost (typical){' — ' + pts[0]['currency'] if pts[0].get('currency') else ''}", fontsize=8)
+    ax.set_ylabel("Heat stress (m²·h)", fontsize=8)
+    ax.tick_params(labelsize=7)
+    ax.set_title("Trade-off: cost against heat stress (lower-left is better)", fontsize=9)
+    fig.tight_layout()
+    path = out / "report_tradeoff.png"
+    fig.savefig(path)
+    plt.close(fig)
+    return str(path)
+
+
+def _comparison_lines(res: dict, names: dict) -> list[tuple[str, list[str]]]:
+    """Choice, robustness, trade-offs, give-ups and hotspots of an S5 comparison, as (heading, lines)."""
+    out = []
+    ch = res.get("choice")
+    if ch:
+        lines = [ch["statement"]]
+        if ch["mode"] != "no_winner":
+            lines.append("Weights used: " + "; ".join(f"{w['label']} ×{w['weight']:g}" for w in ch["weights"])
+                         + (f"; budget {ch['budget']['amount']:,.0f} {ch['budget']['currency']}" if ch.get("budget") else ""))
+            lines += [f"Not eligible: {x['name']} ({x['why']})" for x in ch["excluded"]]
+            lines += [ch["robustness"]["statement"], ch["robustness"]["cost_note"], ch["rule"]]
+        out.append(("The choice", lines))
+    t = res.get("tradeoffs")
+    if t:
+        c = t["chart"]
+        lines = []
+        for p in c["points"]:
+            cost_txt = "price required" if p["cost"] is None else f"{p['cost']:,.0f} {p['currency'] or ''}".strip()
+            heat_txt = "—" if p["heat_m2h"] is None else f"{p['heat_m2h']:,.0f} m²·h"
+            lines.append(f"{p['name']}: {cost_txt}, {heat_txt}" + (" (Pareto front)" if p.get("pareto") else ""))
+        out.append(("Trade-off: cost against heat stress", lines + [c["note"]]))
+        g_lines = []
+        for g in t["give_up"]:
+            if "parking_spaces_lost" not in g:
+                continue
+            water = f"{g['irrigation_l_per_day']:,.0f} L/day" if g.get("irrigation_l_per_day") is not None else (g.get("irrigation_note") or "")
+            maint = ", ".join(f"{v:,.0f} {k}" for k, v in (g.get("maintenance_per_year") or {}).items()) or (g.get("maintenance_note") or "")
+            g_lines.append(f"{names.get(g['alternative_id'], g['alternative_id'])}: {g['parking_spaces_lost']} parking spaces; {g['building_footprint_lost_m2']:,.0f} m² footprint and "
+                           f"{g['floor_area_lost_m2']:,.0f} m² floor area; {g['trees_added']} trees and {g['planting_added_m2']:,.0f} m² planting ({water}); maintenance: {maint}")
+        if g_lines:
+            out.append(("What each alternative gives up", g_lines))
+    h = res.get("hotspots")
+    if h:
+        out.append(("Design hotspots", [f"{names.get(sid, sid)}: {s['count']} hotspots ({s['high_count']} high, {s['moderate_count']} moderate, {s['low_count']} low), "
+                                        f"{s['located_area_m2']:,.0f} m² located" + (f"; {s['vs_baseline']['outcome']} vs baseline ({s['vs_baseline']['located_area_m2']:+,.0f} m²)" if s.get("vs_baseline") else "")
+                                        for sid, s in h.items()]))
+    return out
+
+
 def _climate_png(bundle: dict, out: Path) -> str | None:
     import matplotlib
 
@@ -139,6 +207,8 @@ def build(project: dict, run: dict, user: dict, comparison: dict | None = None) 
     rules = db.select("rules", "project_id = ? AND status IN ('verified','candidate','rejected')", [project["id"]], order="rule_type")
     map_png = _map_png(project, scenario, bundle, out)
     clim_png = _climate_png(bundle, out)
+    if comparison:
+        comparison = {**comparison, "_tradeoff_png": _tradeoff_png(comparison, out)}
     summary = {"label": label, "complete": complete, "incomplete_modules": incomplete, "stale_modules": stale,
                "findings": len([f for f in bundle["findings"] if f["classification"] != "data_quality_issue"]),
                "data_quality_issues": len([f for f in bundle["findings"] if f["classification"] == "data_quality_issue"])}
@@ -384,6 +454,10 @@ def _html(project, run, bundle, scenario, files_, rules, comparison, summary, ma
     if comparison and comparison["result"].get("comparable"):
         res = comparison["result"]
         names = comparison.get("scenario_names") or {}
+        for head, lines in _comparison_lines(res, names):
+            sec.append(f"<h3>{_e(head)}</h3><ul>" + "".join(f"<li>{_e(x)}</li>" for x in lines) + "</ul>")
+            if head.startswith("Trade-off"):
+                sec.append(_img_tag(comparison.get("_tradeoff_png"), "Trade-off chart: cost against heat stress"))
         sec.append(f"<p>{_e(res['statement'])} {_e(res['direction_note'])}</p><table><tr><th>Alternative</th><th>Metric</th><th>Baseline</th><th>Alternative</th><th>Difference</th><th>Outcome</th></tr>")
         for r in res["rows"]:
             b = r["baseline"].get("value")
@@ -542,6 +616,11 @@ def _pdf(path: Path, project, run, bundle, scenario, files_, rules, comparison, 
     story.append(h(9))
     if comparison and comparison["result"].get("comparable"):
         names = comparison.get("scenario_names") or {}
+        for head, lines in _comparison_lines(comparison["result"], names):
+            story.append(Paragraph(f"<b>{_e(head)}</b>", small))
+            story += [bullet(x) for x in lines]
+            if head.startswith("Trade-off") and comparison.get("_tradeoff_png"):
+                story.append(Image(comparison["_tradeoff_png"], width=15 * cm, height=8.3 * cm, kind="proportional"))
         story.append(Paragraph(_e(comparison["result"]["statement"] + " " + comparison["result"]["direction_note"]), small))
         story.append(table([["Alternative", "Metric", "Baseline", "Alternative", "Difference", "Outcome"]] + [[names.get(r["alternative_id"], ""), r["label"], str(r["baseline"].get("value", r["baseline"].get("state"))), str(r["alternative"].get("value", r["alternative"].get("state"))), str(r.get("difference", "—")), r["outcome"]] for r in comparison["result"]["rows"]],
                            [2.8 * cm, 5.2 * cm, 2.3 * cm, 2.3 * cm, 2 * cm, 2.6 * cm]))

@@ -132,6 +132,7 @@ def meta():
         "upload_categories": {k: {**v, "capabilities": {t: files.CAPABILITIES[t] for t in v["types"]}} for k, v in files.ALLOWLIST.items()},
         "max_upload_mb": settings.max_upload_mb, "analyses": readiness.ANALYSES, "runnable_modules": readiness.RUNNABLE,
         "default_config": orchestrator.DEFAULT_CONFIG, "module_condition": readiness.CONDITION, "ai": ai_llm.status(),
+        "comparison_criteria": comparison.CRITERIA,
         "basemap": {"url": settings.tile_url, "attribution": settings.tile_attribution, "max_zoom": settings.tile_max_zoom,
                     "is_osm_volunteer_service": "tile.openstreetmap.org" in settings.tile_url},
     }
@@ -492,7 +493,8 @@ def export(rid: str, user: dict = Depends(current_user)):
 async def compare(pid: str, request: Request, user: dict = Depends(current_user)):
     p, _ = _project(pid, user, "editor")
     b = await _json(request)
-    return comparison.compare(p, user, b.get("baseline_id"), b.get("alternative_ids") or [], b.get("criteria"))
+    return comparison.compare(p, user, b.get("baseline_id"), b.get("alternative_ids") or [], b.get("criteria"),
+                              budget=comparison.parse_budget(b.get("budget_amount"), b.get("budget_currency")))
 
 
 @app.get(f"{API}/projects/{{pid}}/scenario-comparisons")

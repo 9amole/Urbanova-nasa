@@ -847,21 +847,73 @@ async function tabCompare(el, data) {
   const scen = (await api(`/projects/${pid}/scenarios`)).filter((s) => s.status === "active");
   const base = scen.find((s) => s.kind === "baseline");
   const alts = scen.filter((s) => s.kind === "alternative");
-  const crit = ["green_space_pct", "hard_surface_pct", "solar_open_space_exposed_pct_1500", "solar_open_space_shade_hours", "open_space_pct"];
+  const crit = Object.entries(state.meta.comparison_criteria || {});
   el.innerHTML = `<section class="panel"><h2>Compare the original design with alternatives</h2>
    ${!base || !alts.length ? `<div class="alert warn">You need the baseline and at least one alternative (Scenarios tab), each analysed with the same settings ("Run all active scenarios").</div>` : ""}
    ${base && alts.length && canEdit ? `<form id="f-cmp"><p>Reference: <strong>${esc(base.name)}</strong> ${base.latest_run ? badge(RUN_STATUS[base.latest_run.status]) : badge(["not analysed", "b-bad"])}</p>
      <fieldset><legend>Alternatives</legend>${alts.map((a) => `<label class="check"><input type="checkbox" name="alt" value="${a.id}" checked> ${esc(a.name)} ${a.latest_run ? badge(RUN_STATUS[a.latest_run.status]) : badge(["not analysed", "b-bad"])}</label>`).join("")}</fieldset>
-     <details><summary>Optional: weighted scoring (transparent multi-criteria)</summary><p class="hint">Leave all weights at 0 for a plain comparison. Scores are relative to the compared scenarios and depend on your weights.</p>
-     ${crit.map((c) => `<div class="row"><label for="w-${c}" style="flex:1;font-weight:400">${esc(c)}</label><input id="w-${c}" data-c="${c}" type="number" min="0" step="0.5" value="0" style="width:90px"></div>`).join("")}</details>
+     <details><summary>Optional: your priorities (weights) and budget</summary><p class="hint">With every weight at 0 there is no winner: you see the trade-offs only. Weights rank the designs under your priorities; scores are relative to the compared designs.</p>
+     ${crit.map(([c, d]) => `<div class="row"><label for="w-${c}" style="flex:1;font-weight:400">${esc(d.label)} <span class="muted">(${d.direction} is better)</span></label><input id="w-${c}" data-c="${c}" type="number" min="0" step="0.5" value="0" style="width:90px"></div>`).join("")}
+     <div class="row"><div><label for="cmp-bud">Budget (optional)</label><input id="cmp-bud" type="number" min="0" step="any" style="width:140px"></div><div><label for="cmp-cur">Currency</label><input id="cmp-cur" type="text" maxlength="3" placeholder="e.g. EGP" style="width:90px"></div></div></details>
      <p><button class="primary" type="submit">Compare</button></p></form>` : ""}
    <div id="cmp-out" aria-live="polite"></div></section>`;
   const f = document.getElementById("f-cmp");
   if (f) f.onsubmit = (e) => { e.preventDefault(); guarded(async () => {
     const criteria = [...document.querySelectorAll("input[data-c]")].filter((i) => +i.value > 0).map((i) => ({ metric: i.dataset.c, weight: +i.value }));
-    const c = await api(`/projects/${pid}/scenario-comparisons`, { body: { baseline_id: base.id, alternative_ids: [...document.querySelectorAll("input[name=alt]:checked")].map((x) => x.value), criteria: criteria.length ? criteria : null } });
+    const bud = document.getElementById("cmp-bud").value, cur = document.getElementById("cmp-cur").value.trim();
+    const c = await api(`/projects/${pid}/scenario-comparisons`, { body: { baseline_id: base.id, alternative_ids: [...document.querySelectorAll("input[name=alt]:checked")].map((x) => x.value), criteria: criteria.length ? criteria : null,
+      budget_amount: bud ? +bud : null, budget_currency: bud ? cur : null } });
     renderComparison(document.getElementById("cmp-out"), c, pid);
   }); };
+}
+
+function tradeoffSvg(t, names) {
+  const pts = t.points.filter((p) => !p.missing.length);
+  if (!pts.length) return `<p class="muted">No design has both a complete price and a heat-stress value, so the chart cannot be drawn.</p>`;
+  const W = 520, H = 300, m = { l: 70, r: 20, t: 16, b: 46 };
+  const xs = pts.map((p) => p.cost), ys = pts.map((p) => p.heat_m2h);
+  const [x0, x1] = [Math.min(...xs), Math.max(...xs)], [y0, y1] = [Math.min(...ys), Math.max(...ys)];
+  const sx = (v) => m.l + (x1 - x0 ? (v - x0) / (x1 - x0) : 0.5) * (W - m.l - m.r), sy = (v) => H - m.b - (y1 - y0 ? (v - y0) / (y1 - y0) : 0.5) * (H - m.t - m.b);
+  const front = t.front.map((id) => pts.find((p) => p.id === id)).filter(Boolean);
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Trade-off between cost and heat stress" style="max-width:${W}px;width:100%">
+    <line x1="${m.l}" y1="${H - m.b}" x2="${W - m.r}" y2="${H - m.b}" stroke="currentColor" stroke-opacity=".4"/><line x1="${m.l}" y1="${m.t}" x2="${m.l}" y2="${H - m.b}" stroke="currentColor" stroke-opacity=".4"/>
+    <text x="${(W + m.l) / 2}" y="${H - 8}" text-anchor="middle" font-size="11">${esc(t.x)}${pts[0].currency ? ` (${esc(pts[0].currency)})` : ""}</text>
+    <text x="14" y="${(H - m.b) / 2}" font-size="11" transform="rotate(-90 14 ${(H - m.b) / 2})" text-anchor="middle">Heat stress (m²·h)</text>
+    <text x="${m.l}" y="${H - m.b + 14}" font-size="10">${fmt(x0, 0)}</text><text x="${W - m.r}" y="${H - m.b + 14}" font-size="10" text-anchor="end">${fmt(x1, 0)}</text>
+    <text x="${m.l - 4}" y="${H - m.b}" font-size="10" text-anchor="end">${fmt(y0, 0)}</text><text x="${m.l - 4}" y="${m.t + 8}" font-size="10" text-anchor="end">${fmt(y1, 0)}</text>
+    ${front.length > 1 ? `<polyline fill="none" stroke="#2c7bb6" stroke-width="2" points="${front.map((p) => `${sx(p.cost)},${sy(p.heat_m2h)}`).join(" ")}"/>` : ""}
+    ${pts.map((p) => `<circle cx="${sx(p.cost)}" cy="${sy(p.heat_m2h)}" r="6" fill="${p.pareto ? "#2c7bb6" : "#999"}"><title>${esc(p.name)}: ${fmt(p.cost, 0)} ${esc(p.currency || "")}, ${fmt(p.heat_m2h, 0)} m²·h</title></circle>
+      <text x="${sx(p.cost) + 8}" y="${sy(p.heat_m2h) - 8}" font-size="11">${esc(p.name)}</text>`).join("")}</svg>
+    <p class="hint">${esc(t.note)}</p>${t.not_plotted.length ? `<p class="muted">Not plotted: ${t.not_plotted.map((n) => `${esc(n.name)} (missing ${esc(n.missing.join(", "))})`).join("; ")}</p>` : ""}`;
+}
+
+function choiceHtml(ch) {
+  if (!ch) return "";
+  if (ch.mode === "no_winner") return `<div class="alert info"><strong>No single best design.</strong> ${esc(ch.statement)}</div>`;
+  const rob = ch.robustness;
+  return `<div class="alert ${ch.best ? "ok" : "warn"}"><strong>${esc(ch.statement)}</strong>
+    <div>Weights used: ${ch.weights.map((w) => `${esc(w.label)} ×${fmt(w.weight, 2)}`).join("; ")}${ch.budget ? ` · budget ${fmt(ch.budget.amount, 0)} ${esc(ch.budget.currency)}` : ""}</div>
+    ${ch.excluded.length ? `<div>Not eligible: ${ch.excluded.map((x) => `${esc(x.name)} (${esc(x.why)})`).join("; ")}</div>` : ""}
+    <div>${badge([rob.result.replace("_", " "), rob.result === "robust" ? "b-ok" : rob.result === "sensitive" ? "b-warn" : "b-mute"])} ${esc(rob.statement)} <span class="muted">${esc(rob.cost_note)}</span></div>
+    <div class="muted">${esc(ch.rule)}</div></div>`;
+}
+
+function giveUpTable(rows, names) {
+  if (!rows.length) return "";
+  const cell = (v, unit) => (v === null || v === undefined ? "—" : `${fmt(v, 1)} ${unit}`);
+  return `<h3>What each alternative gives up</h3><table><tr><th>Alternative</th><th>Parking</th><th>Built area</th><th>Irrigation water</th><th>Maintenance / year</th></tr>
+   ${rows.map((g) => `<tr><td>${esc(names[g.alternative_id])}</td><td>${g.parking_spaces_lost ?? 0} spaces (${cell(g.parking_area_removed_m2, "m²")})</td>
+     <td>${cell(g.building_footprint_lost_m2, "m² footprint")}; ${cell(g.floor_area_lost_m2, "m² floor area")}${g.floor_area_note ? `<div class="muted">${esc(g.floor_area_note)}</div>` : ""}</td>
+     <td>${g.trees_added} trees, ${cell(g.planting_added_m2, "m² planting")}<div class="muted">${g.irrigation_l_per_day !== null && g.irrigation_l_per_day !== undefined ? `${fmt(g.irrigation_l_per_day, 0)} L/day` : esc(g.irrigation_note || "")}</div></td>
+     <td>${g.maintenance_per_year ? Object.entries(g.maintenance_per_year).map(([k, v]) => `${fmt(v, 0)} ${esc(k)}`).join(", ") : "—"}${g.maintenance_note ? `<div class="muted">${esc(g.maintenance_note)}</div>` : ""}</td></tr>`).join("")}</table>
+   <p class="hint">${esc(rows[0].basis || "")}</p>`;
+}
+
+function hotspotCompare(h, names) {
+  if (!h) return "";
+  return `<h3>Design hotspots</h3><table><tr><th>Scenario</th><th>Hotspots</th><th>High / moderate / low</th><th>Located area</th><th>vs baseline</th></tr>
+   ${Object.entries(h).map(([sid, s]) => `<tr><td>${esc(names[sid])}</td><td>${s.count}</td><td>${s.high_count} / ${s.moderate_count} / ${s.low_count}</td><td>${fmt(s.located_area_m2, 0)} m²</td>
+     <td>${s.vs_baseline ? `${s.vs_baseline.located_area_m2 > 0 ? "+" : ""}${fmt(s.vs_baseline.located_area_m2, 0)} m² ${badge([s.vs_baseline.outcome, s.vs_baseline.outcome === "improvement" ? "b-ok" : s.vs_baseline.outcome === "regression" ? "b-bad" : "b-mute"])}` : "reference"}</td></tr>`).join("")}</table>`;
 }
 
 function renderComparison(box, c, pid) {
@@ -869,7 +921,9 @@ function renderComparison(box, c, pid) {
   if (!r.comparable) { box.innerHTML = `<div class="alert bad"><strong>These results are not comparable.</strong><ul>${r.issues.map((i) => `<li>${esc(i)}</li>`).join("")}</ul></div>`; return; }
   const OUT = { improvement: ["Improvement", "b-ok"], regression: ["Regression", "b-bad"], unchanged: ["Unchanged", "b-mute"], changed: ["Changed (no preferred direction)", "b-info"], not_comparable: ["Not comparable", "b-warn"] };
   const v = (x) => (x.state === "available" ? fmt(x.value, 3) : `<span class="state">${esc(x.state)}</span>`);
-  box.innerHTML = `<div class="alert info">${esc(r.statement)} ${esc(r.direction_note)}</div>
+  box.innerHTML = `${choiceHtml(r.choice)}<div class="alert info">${esc(r.statement)} ${esc(r.direction_note)}</div>
+   ${r.tradeoffs ? `<h3>Trade-off: cost against heat stress</h3>${tradeoffSvg(r.tradeoffs.chart, names)}${giveUpTable(r.tradeoffs.give_up, names)}` : ""}
+   ${hotspotCompare(r.hotspots, names)}
    <table><thead><tr><th>Alternative</th><th>Indicator</th><th>Kind</th><th>Baseline</th><th>Alternative</th><th>Difference</th><th>Outcome</th></tr></thead><tbody>
    ${r.rows.filter((x) => x.outcome !== "unchanged").map((x) => `<tr><td>${esc(names[x.alternative_id])}</td><td>${esc(x.label)} <span class="muted">${esc(x.unit || "")}</span></td><td>${kindBadge(x.output_kind)}</td><td>${v(x.baseline)}</td><td>${v(x.alternative)}</td>
      <td>${x.difference !== undefined ? `${x.difference > 0 ? "+" : ""}${fmt(x.difference, 3)}${x.difference_pct !== null && x.difference_pct !== undefined ? ` (${x.difference_pct > 0 ? "+" : ""}${fmt(x.difference_pct, 1)}%)` : ""}` : "—"}</td>

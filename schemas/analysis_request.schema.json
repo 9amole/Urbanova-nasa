@@ -51,8 +51,36 @@
             }
           ],
           "default": null,
-          "description": "Optional weighted scoring; omit for a plain comparison.",
+          "description": "Optional weighted scoring; omit for a plain comparison (then there is no winner). Metric ids from comparison.CRITERIA, incl. the derived 'cost_typical' and 'compliance_failures'.",
           "title": "Criteria"
+        },
+        "budget_amount": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional budget: a design over it, or without a complete price, cannot be the best.",
+          "title": "Budget Amount"
+        },
+        "budget_currency": {
+          "anyOf": [
+            {
+              "maxLength": 3,
+              "minLength": 3,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Budget Currency"
         }
       },
       "required": [

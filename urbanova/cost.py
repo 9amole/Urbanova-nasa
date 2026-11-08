@@ -141,7 +141,16 @@ def _quantities(project: dict, fc: dict) -> dict:
         u = unary_union(geoms) if geoms else None
         areas[t] = 0.0 if u is None else (u.intersection(site).area if site is not None else u.area)
     trees = sum(1 for f in fc["features"] if f["properties"].get("feature_type") == "tree")
-    return {"areas": areas, "trees": trees}
+    # Floor area: footprint × floors where floors are known (a building without floors adds nothing, and is counted).
+    gfa, unknown = 0.0, 0
+    for f in fc["features"]:
+        if f["properties"].get("feature_type") == "building" and f["geometry"]["type"] in ("Polygon", "MultiPolygon"):
+            if f["properties"].get("floors"):
+                g = geo.to_local(shape(f["geometry"]), local)
+                gfa += (g.intersection(site).area if site is not None else g.area) * float(f["properties"]["floors"])
+            else:
+                unknown += 1
+    return {"areas": areas, "trees": trees, "floor_area_m2": gfa, "buildings_without_floors": unknown}
 
 
 def estimate(project: dict, baseline: dict, alternative: dict, rates: list[dict] | None = None) -> dict:
@@ -160,6 +169,7 @@ def estimate(project: dict, baseline: dict, alternative: dict, rates: list[dict]
     else:
         rates = sorted(rates, key=lambda r: r["price_date"], reverse=True)
     lines, totals, exclusions, warnings = [], {}, [], []
+    maintenance, maintenance_missing = {}, []
     for qt, qty in raw.items():
         if qty <= 0.5:
             continue
@@ -175,6 +185,11 @@ def estimate(project: dict, baseline: dict, alternative: dict, rates: list[dict]
             sub = qty * r["rate"]
             line.update(status="priced", rate=r["rate"], currency=r["currency"], rate_source=r["source"], price_date=r["price_date"], rate_id=r["id"], subtotal=round(sub, 2))
             totals[r["currency"]] = totals.get(r["currency"], 0) + sub
+            if r.get("maintenance_per_year") is not None:
+                line["maintenance_per_year"] = round(qty * r["maintenance_per_year"], 2)
+                maintenance[r["currency"]] = maintenance.get(r["currency"], 0) + qty * r["maintenance_per_year"]
+            else:
+                maintenance_missing.append(spec["label"])
             if _stale(r["price_date"]):
                 warnings.append(f"The rate for {spec['label'].lower()} is dated {r['price_date']} (older than {STALE_PRICE_YEARS} years).")
             if len(matching) > 1:
@@ -186,6 +201,9 @@ def estimate(project: dict, baseline: dict, alternative: dict, rates: list[dict]
     return {
         "lines": lines,
         "totals_by_currency": {k: round(v, 2) for k, v in totals.items()},
+        "maintenance_per_year_by_currency": {k: round(v, 2) for k, v in maintenance.items()},
+        "maintenance_value_required": maintenance_missing,
+        "quantities": {"baseline": qb, "alternative": qa},
         "status": "no_quantities" if not lines else ("complete" if len(priced) == len(lines) else ("partial" if priced else "quantities_only")),
         "exclusions": exclusions + ["Design fees, demolition, utilities, irrigation systems, maintenance, taxes and contingency are excluded unless supplied as rates."],
         "warnings": warnings,
