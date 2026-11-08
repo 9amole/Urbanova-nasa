@@ -297,7 +297,10 @@ def test_cloud_covered_scenes_are_excluded_not_invented(client, auth, monkeypatc
 
 
 def test_clear_scenes_produce_relative_lst(client, auth, monkeypatch):
+    from conftest import unapprove
     from urbanova.analysis import surface_heat
+
+    unapprove(monkeypatch, "finding.HEAT-LST-02")
 
     approve(monkeypatch, "pc_landsat_c2_l2")
     def read(pid, href, epsg, crs, t, shape, **k):

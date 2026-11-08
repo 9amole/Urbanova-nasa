@@ -73,3 +73,14 @@ def run(client, auth, pid, scenario_id=None, config=None):
     r = client.post(f"/api/v1/projects/{pid}/analysis-runs", headers=auth, json={"scenario_id": scenario_id, "config": config or {}})
     assert r.status_code == 202, r.text
     return client.get(f"/api/v1/analysis-runs/{r.json()['id']}", headers=auth).json()
+
+
+def unapprove(monkeypatch, *ids, clear_value=False):
+    """Make basis values unapproved (or empty) for one test, to exercise the provisional path whatever basis.json records."""
+    from urbanova import basis
+
+    for i in ids:
+        rec = basis.get(i)
+        monkeypatch.setitem(rec, "approved_by", None)
+        if clear_value:
+            monkeypatch.setitem(rec, "value", None)

@@ -16,6 +16,25 @@ is yours.
 A row without a named approver is rejected, and an invalid form changes nothing. Items 2–7: write the decision and the
 decider's name under the item and commit the file.
 
+
+> **Status, 8 Nov 2026: decided.** The project owner delegated these decisions to the AI assistant (Claude) acting as
+> decision maker. The decisions below are recorded with that attribution (`approved_by` in `urbanova/config/basis.json`
+> reads "Claude (AI assistant) as decision maker, delegated by the project owner; supervisor review pending"). They are
+> in force in the software, so the PROVISIONAL label and severity cap no longer apply to these values. **A supervisor
+> should still review them**; to overturn one, set `decision = change` (or clear `approved_by`) in the form and re-apply.
+
+## Decisions taken (8 Nov 2026)
+
+| # | Decision | In force through |
+|---|---|---|
+| 1 | All 45 values approved as proposed, except irrigation water, which is **set from FAO-56**: 4.0 L/m²/day of planting and 110 L/tree/day in the hot season (ET0 = 8.0 mm/day, mean June–August 2021–2025 of ERA5 FAO Penman-Monteith ET0 at the sample site, × landscape coefficient 0.5 for moderate-water-use plants, WUCOLS IV; tree canopy 28.3 m²). Water is site-specific: recompute ET0 for another climate | `basis.json` (`approved_by`, `approval_note`), `rules.json` labels |
+| 2 | SHADE-01 stays replaced by the UTCI-based H1/H3 hotspots | already in code since S2 |
+| 3 | Cost: the cost library stays empty until real quotations or a published price list **with source and year** are available; nothing is invented. TEST (XTS) prices are for demonstration only and keep low cost confidence | `cost_library.json`, cost confidence rules |
+| 4 | Comparison criteria approved: heat stress, green space, shade, typical cost, failed verified rules. Water is not a ranking criterion (user decision in S5) but is shown in the give-up list, now with litres | `comparison.CRITERIA`, give-up list |
+| 5 | AI: Groq and OpenRouter approved **for synthetic or test projects only**. Real project data is sent **only to a local model** (Ollama on the server) unless the operator sets `URBANOVA_AI_CLOUD_FOR_REAL_DATA=1` under a data-processing agreement. AI stays off per project by default | `api._ai_local_only`, `llm.available(local_only)`; test `test_real_project_data_goes_only_to_a_local_model` |
+| 6 | Nominatim confirmed for the rate-limited public service (own instance or commercial geocoder for production); WorldCover confirmed (CC BY 4.0, attribution shown); footprints, terrain and population stay deferred. **Commercial use of Planetary Computer data remains unapproved** (decision C1): a licence review is a legal question, not one an AI can settle | `providers.json` |
+| 7 | Dependencies approved (open-source MIT/BSD-3, all versions ≥ 2 weeks old when added) | `requirements.txt`, `pyproject.toml` |
+
 ---
 
 ## 1. Thresholds and settings chosen by the project (45 values)
@@ -93,4 +112,8 @@ needed: Gi* is implemented in `analysis/spatial_stats.py` and tested against the
 * **A real project (D2).** No real CAD export, real Arabic planning document or scanned page has been run end to end.
   This is the most important remaining evidence; one real project from the team is enough to start.
 * **Supervisor reading of a report (S6 exit).** Sample: `review/URBANOVA_sample_site_report.pdf` (34 pages, synthetic data).
-* **Local AI model test (S4).** Needs Ollama installed and a model pulled, then `scripts/eval_ai.py`.
+* **Local AI model test (S4), deferred.** Ollama 0.40.11 is installed on the dev PC (8 Nov 2026, installer checksum and
+  signature verified). Pulling the model failed on a network timeout and was postponed in favour of Groq for now, which is
+  allowed because every current project is synthetic. Until a local model exists, real (non-synthetic) projects get the
+  labelled automatic summary instead of AI text. To finish: `ollama pull qwen3:8b`, set `URBANOVA_LLM_OLLAMA_MODEL=qwen3:8b`,
+  then `.venv/Scripts/python scripts/eval_ai.py ollama:qwen3:8b --out=docs/AI_EVALUATION_LOCAL.md`.

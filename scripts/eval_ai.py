@@ -8,6 +8,7 @@ Writes docs/AI_EVALUATION.md. Uses a private cache so earlier results are not re
 Usage (the key is read from the environment and never printed):
     set URBANOVA_LLM_GROQ_API_KEY=...            (PowerShell: $env:URBANOVA_LLM_GROQ_API_KEY = "...")
     .venv/Scripts/python scripts/eval_ai.py groq:openai/gpt-oss-120b groq:llama-3.3-70b-versatile
+    .venv/Scripts/python scripts/eval_ai.py ollama:qwen3:8b --out=docs/AI_EVALUATION_LOCAL.md   (local model, no key)
 """
 
 from __future__ import annotations
@@ -73,7 +74,7 @@ def bundles() -> list[tuple[str, dict]]:
     return out
 
 
-def main(models: list[str]) -> None:
+def main(models: list[str], out_path: str = "docs/AI_EVALUATION.md") -> None:
     sys.stdout.reconfigure(encoding="utf-8")
     from urbanova.ai import insights, llm
     from urbanova.settings import settings
@@ -115,9 +116,11 @@ def main(models: list[str]) -> None:
     for spec, n, st, med in rows:
         lines.append(f"| {spec} | {n} | {st['first']} | {st['retry']} | {st['fallback']} | {st['provider_failure']} | {med:.1f} |")
     lines += ["", "Every accepted output passed the grounding validator (PHASE2_SPEC §5 step 4); fallbacks show the deterministic summary."]
-    (ROOT / "docs" / "AI_EVALUATION.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
-    print("wrote docs/AI_EVALUATION.md")
+    (ROOT / out_path).write_text("\n".join(lines) + "\n", encoding="utf-8")
+    print("wrote", out_path)
 
 
 if __name__ == "__main__":
-    main(sys.argv[1:])
+    args = sys.argv[1:]
+    out = next((a.split("=", 1)[1] for a in args if a.startswith("--out=")), "docs/AI_EVALUATION.md")
+    main([a for a in args if not a.startswith("--out=")], out)

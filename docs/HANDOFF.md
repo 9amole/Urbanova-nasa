@@ -109,6 +109,7 @@ Rules the UI must respect:
 | `URBANOVA_USAGE_CONTEXT` | `non_commercial_evaluation` or `commercial`. Commercial mode refuses Open-Meteo's free tier and sources whose commercial terms are unverified | `non_commercial_evaluation` |
 | `OPEN_METEO_API_KEY` | Open-Meteo customer endpoint for commercial use (server-side only; never logged or cached) | unset |
 | `URBANOVA_OFFLINE` | `1` = never call providers; analyses report *unavailable* | `0` |
+| `URBANOVA_AI_CLOUD_FOR_REAL_DATA` | `1` = allow cloud AI providers (Groq, OpenRouter) for real project data, e.g. under a data-processing agreement. Otherwise only synthetic/test projects use them and real data goes to a local model only (decision of 8 Nov 2026) | `0` |
 | `URBANOVA_HTTP_TIMEOUT_S`, `URBANOVA_HTTP_MAX_RETRIES` | HTTP client defaults (Overpass has its own 75 s timeout in the registry) | 45, 3 |
 
 **Concurrency:** `analyse()` can run in parallel threads or processes. Provenance is collected per call (context variable), and the file cache is protected per key. Give each call its own `output_dir`.

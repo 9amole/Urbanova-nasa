@@ -34,8 +34,10 @@ class SuggestError(ValueError):
     pass
 
 
-def _run(prompt: str, payload: dict, version: str) -> tuple[list[dict], dict]:
-    provs = llm.available()
+def _run(prompt: str, payload: dict, version: str, local_only: bool = False) -> tuple[list[dict], dict]:
+    provs = llm.available(local_only)
+    if not provs and local_only and llm.available():
+        raise SuggestError(llm.LOCAL_ONLY_REASON)
     if not provs:
         raise SuggestError("No AI provider is available (not configured, switched off, over today's budget or skipped after failures).")
     blob = json.dumps(payload, sort_keys=True, ensure_ascii=False)
@@ -63,7 +65,7 @@ def _norm(text: str) -> str:
     return re.sub(r"\s+", " ", documents.normalize_page(text)[0]).strip()
 
 
-def suggest_rules(project: dict, file_rec: dict) -> dict:
+def suggest_rules(project: dict, file_rec: dict, local_only: bool = False) -> dict:
     pages, _ = documents.extract_text(file_rec["storage_path"])
     have = {r["rule_type"] for r in db.select("rules", "project_id = ? AND file_id = ?", [project["id"], file_rec["id"]])}
     wanted = [t for t in NUMERIC_RULES if t not in have]
@@ -72,7 +74,7 @@ def suggest_rules(project: dict, file_rec: dict) -> dict:
     sent = [{"page": i + 1, "text": p[:MAX_PAGE_CHARS]} for i, p in enumerate(pages[:MAX_PAGES]) if len(p.strip()) >= 20]
     if not sent:
         raise SuggestError("The document has no text layer to read (scanned pages need OCR first).")
-    sugg, meta = _run(RULE_PROMPT, {"rule_types_wanted": wanted, "pages": sent}, RULE_VERSION)
+    sugg, meta = _run(RULE_PROMPT, {"rule_types_wanted": wanted, "pages": sent}, RULE_VERSION, local_only)
     added, rejected = [], []
     for s in sugg[:20]:
         rtype, page, quote = s.get("rule_type"), s.get("page"), str(s.get("exact_quote") or "")
@@ -117,7 +119,7 @@ def _layer(f: dict) -> str | None:
     return props.get("layer") or props.get("Layer")
 
 
-def suggest_layers(project: dict, file_rec: dict) -> dict:
+def suggest_layers(project: dict, file_rec: dict, local_only: bool = False) -> dict:
     feats = db.select("features", "project_id = ? AND file_id = ? AND active = 1 AND feature_type = 'unclassified'", [project["id"], file_rec["id"]])
     layers: dict[str, set] = {}
     for f in feats:
@@ -127,7 +129,7 @@ def suggest_layers(project: dict, file_rec: dict) -> dict:
     if not layers:
         return {"suggested": 0, "note": "No unclassified features with a layer name in this file."}
     payload = {"layers": [{"layer": k, "attribute_keys": sorted(v)[:20]} for k, v in sorted(layers.items())[:100]]}
-    sugg, meta = _run(LAYER_PROMPT, payload, LAYER_VERSION)
+    sugg, meta = _run(LAYER_PROMPT, payload, LAYER_VERSION, local_only)
     valid = {s["layer"]: s for s in sugg if isinstance(s, dict) and s.get("layer") in layers and s.get("feature_type") in plans.FEATURE_TYPES
              and s.get("feature_type") != "unclassified"}
     n = 0

@@ -104,7 +104,7 @@ def test_hotspots_by_severity_are_compared():
 
 
 # ------------------------------------------------------------------ give-up list on the sample designs
-def test_give_up_counts_parking_spaces_trees_and_marks_water_value_required():
+def test_give_up_counts_parking_spaces_trees_and_marks_water_value_required(monkeypatch):
     from shapely.geometry import shape
 
     from urbanova import comparison, cost, geo
@@ -121,7 +121,15 @@ def test_give_up_counts_parking_spaces_trees_and_marks_water_value_required():
     removed = area(base_fc, "Surface car park") - area(alt_fc, "Reduced car park")
     assert g["parking_area_removed_m2"] == pytest.approx(removed, abs=0.2) and g["parking_spaces_lost"] == int(removed // 25)
     assert g["trees_added"] == 6 and g["planting_added_m2"] > 0
-    assert g["irrigation_l_per_day"] is None and "value required" in g["irrigation_note"]
+    from urbanova import basis
+
+    wt, wm = basis.get("interventions.water_l_per_tree_day")["value"], basis.get("interventions.water_l_per_m2_day")["value"]
+    assert g["irrigation_l_per_day"] == pytest.approx(round(6 * wt + g["planting_added_m2"] * wm, 1), abs=0.2)
+    from conftest import unapprove
+
+    unapprove(monkeypatch, "interventions.water_l_per_tree_day", clear_value=True)
+    [g2] = comparison._give_up([{"id": "alt", "name": "ALT"}], {"alt": est})
+    assert g2["irrigation_l_per_day"] is None and "value required" in g2["irrigation_note"]
     assert g["building_footprint_lost_m2"] == 0
 
 

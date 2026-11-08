@@ -263,7 +263,8 @@ def _project_with_run(client, auth, monkeypatch, ai=True):
     monkeypatch.setitem(core.MODULES, "climate_baseline", fake_climate)
     pid = make_project(client, auth, objectives=["main_concerns", "shade"])
     if ai:
-        assert client.patch(f"/api/v1/projects/{pid}", headers=auth, json={"ai_enabled": True}).json()["project"]["ai_enabled"] is True
+        # Synthetic test data: cloud providers are allowed (real data goes to a local model only).
+        assert client.patch(f"/api/v1/projects/{pid}", headers=auth, json={"ai_enabled": True, "synthetic_data": True}).json()["project"]["ai_enabled"] is True
     b = run(client, auth, pid, baseline_with_plan(client, auth, pid)["id"], {"modules": ["hotspots"], "solar_date": "2025-07-21"})
     return pid, b
 
@@ -312,7 +313,7 @@ def test_rule_suggestions_are_quoted_candidates_only(client, auth, monkeypatch):
     from urbanova.settings import settings
 
     pid = make_project(client, auth)
-    client.patch(f"/api/v1/projects/{pid}", headers=auth, json={"ai_enabled": True})
+    client.patch(f"/api/v1/projects/{pid}", headers=auth, json={"ai_enabled": True, "synthetic_data": True})
     pages = ["General conditions for the plot.", "نسبة البناء لا تزيد عن ٤٠٪ من مساحة الأرض. The maximum building height is 18 m."]
     monkeypatch.setattr(documents, "extract_text", lambda path: (pages, []))
     f = upload(client, auth, pid, "conditions.pdf", "planning_document", content=b"%PDF-1.4 minimal").json()
@@ -347,7 +348,7 @@ def test_layer_suggestions_are_review_items_never_applied(client, auth, monkeypa
     from urbanova.settings import settings
 
     pid = make_project(client, auth)
-    client.patch(f"/api/v1/projects/{pid}", headers=auth, json={"ai_enabled": True})
+    client.patch(f"/api/v1/projects/{pid}", headers=auth, json={"ai_enabled": True, "synthetic_data": True})
     fc = {"type": "FeatureCollection", "features": [
         {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[31.85, 30.12], [31.8502, 30.12], [31.8502, 30.1202], [31.85, 30.12]]]},
          "properties": {"layer": "MABANI-01"}},
@@ -439,3 +440,30 @@ def test_a_long_rate_limit_pauses_the_provider_briefly_not_for_the_day(ai_env, m
     assert "groq" in [p["name"] for p in llm.available()]
     llm.pause("groq", llm.ProviderFailure("HTTP 500"))
     assert "groq" not in [p["name"] for p in llm.available()]  # an outage still skips it for the day
+
+
+
+def test_real_project_data_goes_only_to_a_local_model(client, auth, monkeypatch):
+    """Data decision of 8 Nov 2026: a project that is not synthetic never reaches a cloud provider unless the operator opts in."""
+    from urbanova.ai import llm
+    from urbanova.settings import settings
+
+    pid, b = _project_with_run(client, auth, monkeypatch)
+    rid = b["run"]["id"]
+    assert client.patch(f"/api/v1/projects/{pid}", headers=auth, json={"synthetic_data": False}).status_code == 200
+    monkeypatch.setattr(settings, "offline", False)
+    monkeypatch.setenv("URBANOVA_LLM_GROQ_API_KEY", SENTINEL)
+    monkeypatch.setenv("URBANOVA_LLM_PROVIDERS", "groq")
+    calls = []
+    monkeypatch.setattr(llm.httpx, "post", lambda *a, **k: calls.append(a) or (_ for _ in ()).throw(AssertionError("cloud call")))
+    ins = client.post(f"/api/v1/analysis-runs/{rid}/insights", headers=auth).json()
+    assert ins["generated_by"] == "fallback" and "local model" in ins["reason"] and not calls
+    # With a local provider configured, only it is offered; the operator opt-in re-allows cloud providers.
+    monkeypatch.setenv("URBANOVA_LLM_PROVIDERS", "groq,ollama")
+    monkeypatch.setenv("URBANOVA_LLM_OLLAMA_MODEL", "qwen3:8b")
+    from test_acceptance import approve
+
+    approve(monkeypatch, "ollama")
+    assert [p["name"] for p in llm.available(local_only=True)] == ["ollama"]
+    monkeypatch.setenv("URBANOVA_AI_CLOUD_FOR_REAL_DATA", "1")
+    assert llm.cloud_allowed_for_real_data()

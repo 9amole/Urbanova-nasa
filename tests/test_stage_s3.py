@@ -38,7 +38,11 @@ def priced(tmp_path_factory):
     ctx = sample_context(tmp_path_factory.mktemp("s3b"))
     ctx.rates = test_rates()
     ctx.config = {**ctx.config, "budget_amount": 60000.0, "budget_currency": "XTS"}
-    return ctx, run_design(ctx, MODS)
+    from conftest import unapprove
+
+    with pytest.MonkeyPatch.context() as mp:  # the 'value required' path for irrigation water
+        unapprove(mp, "interventions.water_l_per_tree_day", "interventions.water_l_per_m2_day", clear_value=True)
+        return ctx, run_design(ctx, MODS)
 
 
 def _car_park(out):

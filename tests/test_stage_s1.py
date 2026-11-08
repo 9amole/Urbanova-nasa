@@ -112,7 +112,10 @@ def _lst(pct, diff_k=2.0):
             _metric("lst_site_minus_surroundings_k", "surface_heat", diff_k, "K")]
 
 
-def test_provisional_rules_are_capped_and_statistical_ones_are_not(env):
+def test_provisional_rules_are_capped_and_statistical_ones_are_not(env, monkeypatch):
+    from conftest import unapprove
+
+    unapprove(monkeypatch, "finding.HEAT-LST-01.min_effect")
     project = {"id": "p", "boundary": _local_box_wgs(0, 0, 100, 100)}
     [f], _ = _generate(_lst(99.0), project)
     assert f["rule_id"] == "HEAT-LST-01" and f["severity"] == "high" and not f["threshold"]["severity_capped"]
@@ -132,7 +135,7 @@ def test_a_small_difference_is_not_reported_however_unusual(env):
     assert not _generate(_lst(99.0)[:1], project)[0]  # no measured difference → no finding
     rule = next(r for r in load_config("rules.json")["findings"] if r["id"] == "HEAT-LST-01")
     assert basis.get(rule["min_effect"]["basis"])["value"] == rule["min_effect"]["min"]
-    assert basis.is_provisional(rule["min_effect"]["basis"])
+    assert basis.get(rule["min_effect"]["basis"])["basis_type"] == "project_choice"
 
 
 def test_report_lists_values_used_with_their_basis(client, auth):

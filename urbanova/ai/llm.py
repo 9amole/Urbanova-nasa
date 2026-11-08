@@ -132,14 +132,32 @@ def _save(st: dict) -> None:
     _state_path().write_text(json.dumps(st), encoding="utf-8")
 
 
-def available() -> list[dict]:
-    """Ready providers not skipped today, in chain order (empty when AI is switched off or the budget is used up)."""
+def is_local(p: dict) -> bool:
+    """A provider on this machine (loopback address), e.g. Ollama: nothing leaves the server."""
+    from urllib.parse import urlparse
+
+    return (urlparse(p["base_url"]).hostname or "") in ("127.0.0.1", "localhost", "::1")
+
+
+def cloud_allowed_for_real_data() -> bool:
+    """Data decision of 2026-11-08 (docs/decisions/SUPERVISOR_DECISIONS.md, item 5): real project data goes only to a local
+    model unless the operator opts in with URBANOVA_AI_CLOUD_FOR_REAL_DATA=1 (for example under a data-processing agreement)."""
+    return os.environ.get("URBANOVA_AI_CLOUD_FOR_REAL_DATA", "0") == "1"
+
+
+LOCAL_ONLY_REASON = ("Real project data is sent only to a local model (data decision of 8 Nov 2026), and no local model is available. "
+                     "Mark the project as synthetic for cloud AI, or configure Ollama (URBANOVA_LLM_OLLAMA_MODEL).")
+
+
+def available(local_only: bool = False) -> list[dict]:
+    """Ready providers not skipped today, in chain order (empty when AI is switched off or the budget is used up).
+    `local_only` keeps only providers on this machine (real project data)."""
     if not enabled():
         return []
     st = _state()
     if st["calls"] >= max_calls_per_day():
         return []
-    return [p for p in configured() if p["ready"] and not _skipped(st, p["name"])]
+    return [p for p in configured() if p["ready"] and not _skipped(st, p["name"]) and (not local_only or is_local(p))]
 
 
 def _skipped(st: dict, name: str) -> bool:

@@ -270,8 +270,11 @@ def _generate(metrics, project):
     return findings.generate({"id": "run_x"}, project, mods, metrics, {})
 
 
-def test_provisional_threshold_never_produces_high_severity(env):
+def test_provisional_threshold_never_produces_high_severity(env, monkeypatch):
+    from conftest import unapprove
     from urbanova import findings
+
+    unapprove(monkeypatch, "finding.HEAT-LST-02")
 
     project = {"id": "p", "boundary": _local_box_wgs(0, 0, 100, 100)}
     fs, recs = _generate([_metric("lst_site_hottest_decile_share_pct", "surface_heat", 60.0, "%")], project)

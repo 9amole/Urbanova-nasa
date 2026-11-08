@@ -77,7 +77,7 @@ def apply(basis_path: Path, form: Path, dry_run: bool = False) -> int:
                 except json.JSONDecodeError:
                     errors.append(f"line {n}: {rid}: new_value must be JSON (a number, list or object)")
                     continue
-                if type(new) is not type(rec["value"]) and not (isinstance(new, (int, float)) and isinstance(rec["value"], (int, float))):
+                if rec["value"] is not None and type(new) is not type(rec["value"]) and not (isinstance(new, (int, float)) and isinstance(rec["value"], (int, float))):
                     errors.append(f"line {n}: {rid}: new_value has a different shape from the current value {json.dumps(rec['value'])}")
                     continue
             changes.append((rec, new, who, when, (row.get("note") or "").strip(), decision))

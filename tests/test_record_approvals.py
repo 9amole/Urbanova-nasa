@@ -14,6 +14,16 @@ import record_approvals as RA  # noqa: E402
 def _setup(tmp_path):
     basis = tmp_path / "basis.json"
     shutil.copy(RA.BASIS, basis)
+    # Recreate pending values in the copy, whatever the package copy records today.
+    data = json.loads(basis.read_text(encoding="utf-8"))
+    for r in data["values"]:
+        if r["id"] in ("hotspots.deficit_distance_m", "interventions.tree", "climate.TX35", "interventions.water_l_per_m2_day"):
+            r["approved_by"] = r["approved_on"] = None
+        if r["id"] == "climate.TX35":
+            r["basis_type"] = "provisional"
+        if r["id"] == "interventions.water_l_per_m2_day":
+            r["basis_type"], r["value"] = "provisional", None
+    basis.write_text(json.dumps(data, ensure_ascii=False, indent=1), encoding="utf-8")
     form = tmp_path / "form.csv"
     assert RA.main(["export", str(form), "--basis", str(basis)]) == 0
     rows = list(csv.DictReader(form.open(encoding="utf-8-sig")))
@@ -78,3 +88,14 @@ def test_a_provisional_value_becomes_an_approved_project_choice(tmp_path):
     assert RA.main(["apply", str(form), "--basis", str(basis)]) == 0
     r = _rec(basis, "climate.TX35")
     assert r["basis_type"] == "project_choice" and r["approved_by"]
+
+
+def test_an_empty_value_can_be_set_to_a_number(tmp_path):
+    basis, form, rows = _setup(tmp_path)
+    for r in rows:
+        if r["id"] == "interventions.water_l_per_m2_day":
+            r.update(decision="change", new_value="4.0", approved_by="Dr. A (supervisor)")
+    _write(form, rows)
+    assert RA.main(["apply", str(form), "--basis", str(basis)]) == 0
+    w = _rec(basis, "interventions.water_l_per_m2_day")
+    assert w["value"] == 4.0 and w["basis_type"] == "project_choice" and "Changed from null" in w["approval_note"]

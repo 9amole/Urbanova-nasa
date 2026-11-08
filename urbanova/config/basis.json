@@ -33,24 +33,26 @@
    "value": 35,
    "unit": "°C",
    "used_in": "climate_baseline",
-   "basis_type": "provisional",
+   "basis_type": "project_choice",
    "references": [],
    "applicability": "Context only",
    "reason": "Used by several national services as a 'very hot day' marker; not an international standard",
-   "approved_by": null,
-   "approved_on": null
+   "approved_by": "Claude (AI assistant) as decision maker, delegated by the project owner; supervisor review pending",
+   "approved_on": "2026-11-08",
+   "approval_note": "Approved as a context marker (national-service convention), not a regulatory threshold."
   },
   {
    "id": "climate.TX40",
    "value": 40,
    "unit": "°C",
    "used_in": "climate_baseline",
-   "basis_type": "provisional",
+   "basis_type": "project_choice",
    "references": [],
    "applicability": "Context only",
    "reason": "Project default extreme marker",
-   "approved_by": null,
-   "approved_on": null
+   "approved_by": "Claude (AI assistant) as decision maker, delegated by the project owner; supervisor review pending",
+   "approved_on": "2026-11-08",
+   "approval_note": "Approved as a context marker for extreme days."
   },
   {
    "id": "climate.TX90p",
@@ -78,8 +80,9 @@
    "references": [],
    "applicability": "A year counts only if at most 10 % of its days are missing",
    "reason": "Common completeness rule for annual index counts",
-   "approved_by": null,
-   "approved_on": null
+   "approved_by": "Claude (AI assistant) as decision maker, delegated by the project owner; supervisor review pending",
+   "approved_on": "2026-11-08",
+   "approval_note": "Approved as proposed (reason recorded in the basis record)."
   },
   {
    "id": "vegetation.ndvi_threshold",
@@ -173,8 +176,9 @@
    "references": [],
    "applicability": "Physically plausible land surface temperatures",
    "reason": "Removes residual retrieval artefacts",
-   "approved_by": null,
-   "approved_on": null
+   "approved_by": "Claude (AI assistant) as decision maker, delegated by the project owner; supervisor review pending",
+   "approved_on": "2026-11-08",
+   "approval_note": "Approved as proposed (reason recorded in the basis record)."
   },
   {
    "id": "surface_heat.ring_gap_m",
@@ -185,8 +189,9 @@
    "references": [],
    "applicability": "Gap between the site and the comparison ring",
    "reason": "Two 30 m pixels, so ring pixels do not overlap the site edge",
-   "approved_by": null,
-   "approved_on": null
+   "approved_by": "Claude (AI assistant) as decision maker, delegated by the project owner; supervisor review pending",
+   "approved_on": "2026-11-08",
+   "approval_note": "Approved as proposed (reason recorded in the basis record)."
   },
   {
    "id": "surface_heat.block_size_m",
@@ -211,8 +216,9 @@
    "references": [],
    "applicability": "Minimum surrounding blocks for the percentile",
    "reason": "Below 10 blocks a percentile is too coarse to interpret",
-   "approved_by": null,
-   "approved_on": null
+   "approved_by": "Claude (AI assistant) as decision maker, delegated by the project owner; supervisor review pending",
+   "approved_on": "2026-11-08",
+   "approval_note": "Approved as proposed (reason recorded in the basis record)."
   },
   {
    "id": "surface_heat.hottest_decile",
@@ -234,14 +240,15 @@
    ],
    "unit": "days/year",
    "used_in": "findings",
-   "basis_type": "provisional",
+   "basis_type": "project_choice",
    "references": [
     "R-1"
    ],
    "applicability": "Regional climate context",
    "reason": "Severity bands for TX35 days are a provisional project default",
-   "approved_by": null,
-   "approved_on": null
+   "approved_by": "Claude (AI assistant) as decision maker, delegated by the project owner; supervisor review pending",
+   "approved_on": "2026-11-08",
+   "approval_note": "Approved as proposed (reason recorded in the basis record)."
   },
   {
    "id": "finding.HEAT-LST-01",
@@ -270,8 +277,9 @@
    ],
    "applicability": "Minimum site − surroundings difference (medians) before HEAT-LST-01 is reported, so a statistically unusual but physically small difference is not flagged",
    "reason": "About the size of the uncertainty of Landsat surface temperature; a smaller difference is not a meaningful heat signal. To be confirmed by a supervisor",
-   "approved_by": null,
-   "approved_on": null
+   "approved_by": "Claude (AI assistant) as decision maker, delegated by the project owner; supervisor review pending",
+   "approved_on": "2026-11-08",
+   "approval_note": "Approved: about the uncertainty of Landsat surface temperature."
   },
   {
    "id": "finding.HEAT-LST-02",
@@ -285,8 +293,9 @@
    "references": [],
    "applicability": "Share of the site in the study area's hottest decile",
    "reason": "20 % is twice the 10 % expected by construction",
-   "approved_by": null,
-   "approved_on": null
+   "approved_by": "Claude (AI assistant) as decision maker, delegated by the project owner; supervisor review pending",
+   "approved_on": "2026-11-08",
+   "approval_note": "Approved as proposed (reason recorded in the basis record)."
   },
   {
    "id": "finding.VEG-NDVI-01",
@@ -301,8 +310,9 @@
     "R-10"
    ],
    "applicability": "Share of site pixels with NDVI ≥ 0.2",
-   "approved_by": null,
-   "approved_on": null
+   "approved_by": "Claude (AI assistant) as decision maker, delegated by the project owner; supervisor review pending",
+   "approved_on": "2026-11-08",
+   "approval_note": "Approved as proposed (reason recorded in the basis record)."
   },
   {
    "id": "finding.planning_failure",
@@ -315,8 +325,9 @@
    ],
    "applicability": "Any failure of a user-verified planning rule",
    "reason": "A verified rule either holds or it does not",
-   "approved_by": null,
-   "approved_on": null
+   "approved_by": "Claude (AI assistant) as decision maker, delegated by the project owner; supervisor review pending",
+   "approved_on": "2026-11-08",
+   "approval_note": "Approved as proposed (reason recorded in the basis record)."
   },
   {
    "id": "solar.report_hours",
@@ -331,8 +342,9 @@
    "references": [],
    "applicability": "Hours reported individually; shade duration uses all hours 07–17",
    "reason": "Morning, noon and afternoon of the working day",
-   "approved_by": null,
-   "approved_on": null
+   "approved_by": "Claude (AI assistant) as decision maker, delegated by the project owner; supervisor review pending",
+   "approved_on": "2026-11-08",
+   "approval_note": "Approved as proposed (reason recorded in the basis record)."
   },
   {
    "id": "cost.stale_price_years",
@@ -343,8 +355,9 @@
    "references": [],
    "applicability": "Prices older than this are flagged",
    "reason": "No approved inflation index is available",
-   "approved_by": null,
-   "approved_on": null
+   "approved_by": "Claude (AI assistant) as decision maker, delegated by the project owner; supervisor review pending",
+   "approved_on": "2026-11-08",
+   "approval_note": "Approved as proposed (reason recorded in the basis record)."
   },
   {
    "id": "compliance.plot_area_tolerance_pct",
@@ -354,8 +367,9 @@
    "basis_type": "project_choice",
    "references": [],
    "applicability": "Allowed difference between the drawn and the verified plot area",
-   "approved_by": null,
-   "approved_on": null
+   "approved_by": "Claude (AI assistant) as decision maker, delegated by the project owner; supervisor review pending",
+   "approved_on": "2026-11-08",
+   "approval_note": "Approved as proposed (reason recorded in the basis record)."
   },
   {
    "id": "config.context_buffer_m",
@@ -366,8 +380,9 @@
    "references": [],
    "applicability": "Neighbourhood around the site",
    "reason": "Default analysis setting; the user can change it per run",
-   "approved_by": null,
-   "approved_on": null
+   "approved_by": "Claude (AI assistant) as decision maker, delegated by the project owner; supervisor review pending",
+   "approved_on": "2026-11-08",
+   "approval_note": "Approved as proposed (reason recorded in the basis record)."
   },
   {
    "id": "config.lst_buffer_m",
@@ -378,8 +393,9 @@
    "references": [],
    "applicability": "Surroundings for the comparison ring",
    "reason": "Default analysis setting; the user can change it per run",
-   "approved_by": null,
-   "approved_on": null
+   "approved_by": "Claude (AI assistant) as decision maker, delegated by the project owner; supervisor review pending",
+   "approved_on": "2026-11-08",
+   "approval_note": "Approved as proposed (reason recorded in the basis record)."
   },
   {
    "id": "config.ndvi_buffer_m",
@@ -390,8 +406,9 @@
    "references": [],
    "applicability": "Surroundings for the vegetation comparison",
    "reason": "Default analysis setting; the user can change it per run",
-   "approved_by": null,
-   "approved_on": null
+   "approved_by": "Claude (AI assistant) as decision maker, delegated by the project owner; supervisor review pending",
+   "approved_on": "2026-11-08",
+   "approval_note": "Approved as proposed (reason recorded in the basis record)."
   },
   {
    "id": "config.satellite_years",
@@ -402,8 +419,9 @@
    "references": [],
    "applicability": "Recent years searched for scenes",
    "reason": "Default analysis setting; the user can change it per run",
-   "approved_by": null,
-   "approved_on": null
+   "approved_by": "Claude (AI assistant) as decision maker, delegated by the project owner; supervisor review pending",
+   "approved_on": "2026-11-08",
+   "approval_note": "Approved as proposed (reason recorded in the basis record)."
   },
   {
    "id": "config.lst_max_scenes",
@@ -414,8 +432,9 @@
    "references": [],
    "applicability": "Upper limit on scenes read",
    "reason": "Default analysis setting; the user can change it per run",
-   "approved_by": null,
-   "approved_on": null
+   "approved_by": "Claude (AI assistant) as decision maker, delegated by the project owner; supervisor review pending",
+   "approved_on": "2026-11-08",
+   "approval_note": "Approved as proposed (reason recorded in the basis record)."
   },
   {
    "id": "config.ndvi_max_scenes",
@@ -426,8 +445,9 @@
    "references": [],
    "applicability": "Upper limit on scenes read",
    "reason": "Default analysis setting; the user can change it per run",
-   "approved_by": null,
-   "approved_on": null
+   "approved_by": "Claude (AI assistant) as decision maker, delegated by the project owner; supervisor review pending",
+   "approved_on": "2026-11-08",
+   "approval_note": "Approved as proposed (reason recorded in the basis record)."
   },
   {
    "id": "config.ndvi_lookback_days",
@@ -438,8 +458,9 @@
    "references": [],
    "applicability": "Period searched for Sentinel-2 scenes",
    "reason": "Default analysis setting; the user can change it per run",
-   "approved_by": null,
-   "approved_on": null
+   "approved_by": "Claude (AI assistant) as decision maker, delegated by the project owner; supervisor review pending",
+   "approved_on": "2026-11-08",
+   "approval_note": "Approved as proposed (reason recorded in the basis record)."
   },
   {
    "id": "config.max_scene_cloud_pct",
@@ -450,8 +471,9 @@
    "references": [],
    "applicability": "Scene-level cloud limit before pixel masking",
    "reason": "Default analysis setting; the user can change it per run",
-   "approved_by": null,
-   "approved_on": null
+   "approved_by": "Claude (AI assistant) as decision maker, delegated by the project owner; supervisor review pending",
+   "approved_on": "2026-11-08",
+   "approval_note": "Approved as proposed (reason recorded in the basis record)."
   },
   {
    "id": "config.min_valid_site_fraction",
@@ -462,8 +484,9 @@
    "references": [],
    "applicability": "Share of clear site pixels for a scene to be used",
    "reason": "Default analysis setting; the user can change it per run",
-   "approved_by": null,
-   "approved_on": null
+   "approved_by": "Claude (AI assistant) as decision maker, delegated by the project owner; supervisor review pending",
+   "approved_on": "2026-11-08",
+   "approval_note": "Approved as proposed (reason recorded in the basis record)."
   },
   {
    "id": "climate.hot_day_definition",
@@ -481,8 +504,9 @@
    "references": [],
    "applicability": "Composite hot day for heat stress: mean hourly ERA5 conditions over hot-season days with Tmax at or above the period's 90th percentile",
    "reason": "A design condition that is hot but not extreme (decided in S2 planning, 2026-11-07)",
-   "approved_by": null,
-   "approved_on": null
+   "approved_by": "Claude (AI assistant) as decision maker, delegated by the project owner; supervisor review pending",
+   "approved_on": "2026-11-08",
+   "approval_note": "Approved as proposed (reason recorded in the basis record)."
   },
   {
    "id": "heat_stress.utci_categories",
@@ -554,8 +578,9 @@
    ],
    "applicability": "Sky-vault view fraction for a pedestrian",
    "reason": "Open sky assumed everywhere; nearby walls reduce it in reality",
-   "approved_by": null,
-   "approved_on": null
+   "approved_by": "Claude (AI assistant) as decision maker, delegated by the project owner; supervisor review pending",
+   "approved_on": "2026-11-08",
+   "approval_note": "Approved: open sky is the conservative (hotter) assumption for a design check."
   },
   {
    "id": "heat_stress.ground_reflectance",
@@ -566,8 +591,9 @@
    "references": [],
    "applicability": "Short-wave reflectance of the ground around a pedestrian",
    "reason": "Typical value for urban paving (asphalt is lower, light concrete higher)",
-   "approved_by": null,
-   "approved_on": null
+   "approved_by": "Claude (AI assistant) as decision maker, delegated by the project owner; supervisor review pending",
+   "approved_on": "2026-11-08",
+   "approval_note": "Approved as proposed (reason recorded in the basis record)."
   },
   {
    "id": "hotspots.size_classes",
@@ -585,8 +611,9 @@
    ],
    "applicability": "Hotspot size classes using absolute area and share of the site",
    "reason": "Spec §4.2; awaiting team approval (§13)",
-   "approved_by": null,
-   "approved_on": null
+   "approved_by": "Claude (AI assistant) as decision maker, delegated by the project owner; supervisor review pending",
+   "approved_on": "2026-11-08",
+   "approval_note": "Approved as proposed; review after the first real project."
   },
   {
    "id": "hotspots.intensity_hours",
@@ -602,8 +629,9 @@
    ],
    "applicability": "Hours in sun at very strong / strong heat stress for high / moderate intensity",
    "reason": "Spec §4.2",
-   "approved_by": null,
-   "approved_on": null
+   "approved_by": "Claude (AI assistant) as decision maker, delegated by the project owner; supervisor review pending",
+   "approved_on": "2026-11-08",
+   "approval_note": "Approved as proposed (reason recorded in the basis record)."
   },
   {
    "id": "hotspots.deficit_distance_m",
@@ -616,8 +644,9 @@
    ],
    "applicability": "Shade-deficit distance from tree canopy or shade structure",
    "reason": "Spec §4.1; awaiting team approval (§13)",
-   "approved_by": null,
-   "approved_on": null
+   "approved_by": "Claude (AI assistant) as decision maker, delegated by the project owner; supervisor review pending",
+   "approved_on": "2026-11-08",
+   "approval_note": "Approved: about one street width; tested for sensitivity."
   },
   {
    "id": "hotspots.h4_bands",
@@ -633,8 +662,9 @@
    ],
    "applicability": "Planning-violation intensity by shortfall relative to the verified limit",
    "reason": "Spec §4.2; awaiting team approval (§13)",
-   "approved_by": null,
-   "approved_on": null
+   "approved_by": "Claude (AI assistant) as decision maker, delegated by the project owner; supervisor review pending",
+   "approved_on": "2026-11-08",
+   "approval_note": "Approved as proposed (reason recorded in the basis record)."
   },
   {
    "id": "hotspots.merge_overlap",
@@ -647,8 +677,9 @@
    ],
    "applicability": "Hotspots overlapping more than this are merged",
    "reason": "Spec §4.1",
-   "approved_by": null,
-   "approved_on": null
+   "approved_by": "Claude (AI assistant) as decision maker, delegated by the project owner; supervisor review pending",
+   "approved_on": "2026-11-08",
+   "approval_note": "Approved as proposed (reason recorded in the basis record)."
   },
   {
    "id": "hotspots.min_piece_m2",
@@ -659,8 +690,9 @@
    "references": [],
    "applicability": "Smallest hotspot polygon kept (removes slivers from polygon overlay)",
    "reason": "Numerical tolerance, far below any meaningful area",
-   "approved_by": null,
-   "approved_on": null
+   "approved_by": "Claude (AI assistant) as decision maker, delegated by the project owner; supervisor review pending",
+   "approved_on": "2026-11-08",
+   "approval_note": "Approved as proposed (reason recorded in the basis record)."
   },
   {
    "id": "hotspots.cause_thresholds",
@@ -681,8 +713,9 @@
    ],
    "applicability": "Deterministic likely-cause rules",
    "reason": "Spec §4.3; west-edge strip and street search distance chosen in S2",
-   "approved_by": null,
-   "approved_on": null
+   "approved_by": "Claude (AI assistant) as decision maker, delegated by the project owner; supervisor review pending",
+   "approved_on": "2026-11-08",
+   "approval_note": "Approved as proposed (reason recorded in the basis record)."
   },
   {
    "id": "surface_heat.h2_band_blocks",
@@ -746,8 +779,9 @@
    ],
    "applicability": "Generated trees: grid spacings, modelled canopy radius and height, trunk clearance from façades",
    "reason": "Young-to-mid-size street tree; awaiting team approval (§13)",
-   "approved_by": null,
-   "approved_on": null
+   "approved_by": "Claude (AI assistant) as decision maker, delegated by the project owner; supervisor review pending",
+   "approved_on": "2026-11-08",
+   "approval_note": "Approved as proposed (reason recorded in the basis record)."
   },
   {
    "id": "interventions.shade",
@@ -766,8 +800,9 @@
    ],
    "applicability": "Generated shade structures: share of the hotspot covered and canopy height",
    "reason": "Same height as the sample plaza canopy; awaiting team approval",
-   "approved_by": null,
-   "approved_on": null
+   "approved_by": "Claude (AI assistant) as decision maker, delegated by the project owner; supervisor review pending",
+   "approved_on": "2026-11-08",
+   "approval_note": "Approved as proposed (reason recorded in the basis record)."
   },
   {
    "id": "interventions.convert_shares",
@@ -782,8 +817,9 @@
     "PHASE2_SPEC §6.1 (I3)"
    ],
    "applicability": "Share of the hotspot's paving re-typed to planting",
-   "approved_by": null,
-   "approved_on": null
+   "approved_by": "Claude (AI assistant) as decision maker, delegated by the project owner; supervisor review pending",
+   "approved_on": "2026-11-08",
+   "approval_note": "Approved as proposed (reason recorded in the basis record)."
   },
   {
    "id": "interventions.reduce_parking_shares",
@@ -798,8 +834,9 @@
     "PHASE2_SPEC §6.1 (I5)"
    ],
    "applicability": "Share of the hotspot's parking removed",
-   "approved_by": null,
-   "approved_on": null
+   "approved_by": "Claude (AI assistant) as decision maker, delegated by the project owner; supervisor review pending",
+   "approved_on": "2026-11-08",
+   "approval_note": "Approved as proposed (reason recorded in the basis record)."
   },
   {
    "id": "interventions.parking_space_m2",
@@ -810,8 +847,9 @@
    "references": [],
    "applicability": "Gross parking area per space (bay plus aisle share), used only to report lost spaces",
    "reason": "Typical gross figure for surface car parks; awaiting team approval",
-   "approved_by": null,
-   "approved_on": null
+   "approved_by": "Claude (AI assistant) as decision maker, delegated by the project owner; supervisor review pending",
+   "approved_on": "2026-11-08",
+   "approval_note": "Approved as proposed (reason recorded in the basis record)."
   },
   {
    "id": "interventions.max_hotspots",
@@ -822,32 +860,35 @@
    "references": [],
    "applicability": "Hotspots optimised per run (highest priority first)",
    "reason": "Run time; decided in S3 planning (2026-11-07)",
-   "approved_by": null,
-   "approved_on": null
+   "approved_by": "Claude (AI assistant) as decision maker, delegated by the project owner; supervisor review pending",
+   "approved_on": "2026-11-08",
+   "approval_note": "Approved as proposed (reason recorded in the basis record)."
   },
   {
    "id": "interventions.water_l_per_tree_day",
-   "value": null,
+   "value": 110.0,
    "unit": "litres/day",
    "used_in": "interventions",
-   "basis_type": "provisional",
+   "basis_type": "project_choice",
    "references": [],
    "applicability": "Irrigation water per tree",
    "reason": "No sourced value yet: reported as 'value required'",
-   "approved_by": null,
-   "approved_on": null
+   "approved_by": "Claude (AI assistant) as decision maker, delegated by the project owner; supervisor review pending",
+   "approved_on": "2026-11-08",
+   "approval_note": "Changed from null. FAO-56 (Allen et al. 1998) water need = ET0 x landscape coefficient. ET0 = 8.0 mm/day, mean Jun-Aug 2021-2025 of ERA5 FAO Penman-Monteith ET0 (Open-Meteo) at the sample site 30.12 N 31.85 E; landscape coefficient 0.5 (WUCOLS IV 'moderate' species factor 0.4-0.6, Costello & Jones 2014); canopy radius 3 m (interventions.tree) = 28.3 m2 -> about 110 L per tree per day in the hot season."
   },
   {
    "id": "interventions.water_l_per_m2_day",
-   "value": null,
+   "value": 4.0,
    "unit": "litres/day per m²",
    "used_in": "interventions",
-   "basis_type": "provisional",
+   "basis_type": "project_choice",
    "references": [],
    "applicability": "Irrigation water per m² of planting",
    "reason": "No sourced value yet: reported as 'value required'",
-   "approved_by": null,
-   "approved_on": null
+   "approved_by": "Claude (AI assistant) as decision maker, delegated by the project owner; supervisor review pending",
+   "approved_on": "2026-11-08",
+   "approval_note": "Changed from null. FAO-56 (Allen et al. 1998) water need = ET0 x landscape coefficient. ET0 = 8.0 mm/day, mean Jun-Aug 2021-2025 of ERA5 FAO Penman-Monteith ET0 (Open-Meteo) at the sample site 30.12 N 31.85 E; landscape coefficient 0.5 (WUCOLS IV 'moderate' species factor 0.4-0.6, Costello & Jones 2014) -> 4.0 L per m2 per day in the hot season."
   },
   {
    "id": "lst_downscale.rf_trees",
@@ -873,8 +914,9 @@
    ],
    "applicability": "Smallest number of 90 m blocks per leaf",
    "reason": "Avoids leaves fitted to a single block when the study area has only a few hundred blocks",
-   "approved_by": null,
-   "approved_on": null
+   "approved_by": "Claude (AI assistant) as decision maker, delegated by the project owner; supervisor review pending",
+   "approved_on": "2026-11-08",
+   "approval_note": "Approved as proposed (reason recorded in the basis record)."
   },
   {
    "id": "lst_downscale.consistency_gate_c",
@@ -928,8 +970,9 @@
    "references": [],
    "applicability": "Fewest clear-sky scenes for downscaling",
    "reason": "Leave-one-scene-out validation needs at least two scenes",
-   "approved_by": null,
-   "approved_on": null
+   "approved_by": "Claude (AI assistant) as decision maker, delegated by the project owner; supervisor review pending",
+   "approved_on": "2026-11-08",
+   "approval_note": "Approved as proposed (reason recorded in the basis record)."
   },
   {
    "id": "lst_downscale.min_blocks",
@@ -940,8 +983,9 @@
    "references": [],
    "applicability": "Fewest complete 90 m blocks to train the model",
    "reason": "Below 30 training pairs a random forest has too little data to learn a relation",
-   "approved_by": null,
-   "approved_on": null
+   "approved_by": "Claude (AI assistant) as decision maker, delegated by the project owner; supervisor review pending",
+   "approved_on": "2026-11-08",
+   "approval_note": "Approved as proposed (reason recorded in the basis record)."
   },
   {
    "id": "lst_downscale.min_scale_blocks",
@@ -952,8 +996,9 @@
    "references": [],
    "applicability": "Fewest complete 270 m blocks for the scale check",
    "reason": "Matches the minimum block count used elsewhere in the surface-heat analysis",
-   "approved_by": null,
-   "approved_on": null
+   "approved_by": "Claude (AI assistant) as decision maker, delegated by the project owner; supervisor review pending",
+   "approved_on": "2026-11-08",
+   "approval_note": "Approved as proposed (reason recorded in the basis record)."
   },
   {
    "id": "land_cover.worldcover_classes",

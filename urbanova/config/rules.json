@@ -1,11 +1,11 @@
 {
-  "_comment": "Configurable analysis rules (FR-44). Every rule states its justification and status. 'standard' = taken from a recognised index definition; 'provisional_not_approved' = a provisional relative comparison that the AI/Analysis team must confirm before release. No rule here is a regulatory limit — regulatory limits come only from user-verified planning rules.",
+  "_comment": "Configurable analysis rules (FR-44). Every rule states its justification and status. 'standard' = taken from a recognised index definition; 'provisional_not_approved' = a provisional relative comparison that the AI/Analysis team must confirm before release; 'project_choice' = a team-chosen value whose approval is recorded in basis.json. No rule here is a regulatory limit — regulatory limits come only from user-verified planning rules.",
   "version": "2026.10-p1",
   "climate_indices": [
     {"id": "SU", "label": "Summer days (Tmax > 25 °C)", "variable": "tmax_c", "op": ">", "threshold": 25, "status": "standard", "justification": "ETCCDI climate index SU (Expert Team on Climate Change Detection and Indices)."},
     {"id": "TR", "label": "Tropical nights (Tmin > 20 °C)", "variable": "tmin_c", "op": ">", "threshold": 20, "status": "standard", "justification": "ETCCDI climate index TR."},
-    {"id": "TX35", "label": "Very hot days (Tmax ≥ 35 °C)", "variable": "tmax_c", "op": ">=", "threshold": 35, "status": "provisional_not_approved", "justification": "35 °C is used by several national meteorological services as a 'very hot day' marker; not an international standard. Confirm for the project region."},
-    {"id": "TX40", "label": "Extremely hot days (Tmax ≥ 40 °C)", "variable": "tmax_c", "op": ">=", "threshold": 40, "status": "provisional_not_approved", "justification": "Project default extreme marker; confirm for the project region."}
+    {"id": "TX35", "label": "Very hot days (Tmax ≥ 35 °C)", "variable": "tmax_c", "op": ">=", "threshold": 35, "status": "project_choice", "justification": "35 °C is used by several national meteorological services as a 'very hot day' marker; not an international standard. Confirm for the project region."},
+    {"id": "TX40", "label": "Extremely hot days (Tmax ≥ 40 °C)", "variable": "tmax_c", "op": ">=", "threshold": 40, "status": "project_choice", "justification": "Project default extreme marker; confirm for the project region."}
   ],
   "findings": [
     {
@@ -13,7 +13,7 @@
       "title": "Frequent very hot days in the regional climate record",
       "metric": "climate_mean_annual_TX35_days", "applies_to": "any",
       "severity": [{"min": 60, "level": "high"}, {"min": 20, "level": "moderate"}, {"min": 1, "level": "low"}],
-      "status": "provisional_not_approved",
+      "status": "project_choice",
       "justification": "Counts of days with Tmax ≥ 35 °C (see TX35). Severity bands are a provisional project default and must be confirmed.",
       "limitation": "Regional reanalysis air temperature (~25 km grid). It describes regional climate exposure, not conditions inside the development.",
       "recommendation_keys": ["shade_public_space", "add_vegetation"]
@@ -34,7 +34,7 @@
       "title": "Concentration of the study area's hottest surfaces within the site",
       "metric": "lst_site_hottest_decile_share_pct", "applies_to": "any",
       "severity": [{"min": 40, "level": "high"}, {"min": 20, "level": "moderate"}],
-      "status": "provisional_not_approved",
+      "status": "project_choice",
       "justification": "By construction 10% of study-area pixels are in the hottest decile; a site share of ≥ 20% (2× expectation) is flagged as a relative concentration. Provisional project default.",
       "limitation": "Relative classification within one study area; not comparable across cities. Based on the cloud-free scenes listed.",
       "recommendation_keys": ["add_vegetation", "reduce_hard_surface"]
@@ -44,7 +44,7 @@
       "title": "Limited observed vegetation on the site",
       "metric": "ndvi_site_vegetated_share_pct", "applies_to": "any", "direction": "below",
       "severity": [{"max": 10, "level": "moderate"}, {"max": 25, "level": "low"}],
-      "status": "provisional_not_approved",
+      "status": "project_choice",
       "justification": "Share of site pixels with NDVI ≥ 0.2. NDVI ≈ 0.2 is a widely used remote-sensing convention separating bare/built surfaces from sparse vegetation; the 10%/25% bands are provisional.",
       "limitation": "NDVI indicates vegetation-related reflectance at the image dates only. It does not measure canopy health, shade, irrigation or cooling.",
       "recommendation_keys": ["add_vegetation"]

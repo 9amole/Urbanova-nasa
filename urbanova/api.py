@@ -570,6 +570,13 @@ def _ai_allowed(project: dict, role: str) -> bool:
     return bool(project.get("ai_enabled")) and role != "viewer"
 
 
+def _ai_local_only(project: dict) -> bool:
+    """Data decision (8 Nov 2026): only synthetic or test projects may use cloud AI providers, unless the operator opts in."""
+    from .report_front import is_synthetic
+
+    return not (is_synthetic(project) or ai_llm.cloud_allowed_for_real_data())
+
+
 def _suggest_target(fid: str, user: dict, category: str) -> tuple[dict, dict]:
     f, p = _owned("files", fid, user, "editor")
     if f["category"] != category:
@@ -584,7 +591,7 @@ def make_insights(rid: str, user: dict = Depends(current_user)):
     """Generate the run's insights (AI when the project switched it on and a provider is available, else the automatic summary)."""
     r, _ = _run(rid, user, "editor")
     p, role = _project(r["project_id"], user, "editor")
-    out = ai_insights.generate(orchestrator.run_bundle(r), _ai_allowed(p, role))
+    out = ai_insights.generate(orchestrator.run_bundle(r), _ai_allowed(p, role), _ai_local_only(p))
     rec = {"id": db.new_id("ins"), "run_id": rid, "pack_hash": out["pack_hash"], "blocks": out["blocks"], "generated_by": out["generated_by"],
            "provider": out["provider"], "model": out["model"], "prompt_version": out["prompt_version"], "label": out["label"],
            "reason": out.get("reason"), "attempts": out["attempts"], "created_by": user["id"], "created_at": db.now()}
@@ -602,13 +609,13 @@ def get_insights(rid: str, user: dict = Depends(current_user)):
 @app.post(f"{API}/files/{{fid}}/suggest-rules")
 def suggest_rules(fid: str, user: dict = Depends(current_user)):
     f, p = _suggest_target(fid, user, "planning_document")
-    return ai_suggest.suggest_rules(p, f)
+    return ai_suggest.suggest_rules(p, f, _ai_local_only(p))
 
 
 @app.post(f"{API}/files/{{fid}}/suggest-layers")
 def suggest_layers(fid: str, user: dict = Depends(current_user)):
     f, p = _suggest_target(fid, user, "urban_plan")
-    return ai_suggest.suggest_layers(p, f)
+    return ai_suggest.suggest_layers(p, f, _ai_local_only(p))
 
 
 @app.post(f"{API}/analysis-runs/{{rid}}/ask")
@@ -620,7 +627,7 @@ async def ask(rid: str, request: Request, user: dict = Depends(current_user)):
         return explain.answer(question, {})  # prediction questions get the fixed refusal, never a model
     bundle = await run_in_threadpool(orchestrator.run_bundle, r)
     # The model call is blocking network I/O: keep it off the event loop.
-    ai = await run_in_threadpool(ai_insights.answer, bundle, question, _ai_allowed(p, role))
+    ai = await run_in_threadpool(ai_insights.answer, bundle, question, _ai_allowed(p, role), _ai_local_only(p))
     if ai and ai.get("answer"):
         return ai
     out = explain.answer(question, bundle)

@@ -36,8 +36,12 @@ def sample_context(tmp_path, features=None, rules=None):
 def sample_run(tmp_path_factory):
     from urbanova.engine.core import run_design
 
+    from conftest import unapprove
+
     ctx = sample_context(tmp_path_factory.mktemp("s2"))
-    return ctx, run_design(ctx, ["urban_form", "solar_shade", "heat_stress", "hotspots"])
+    with pytest.MonkeyPatch.context() as mp:  # these tests exercise the provisional size classes
+        unapprove(mp, "hotspots.size_classes")
+        return ctx, run_design(ctx, ["urban_form", "solar_shade", "heat_stress", "hotspots"])
 
 
 def hotspot_record(**over):
@@ -212,7 +216,6 @@ def test_unapproved_size_classes_cap_severity_at_moderate(sample_run):
     from urbanova import basis
 
     _, out = sample_run
-    assert basis.is_provisional("hotspots.size_classes")
     big = [h for h in out["hotspots"] if h["severity_uncapped"] == "high"]
     assert big and all(h["severity"] == "moderate" and h["severity_capped"] and "hotspots.size_classes" in h["provisional_basis"] for h in big)
 
