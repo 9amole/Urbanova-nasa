@@ -30,6 +30,11 @@ def _n(v, d=0) -> str:
     return f"{v:,.{d}f}" if isinstance(v, (int, float)) else str(v)
 
 
+def _range(lo, hi, cur) -> str:
+    """'a–b CUR', or one number when a single-value rate makes low and high equal."""
+    return f"{_n(lo)} {cur}" if abs(lo - hi) < 0.5 else f"{_n(lo)}–{_n(hi)} {cur}"
+
+
 def is_synthetic(project: dict) -> bool:
     if project.get("synthetic_data"):
         return True
@@ -129,7 +134,7 @@ def build(project: dict, run: dict, bundle: dict, scenario: dict | None, compari
     curs = {o["cost"]["currency"] for o in priced}
     if chosen and len(priced) == len(chosen) and len(curs) == 1:
         lo, hi = sum(o["cost"]["low"] for o in priced), sum(o["cost"]["high"] for o in priced)
-        ex.append(f"Indicative cost of the suited option for each optimised hotspot: {_n(lo)}–{_n(hi)} {next(iter(curs))}." + _ids(*[o["id"] for _, o in chosen]))
+        ex.append(f"Indicative cost of the suited option for each optimised hotspot: {_range(lo, hi, next(iter(curs)))}." + _ids(*[o["id"] for _, o in chosen]))
     elif chosen:
         ex.append(f"Indicative cost: price required for {len(chosen) - len(priced)} of the {len(chosen)} suited options (no supplied rate)."
                   + _ids(*[o["id"] for _, o in chosen]))
@@ -206,7 +211,7 @@ def build(project: dict, run: dict, bundle: dict, scenario: dict | None, compari
             e = o["effect"]
             effect = (f"{_n(e['treated_m2'])} m² treated" if o.get("separate") else f"{_n(e['before'])} → {_n(e['after'])} {e['unit']} (−{e['change_pct']:g} %)")
             c = o["cost"]
-            cost = (f"{_n(c['low'])}–{_n(c['high'])} {c['currency']}" + (f"; +{_n(c['maintenance_per_year'])}/yr" if c.get("maintenance_per_year") is not None else "")
+            cost = (_range(c["low"], c["high"], c["currency"]) + (f"; +{_n(c['maintenance_per_year'])}/yr" if c.get("maintenance_per_year") is not None else "")
                     if c.get("status") == "priced" else "price required")
             water = (o.get("water") or {}).get("note") or ("" if not o.get("water") else f"{o['water']['litres_per_day']} L/day")
             trade = "; ".join(t for t in o["_tradeoffs"] if "water" not in t.lower())[:160]

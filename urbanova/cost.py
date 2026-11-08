@@ -120,11 +120,14 @@ def option_cost(quantity_type: str | None, quantity: float, rates: list[dict], l
     src, kind, lo, typ, hi = cands[0]
     stale = _stale(src["price_date"])
     maint = src.get("maintenance_per_year")
-    level = "low" if stale else ("high" if kind == "project_rate" else "medium")
+    test = "TEST" in (src.get("source") or "").upper() or src["currency"] == "XTS"
+    level = "low" if stale or test else ("high" if kind == "project_rate" else "medium")
     reasons = [{"project_rate": "Project's own rate (quotation)", "library_quotation": "A single written quotation in the cost library",
                 "library_approved_list": "Supervisor-approved published price list"}[kind]]
     if stale:
         reasons.append(f"Price dated {src['price_date']} is older than {STALE_PRICE_YEARS} years (no inflation adjustment)")
+    if test:
+        reasons.append("TEST values, not real prices (test currency XTS or a source marked TEST)")
     return {"status": "priced", "quantity": round(quantity, 2), "unit": QUANTITY_TYPES[quantity_type]["unit"], "currency": src["currency"],
             "low": round(quantity * lo, 2), "typical": round(quantity * typ, 2), "high": round(quantity * hi, 2),
             "maintenance_per_year": None if maint is None else round(quantity * maint, 2), "source": src["source"], "source_kind": kind,

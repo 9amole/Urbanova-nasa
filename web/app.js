@@ -678,7 +678,7 @@ const ROLE_LABELS = { best_value: "best value", largest_benefit: "largest benefi
 function costText(c) {
   if (!c || c.status === "not_applicable") return "—";
   if (c.status !== "priced") return "price required";
-  return `${fmt(c.low, 0)}–${fmt(c.high, 0)} ${esc(c.currency)} (typ. ${fmt(c.typical, 0)})${c.maintenance_per_year != null ? `, +${fmt(c.maintenance_per_year, 0)}/yr` : ""}${c.stale ? " — old price" : ""}`;
+  return `${Math.abs(c.low - c.high) < 0.5 ? fmt(c.low, 0) : `${fmt(c.low, 0)}–${fmt(c.high, 0)}`} ${esc(c.currency)}${Math.abs(c.low - c.high) < 0.5 ? "" : ` (typ. ${fmt(c.typical, 0)})`}${c.maintenance_per_year != null ? `, +${fmt(c.maintenance_per_year, 0)}/yr` : ""}${c.stale ? " — old price" : ""}`;
 }
 
 function optionsTable(recs) {

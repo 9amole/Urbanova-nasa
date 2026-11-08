@@ -202,13 +202,13 @@ def test_option_cost_priority_ranges_maintenance_and_ageing():
 
     today = date.today().isoformat()
     old = (date.today() - timedelta(days=365 * 3)).isoformat()
-    lib = [{"item": "trees_added_count", "unit": "each", "low": 80, "typical": 100, "high": 150, "currency": "XTS", "price_date": today, "source": "Quote A",
+    lib = [{"item": "trees_added_count", "unit": "each", "low": 80, "typical": 100, "high": 150, "currency": "EGP", "price_date": today, "source": "Quote A",
             "region": "test", "basis_type": "quotation", "maintenance_per_year": 5},
-           {"item": "shade_structure_added_m2", "unit": "m2", "low": 1, "typical": 2, "high": 3, "currency": "XTS", "price_date": today, "source": "List",
+           {"item": "shade_structure_added_m2", "unit": "m2", "low": 1, "typical": 2, "high": 3, "currency": "EGP", "price_date": today, "source": "List",
             "region": "test", "basis_type": "approved_list", "approved_by": None}]
     c = cost.option_cost("trees_added_count", 10, [], lib)
     assert (c["low"], c["typical"], c["high"], c["maintenance_per_year"]) == (800, 1000, 1500, 50) and c["confidence"]["level"] == "medium"
-    own = [{"quantity_type": "trees_added_count", "rate": 90.0, "currency": "XTS", "price_date": today, "source": "Project quote", "maintenance_per_year": None}]
+    own = [{"quantity_type": "trees_added_count", "rate": 90.0, "currency": "EGP", "price_date": today, "source": "Project quote", "maintenance_per_year": None}]
     c = cost.option_cost("trees_added_count", 10, own, lib)
     assert c["source_kind"] == "project_rate" and c["low"] == c["typical"] == c["high"] == 900 and c["confidence"]["level"] == "high"
     c = cost.option_cost("trees_added_count", 10, [{**own[0], "price_date": old}], [])
@@ -310,3 +310,10 @@ def test_engine_contract_carries_options_and_package(priced):
     for r in out["recommendations"]:
         Recommendation.model_validate(_rec(r))
     assert json.dumps(out["module_status"]["interventions"]["details"]["package"], default=str)
+
+
+def test_test_prices_never_give_high_cost_confidence():
+    from urbanova import cost
+
+    c = cost.option_cost("trees_added_count", 10, test_rates())
+    assert c["status"] == "priced" and c["confidence"]["level"] == "low" and any("TEST" in r for r in c["confidence"]["reasons"])
