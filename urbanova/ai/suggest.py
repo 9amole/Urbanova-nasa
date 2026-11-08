@@ -47,7 +47,7 @@ def _run(prompt: str, payload: dict, version: str) -> tuple[list[dict], dict]:
         try:
             raw = llm.chat_json(prov, [{"role": "system", "content": prompt}, {"role": "user", "content": blob}])
         except llm.ProviderFailure as exc:
-            llm.skip_for_today(prov["name"], str(exc))
+            llm.pause(prov["name"], exc)
             continue
         try:
             out = json.loads(raw)

@@ -4,7 +4,8 @@
   OpenAI-compatible chat API at URBANOVA_LLM_<NAME>_BASE_URL with URBANOVA_LLM_<NAME>_MODEL and, except a local
   Ollama, URBANOVA_LLM_<NAME>_API_KEY. Keys live only in the server environment: they are never written to the
   database, the cache, logs or any response.
-* A provider that fails, times out or is over its limit is skipped for the rest of the UTC day.
+* A provider that fails or times out is skipped for the rest of the UTC day; one that is rate-limited (HTTP 429) is paused
+  until its stated reset time (1 minute when it gives none), so a per-minute limit does not cost the whole day.
 * URBANOVA_LLM_MAX_CALLS_PER_DAY stops calls before a free tier's daily limit.
 * Every call is recorded (provider, model, outcome, duration) without the key or the prompt.
 """
@@ -28,10 +29,43 @@ DEFAULTS = {
     "ollama": {"base_url": "http://127.0.0.1:11434/v1", "model": "llama3.1:8b", "needs_key": False},
 }
 _lock = threading.Lock()
+MAX_RETRY_WAIT_S = 30.0
+
+
+def _retry_after(r: httpx.Response) -> float | None:
+    """Seconds to wait from a 429 response (Retry-After, or Groq's x-ratelimit-reset-tokens such as '7.66s')."""
+    for h in ("retry-after", "x-ratelimit-reset-tokens", "x-ratelimit-reset-requests"):
+        v = (r.headers.get(h) or "").strip().lower()
+        if not v:
+            continue
+        try:
+            if v.endswith("ms"):
+                return float(v[:-2]) / 1000
+            if v.endswith("s") and "m" not in v:
+                return float(v[:-1])
+            if "m" in v:  # e.g. "1m2.5s"
+                mins, _, secs = v.partition("m")
+                return float(mins) * 60 + float(secs.rstrip("s") or 0)
+            return float(v)
+        except ValueError:
+            continue
+    return None
 
 
 class ProviderFailure(Exception):
     """The provider did not give a usable response (network, timeout, limit, server error)."""
+
+
+class RateLimited(ProviderFailure):
+    """HTTP 429 after the one short wait: pause the provider until `wait_s` from now (not the whole day)."""
+
+    def __init__(self, message: str, wait_s: float | None):
+        super().__init__(message)
+        self.wait_s = wait_s
+
+
+class RequestTooLarge(ProviderFailure):
+    """HTTP 413: the request exceeds the provider's per-request size limit. Not an outage: the provider stays usable."""
 
 
 def enabled() -> bool:
@@ -74,7 +108,7 @@ def status() -> dict:
     """What a client may see: enabled, and per provider its name, model, and whether it is configured. Never keys."""
     st = _state()
     return {"enabled": enabled(), "calls_today": st["calls"], "max_calls_per_day": max_calls_per_day(),
-            "providers": [{"name": p["name"], "model": p["model"], "configured": p["ready"], "skipped_today": p["name"] in st["skipped"],
+            "providers": [{"name": p["name"], "model": p["model"], "configured": p["ready"], "skipped_today": _skipped(st, p["name"]),
                            "reason": p["reason"] or None} for p in configured()]}
 
 
@@ -105,7 +139,28 @@ def available() -> list[dict]:
     st = _state()
     if st["calls"] >= max_calls_per_day():
         return []
-    return [p for p in configured() if p["ready"] and p["name"] not in st["skipped"]]
+    return [p for p in configured() if p["ready"] and not _skipped(st, p["name"])]
+
+
+def _skipped(st: dict, name: str) -> bool:
+    """True while the provider is paused: for the day (a plain reason) or until a time (rate limit)."""
+    v = st["skipped"].get(name)
+    if isinstance(v, dict):
+        return time.time() < v.get("until", 0)
+    return v is not None
+
+
+def pause(name: str, exc: ProviderFailure) -> None:
+    """Record a provider failure: a rate limit pauses it briefly, anything else (except a too-large request) for today."""
+    if isinstance(exc, RequestTooLarge):
+        return
+    if isinstance(exc, RateLimited):
+        with _lock:
+            st = _state()
+            st["skipped"][name] = {"until": time.time() + min(max(exc.wait_s or 60.0, 1.0), 3600.0), "why": str(exc)[:200]}
+            _save(st)
+        return
+    skip_for_today(name, str(exc))
 
 
 def skip_for_today(name: str, why: str) -> None:
@@ -155,6 +210,13 @@ def chat_json(provider: dict, messages: list[dict]) -> str:
     t0 = time.monotonic()
     try:
         r = httpx.post(url, json=body, headers=headers, timeout=timeout_s())
+        if r.status_code == 429:
+            # Per-minute limits clear quickly: wait as asked (up to MAX_RETRY_WAIT_S) and try once more.
+            wait = _retry_after(r)
+            if wait is not None and wait <= MAX_RETRY_WAIT_S:
+                _log(provider["name"], url, 429, int((time.monotonic() - t0) * 1000), "rate_limited_wait", 1, False, f"retry after {wait:.0f}s")
+                time.sleep(wait)
+                r = httpx.post(url, json=body, headers=headers, timeout=timeout_s())
     except httpx.TimeoutException:
         _log(provider["name"], url, None, int((time.monotonic() - t0) * 1000), "timeout", 1, False)
         raise ProviderFailure("timeout")
@@ -162,8 +224,13 @@ def chat_json(provider: dict, messages: list[dict]) -> str:
         _log(provider["name"], url, None, int((time.monotonic() - t0) * 1000), "network_error", 1, False, type(exc).__name__)
         raise ProviderFailure("network error")
     ms = int((time.monotonic() - t0) * 1000)
+    if r.status_code == 413:
+        _log(provider["name"], url, 413, ms, "request_too_large", 1, False)
+        raise RequestTooLarge("HTTP 413 (request too large for this model's limit)")
     if r.status_code != 200:
         _log(provider["name"], url, r.status_code, ms, "rate_limited" if r.status_code == 429 else "http_error", 1, False)
+        if r.status_code == 429:
+            raise RateLimited("HTTP 429 (rate limit)", _retry_after(r))
         raise ProviderFailure(f"HTTP {r.status_code}")
     try:
         content = r.json()["choices"][0]["message"]["content"]

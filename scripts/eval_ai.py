@@ -74,6 +74,7 @@ def bundles() -> list[tuple[str, dict]]:
 
 
 def main(models: list[str]) -> None:
+    sys.stdout.reconfigure(encoding="utf-8")
     from urbanova.ai import insights, llm
     from urbanova.settings import settings
 
@@ -100,10 +101,10 @@ def main(models: list[str]) -> None:
             if out["generated_by"] == "ai":
                 stats["first" if outcomes[-1:] == ["accepted"] and len(outcomes) == 1 else "retry"] += 1
             else:
-                stats["provider_failure" if "provider_failure" in outcomes else "fallback"] += 1
-                errs = [e for a in out["attempts"] for e in a.get("errors") or []][:3]
+                stats["provider_failure" if "provider_failure" in outcomes or not outcomes else "fallback"] += 1
+                errs = [e for a in out["attempts"] for e in a.get("errors") or []][:3] or [a.get("detail") for a in out["attempts"]] or [out.get("reason")]
                 print(f"  fallback: {name}: {errs}")
-            time.sleep(2)  # stay well inside free-tier per-minute limits
+            time.sleep(float(os.environ.get("EVAL_PAUSE_S", "40")))  # one pack per ~minute keeps inside free-tier per-minute token limits
         n = len(packs)
         sec = sorted(stats["seconds"])
         rows.append((spec, n, stats, sec[len(sec) // 2] if sec else 0))

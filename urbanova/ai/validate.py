@@ -155,9 +155,6 @@ def check_claim(c, idx: dict, pack: dict, global_allowed: list, where: str) -> l
     allowed = list(global_allowed)
     for e in cited:
         allowed += _allowed(e)
-        for mid in (mid for v in e.get("values") or [] for mid in v.get("metric_ids") or []):
-            if mid in idx:
-                allowed += _allowed(idx[mid])
     numbers = {h["number"]: h for h in pack["hotspots"]}
     by_id = {h["id"]: h["number"] for h in pack["hotspots"]}
     cited_hs = {by_id[e["id"]] for e in cited if e.get("id") in by_id} | {by_id[e["hotspot_id"]] for e in cited if e.get("hotspot_id") in by_id}
@@ -185,7 +182,8 @@ def check_claim(c, idx: dict, pack: dict, global_allowed: list, where: str) -> l
             errs.append(f"{where}: claims a simulation or microclimate model was run (it was not).")
             break
     for rx, label in FORBIDDEN:
-        if rx.search(text):
+        # A negated statement ("does not grant statutory approval") discloses a limit; it is not the claim.
+        if any(not NEGATION.search(text[:m.start()]) for m in rx.finditer(text)):
             errs.append(f"{where}: forbidden claim ({label}).")
     return errs
 

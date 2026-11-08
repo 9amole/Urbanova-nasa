@@ -12,13 +12,15 @@ def _fmt(v) -> str:
 
 
 def _hotspot_claims(h: dict) -> list[dict]:
-    cap = " (capped while project-choice values await approval)" if h["severity_capped"] else ""
-    where = "site-wide" if h["site_wide"] else f"{_fmt(h['site_share_pct'])} % of the site"
+    cap = " (capped while project-choice values await approval)" if h.get("severity_capped") else ""
+    where = "site-wide" if h.get("site_wide") else f"{_fmt(h['site_share_pct'])} % of the site"
     out = [{"text": f"Hotspot {h['number']} ({' + '.join(h['type_labels']).lower()}): {_fmt(h['area_m2'])} m², {where}; severity {h['severity']}{cap}.",
             "claim_type": "hotspot_location", "evidence_ids": [h["id"]]}]
-    vals = {v["name"]: v for v in h["values"]}
-    if "utci_sun_peak_c" in vals and "utci_shade_peak_c" in vals:
-        out.append({"text": f"UTCI in sun reaches {_fmt(vals['utci_sun_peak_c']['value'])} °C there, against {_fmt(vals['utci_shade_peak_c']['value'])} °C in shade.",
+    vals = {v["label"]: v for v in h.get("values") or []}
+    sun = next((v for k, v in vals.items() if k.startswith("Highest UTCI in sun")), None)
+    shade = next((v for k, v in vals.items() if k.startswith("UTCI in shade")), None)
+    if sun and shade:
+        out.append({"text": f"UTCI in sun reaches {_fmt(sun['value'])} °C there, against {_fmt(shade['value'])} °C in shade.",
                     "claim_type": "metric_value", "evidence_ids": [h["id"]]})
     for c in h["causes"][:3]:
         out.append({"text": f"Likely cause ({c['code']}): {c['text']}.", "claim_type": "cause", "evidence_ids": [h["id"]], "code": c["code"]})
@@ -37,7 +39,7 @@ def build(pack: dict) -> dict:
     first = []
     if hs:
         h = hs[0]
-        opt = next((o for o in pack["options"] if o["hotspot_id"] == h["id"] and "best_value" in o["roles"]), None)
+        opt = next((o for o in pack["options"] if o["hotspot_id"] == h["id"]), None)  # the pack keeps only best-value options
         if opt:
             e = opt["effect"]
             first.append({"text": f"Address hotspot {h['number']} first. The measured best-value option is {opt['intervention'].lower()} ({opt['size']}): "
