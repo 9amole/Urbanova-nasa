@@ -1,5 +1,7 @@
 # URBANOVA analysis engine — handoff to the backend team
 
+**The integration contract (what to call, request and result fields, AI service, UI rules) is in [INTEGRATION_CONTRACT.md](INTEGRATION_CONTRACT.md).** This document covers ownership, operations, testing and open items.
+
 This repository hands over the **analysis side** of URBANOVA Phase 1 as one component, `urbanova.engine`. It turns a site, designs, verified planning rules and unit rates into metrics, findings, recommendations, map layers and a scenario comparison, each with full provenance.
 
 **What the engine is not:**
@@ -164,5 +166,5 @@ The decisions still needed from the team and supervisors, with recommendations a
   * OCR of scanned documents;
   * PDF or image plan digitising;
   * temperature or comfort prediction from a design;
-  * population and air quality analyses;
-  * generative-AI explanations.
+  * population and air quality analyses.
+* **AI text** (insights, chat) is server-side, grounded and validated, with automatic text as the fallback (S4, S8; see INTEGRATION_CONTRACT §5).

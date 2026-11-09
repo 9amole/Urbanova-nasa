@@ -213,3 +213,26 @@ def test_gis_export_tags_are_classified(props, expected):
     from urbanova import plans
 
     assert plans.classify(props)[0] == expected
+
+
+def test_ai_functions_accept_an_engine_result(env, tmp_path, request_sample):
+    """INTEGRATION_CONTRACT §5: a backend without the prototype database feeds engine results to the AI service."""
+    from urbanova.ai import answer_question, bundle_from_result, chat_turn, comparison_from_result, generate_insights
+    from urbanova.ai.chat import Tools
+    from urbanova.engine import analyse
+
+    res = analyse(request_sample, tmp_path / "out")
+    b = bundle_from_result(res)
+    assert b["run"]["design_id"] == "baseline" and b["metrics"] and bundle_from_result(res, "alt-greener")["run"]["design_id"] == "alt-greener"
+    with pytest.raises(KeyError):
+        bundle_from_result(res, "no-such-design")
+    ins = generate_insights(b, ai_allowed=False)
+    assert ins["generated_by"] == "fallback" and ins["blocks"]["site_status"]
+    assert answer_question(b, "Which hotspot comes first?", ai_allowed=False) is None  # → caller shows the automatic answer
+    cmp_ = comparison_from_result(res)
+    reply = chat_turn(b, "What is the green-space proportion?", [], False, comparison=cmp_)
+    assert reply["generated_by"] == "fallback" and reply["answer"]
+    assert chat_turn(b, "Delete hotspot 1", [], True)["refusal"] == "read_only"
+    rows = Tools(b, cmp_).call("compare", {})[0]["comparison"]["rows"]
+    alt_name = next(d["design_name"] for d in res["designs"] if d["design_id"] == "alt-greener")
+    assert rows and {r["alternative"] for r in rows} == {alt_name}
