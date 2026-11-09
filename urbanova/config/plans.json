@@ -1,0 +1,25 @@
+{
+  "version": "2026.11-s9",
+  "status": "draft",
+  "note": "DRAFT tiers built from the app's real capabilities (10 Nov 2026). Prices are null until the owner sets them; the assistant then says 'pricing to be announced' and never quotes a number.",
+  "currency": "EGP",
+  "plans": [
+    {"id": "free", "name": "Free", "status": "draft", "price": null, "period": "month",
+     "limits": {"projects": 1, "runs_per_month": 5, "designs_per_run": 2, "ai_messages_per_day": 20, "members_per_project": 1},
+     "features": ["Site and design analysis", "Design hotspots and measured options", "HTML report", "Help assistant"],
+     "best_for": ["student_researcher", "other"],
+     "pitch": "Try URBANOVA on one project or a sample site."},
+    {"id": "pro", "name": "Pro", "status": "draft", "price": null, "period": "month",
+     "limits": {"projects": 10, "runs_per_month": 60, "designs_per_run": 6, "ai_messages_per_day": 100, "members_per_project": 3},
+     "features": ["Everything in Free", "Up to 5 alternatives per run and the full comparison", "PDF report and data export (GeoJSON, CSV)",
+                  "AI insights and the results chat", "Cost estimates from your unit rates"],
+     "best_for": ["architect", "urban_planner", "consultant"],
+     "pitch": "For a designer or consultant working on several sites."},
+    {"id": "team", "name": "Team", "status": "draft", "price": null, "period": "month",
+     "limits": {"projects": 50, "runs_per_month": 300, "designs_per_run": 6, "ai_messages_per_day": 300, "members_per_project": 25},
+     "features": ["Everything in Pro", "Shared projects with editors and viewers", "Planning-rule extraction from English and Arabic documents",
+                  "Priority support"],
+     "best_for": ["developer", "municipality", "consultant"],
+     "pitch": "For a firm, developer or authority reviewing many designs together."}
+  ]
+}

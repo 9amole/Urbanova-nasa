@@ -17,6 +17,7 @@ from .ai import chat as ai_chat
 from .ai import insights as ai_insights
 from .ai import llm as ai_llm
 from .ai import suggest as ai_suggest
+from .ai import support as ai_support
 from . import __version__, comparison, cost, db, documents, explain, files, geo, orchestrator, plans, projects, readiness, report, scenarios, security, supplementary
 from .catalog import public_dataset
 from .providers import geocode
@@ -669,6 +670,94 @@ async def post_chat(rid: str, request: Request, user: dict = Depends(current_use
         db.insert("chat_messages", {"id": db.new_id("msg"), "run_id": rid, "seq": seq + i, "role": role_, "created_by": user["id"], "created_at": db.now(),
                                     **{k: None for k in CHAT_KEEP}, **body, "text": body["text"] or ""})
     return {**reply, "seq": seq + 1}
+
+
+# ------------------------------------------------------------------ help assistant (S9): every page, per user
+SUPPORT_KEEP = ("text", "page", "links", "tool_calls", "suggest_plan", "generated_by", "provider", "model", "reason")
+
+
+@app.get(f"{API}/support/faq")
+def support_faq(q: str = ""):
+    """Public: the sign-in page shows the FAQ too."""
+    return ai_support.search_faq(q[:200], limit=0 if not q.strip() else 8)
+
+
+@app.get(f"{API}/support/plans")
+def support_plans():
+    return ai_support.plans()
+
+
+@app.get(f"{API}/support/pages/{{page}}")
+def support_page(page: str):
+    if page not in ai_support.pages():
+        raise NotFound("Unknown page.")
+    return {"page": page, **ai_support.pages()[page]}
+
+
+@app.get(f"{API}/support/profile")
+def get_support_profile(user: dict = Depends(current_user)):
+    u = db.get("users", user["id"])
+    return {"role": u.get("support_role"), "goal": u.get("support_goal"), "roles": ai_support.ROLES}
+
+
+@app.put(f"{API}/support/profile")
+async def put_support_profile(request: Request, user: dict = Depends(current_user)):
+    b = await _json(request)
+    role = b.get("role")
+    if role not in ai_support.ROLES:
+        raise projects.ProjectError("Choose one of the listed roles.")
+    goal = str(b.get("goal") or "").strip()[:300] or None
+    db.update("users", "id", user["id"], {"support_role": role, "support_goal": goal})
+    return {"role": role, "goal": goal, "roles": ai_support.ROLES}
+
+
+def _conversation(cid: str, user: dict) -> dict:
+    c = db.get("support_conversations", cid)
+    if not c or c["user_id"] != user["id"]:
+        raise NotFound("Conversation not found.")
+    return c
+
+
+@app.get(f"{API}/support/conversations")
+def support_conversations(user: dict = Depends(current_user)):
+    return db.select("support_conversations", "user_id = ?", [user["id"]], order="updated_at DESC")[:50]
+
+
+@app.get(f"{API}/support/conversations/{{cid}}")
+def support_conversation(cid: str, user: dict = Depends(current_user)):
+    c = _conversation(cid, user)
+    return {**c, "messages": db.select("support_messages", "conversation_id = ?", [cid], order="seq")}
+
+
+@app.post(f"{API}/support/messages", status_code=201)
+async def support_message(request: Request, user: dict = Depends(current_user)):
+    """One message to the help assistant; starts a conversation when none is given. Read-only tools scoped to the user."""
+    b = await _json(request)
+    text = str(b.get("text") or "").strip()
+    if not text:
+        raise projects.ProjectError("Type a message.")
+    if len(text) > ai_support.MAX_TEXT:
+        raise projects.ProjectError(f"Keep a message under {ai_support.MAX_TEXT} characters.")
+    page = ai_support.page_key(str(b.get("page") or ""))
+    pid = str(b.get("project_id") or "") or None
+    conv = _conversation(str(b["conversation_id"]), user) if b.get("conversation_id") else None
+    earlier = db.select("support_messages", "conversation_id = ?", [conv["id"]], order="seq") if conv else []
+    history = [{"role": m["role"], "text": m["text"]} for m in earlier]
+    day = db.now()[:10]
+    used = db.conn().execute("SELECT COUNT(*) FROM support_messages WHERE user_id = ? AND role = 'assistant' AND generated_by = 'ai' AND created_at >= ?",
+                             [user["id"], day]).fetchone()[0]
+    reply = await run_in_threadpool(ai_support.turn, user, text, history, page, pid, used < ai_support.max_per_user_day(), str(b.get("run_id") or "") or None)
+    if conv is None:  # a failed turn leaves no empty conversation behind
+        conv = {"id": db.new_id("sup"), "user_id": user["id"], "title": text[:80], "created_at": db.now(), "updated_at": db.now()}
+        db.insert("support_conversations", conv)
+    seq = len(earlier)
+    assistant = {**{k: reply.get(k) for k in SUPPORT_KEEP}, "text": reply["answer"], "page": page}
+    for i, (role_, body) in enumerate((("user", {**{k: None for k in SUPPORT_KEEP}, "text": text, "page": page}), ("assistant", assistant))):
+        db.insert("support_messages", {"id": db.new_id("smg"), "conversation_id": conv["id"], "user_id": user["id"], "seq": seq + i, "role": role_,
+                                       "created_at": db.now(), **body})
+    db.update("support_conversations", "id", conv["id"], {"updated_at": db.now()})
+    return {**{k: reply.get(k) for k in ("answer", "generated_by", "label", "links", "suggest_plan", "tool_calls", "reason", "refusal", "faq_ids")},
+            "conversation_id": conv["id"], "seq": seq + 1}
 
 
 @app.post(f"{API}/recommendations/{{rec_id}}/review")

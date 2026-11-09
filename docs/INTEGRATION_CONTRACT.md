@@ -22,6 +22,7 @@ A test fails if these schemas fall out of date. Where this document and the sche
 | AI insights | `urbanova.ai.generate_insights(bundle, ai_allowed, local_only)` | AI provider | no |
 | AI single question | `urbanova.ai.answer_question(bundle, question, ai_allowed, local_only)` | AI provider | no |
 | AI chat turn | `urbanova.ai.chat_turn(bundle, question, history, ai_allowed, local_only, comparison)` | AI provider | no |
+| Help assistant | `urbanova.ai.support.turn(user, text, history, page, project_id)` | AI provider (OpenAI) | yes: reads users and projects (§5b) |
 | Result → AI input | `urbanova.ai.bundle_from_result(result, design_id)`, `comparison_from_result(result)` | no | no |
 
 For callers outside Python, the same engine calls run from the command line. They read and write JSON, and the exit
@@ -218,12 +219,42 @@ store the conversation. The prototype's `chat_messages` table is a reference: `r
 - The chat is read-only. Its tools are `list_hotspots`, `get_hotspot`, `get_metric` and `compare`, and they read only
   the given bundle. Change requests and temperature predictions are refused before any model call.
 - **Data rule:**
-  - pass `local_only=True` for real (non-synthetic) projects, and only a local model (Ollama) is used;
-  - with no local model, the automatic text is returned;
-  - `URBANOVA_AI_CLOUD_FOR_REAL_DATA=1` lifts this, for example under a data-processing agreement.
+  - since 10 Nov 2026 cloud models may receive real project data (`URBANOVA_AI_CLOUD_FOR_REAL_DATA` defaults to on);
+  - with `URBANOVA_AI_CLOUD_FOR_REAL_DATA=0`, pass `local_only=True` for real (non-synthetic) projects: only a local model
+    (Ollama) is used, and with none the automatic text is returned.
 - `ai_allowed=False` never calls a model.
 - Results are cached by (evidence hash, question, history, model, prompt version), so the same input gives the same
   text.
+
+### 5b. Help assistant (S9)
+
+A support chat available on every page. It knows the signed-in user (their stored role and goal), the page they are on,
+the FAQ, the subscription plans and the user's own projects. It is read-only.
+
+| Call | Purpose |
+|---|---|
+| `urbanova.ai.support.turn(user, text, history, page, project_id=None, ai_allowed=True)` | One reply: `{answer, generated_by: "ai" / "fallback" / "rule", label, links: [{label, href}], suggest_plan, tool_calls, reason?, refusal?, faq_ids?}` |
+| `urbanova.ai.support.search_faq(query)`, `pages()`, `plans()` | The FAQ, page help and plans (`urbanova/config/support_faq.json`, `support_pages.json`, `plans.json`) |
+
+- **User:** `user` is `{"id", "name", "email"}`. The tools read the user's projects through `project_members` only, so
+  the assistant never sees another user's project. The prototype keeps `support_role` / `support_goal` on `users`.
+- **Tools:** `get_me`, `list_my_projects`, `get_project`, `get_page_help`, `search_faq`, `list_plans`.
+- **Page keys:** `login`, `projects`, `overview`, `inputs`, `rules`, `readiness`, `scenarios`, `analysis`, `results`,
+  `compare`, `report`.
+- **Links** in replies are in-app hrefs (`#/…`) only; anything else is dropped.
+- **Projects with AI switched off** are shown to the model by name and run status only; their details stay out of the prompt.
+- **Plans:** a plan with a null price is never quoted, and a reply containing a price is rejected while prices are
+  unset. `suggest_plan` is a plan id or null.
+- **No provider** (no key, over the budget or the per-user cap): the best FAQ match or the page help is returned,
+  labelled `fallback`.
+- **Prototype endpoints:**
+  - `GET /support/faq?q=`, `GET /support/plans`, `GET /support/pages/{page}` (public);
+  - `GET/PUT /support/profile`;
+  - `GET /support/conversations`, `GET /support/conversations/{id}` (the user's own only);
+  - `POST /support/messages` `{text, conversation_id?, page, project_id?, run_id?}` → 201 (the open project and run are used only when the user is a member).
+- **Tables:** `support_conversations` (`id`, `user_id`, `title`, `created_at`, `updated_at`) and `support_messages`
+  (`conversation_id`, `user_id`, `seq`, `role`, `text`, `page`, `links`, `tool_calls`, `suggest_plan`,
+  `generated_by`, `provider`, `model`, `reason`, `created_at`).
 
 **AI suggestions while importing** (planning rules from a PDF, feature types for CAD layer names) exist only in the
 prototype app (`urbanova/ai/suggest.py`), because they read its database. They are not part of this contract yet.
@@ -241,7 +272,8 @@ prototype app (`urbanova/ai/suggest.py`), because they read its database. They a
 | `URBANOVA_LLM_PROVIDERS` | AI provider order | `groq,openrouter,ollama` |
 | `URBANOVA_LLM_<NAME>_BASE_URL`, `_MODEL`, `_API_KEY` | OpenAI-compatible endpoint per provider (no key for a local Ollama) | see `urbanova/ai/llm.py` |
 | `URBANOVA_LLM_ENABLED`, `URBANOVA_LLM_TIMEOUT_S`, `URBANOVA_LLM_MAX_CALLS_PER_DAY` | AI switch, timeout, daily call budget | `1`, 30, 500 |
-| `URBANOVA_AI_CLOUD_FOR_REAL_DATA` | Allow cloud AI for real projects | `0` |
+| `URBANOVA_AI_CLOUD_FOR_REAL_DATA` | Allow cloud AI for real projects (`0` = local model only) | `1` |
+| `URBANOVA_SUPPORT_PROVIDERS`, `URBANOVA_SUPPORT_MAX_PER_USER_DAY`, `URBANOVA_SUPPORT_MAX_CALLS_PER_DAY` | Help assistant provider order; AI answers per user per day; its own daily call budget | `openai`, 100, 1000 |
 
 **Outbound hosts:**
 - `archive-api.open-meteo.com` (and the customer host when a key is set);
@@ -279,5 +311,4 @@ It is a reference, not the integration target: its accounts, storage and UI are 
 - No real project has been validated yet (`docs/VALIDATION.md`), and commercial licensing is not cleared (decision C1).
 - The chat evaluation of at least 30 questions is not yet complete on the free Groq tier
   ([CHAT_EVALUATION.md](CHAT_EVALUATION.md)). Every AI answer is still validated or replaced by the automatic text.
-- No local AI model is configured yet, so real projects get automatic AI text until Ollama has a model
-  (`URBANOVA_LLM_OLLAMA_MODEL`).
+- The subscription plans are drafts without prices (`urbanova/config/plans.json`), and the FAQ needs a content review.

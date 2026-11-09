@@ -142,11 +142,23 @@ CREATE TABLE IF NOT EXISTS chat_messages (
     tool_calls TEXT, generated_by TEXT, label TEXT, provider TEXT, model TEXT, reason TEXT, created_by TEXT, created_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS ix_chat_run ON chat_messages(run_id, seq);
+CREATE TABLE IF NOT EXISTS support_conversations (
+    id TEXT PRIMARY KEY, user_id TEXT NOT NULL, title TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS ix_support_conv_user ON support_conversations(user_id, updated_at);
+CREATE TABLE IF NOT EXISTS support_messages (
+    id TEXT PRIMARY KEY, conversation_id TEXT NOT NULL, user_id TEXT NOT NULL, seq INTEGER NOT NULL, role TEXT NOT NULL, text TEXT NOT NULL,
+    page TEXT, links TEXT, tool_calls TEXT, suggest_plan TEXT, generated_by TEXT, provider TEXT, model TEXT, reason TEXT, created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS ix_support_msg_conv ON support_messages(conversation_id, seq);
+CREATE INDEX IF NOT EXISTS ix_support_msg_user ON support_messages(user_id, created_at);
 CREATE INDEX IF NOT EXISTS ix_datasets_cache ON datasets(cache_key);
 """
 
 # Columns added after the first release: (table, column, type). Applied once to existing databases.
 MIGRATIONS: list[tuple[str, str, str]] = [
+    ("users", "support_role", "TEXT"),
+    ("users", "support_goal", "TEXT"),
     ("findings", "affected_area", "TEXT"),
     ("metrics", "condition", "TEXT"),
     ("findings", "hotspot_ids", "TEXT"),
@@ -170,6 +182,7 @@ JSON_COLUMNS: dict[str, set[str]] = {
     "features": {"geometry", "original_geometry", "attributes", "correction_history", "suggestion"},
     "insights": {"blocks", "attempts"},
     "chat_messages": {"claims", "based_on", "tool_calls"},
+    "support_messages": {"links", "tool_calls"},
     "datasets": {
         "request_params", "spatial_coverage", "time_coverage", "variables", "units", "quality",
         "provenance", "parent_ids", "scene_ids",

@@ -444,9 +444,11 @@ def test_a_long_rate_limit_pauses_the_provider_briefly_not_for_the_day(ai_env, m
 
 
 def test_real_project_data_goes_only_to_a_local_model(client, auth, monkeypatch):
-    """Data decision of 8 Nov 2026: a project that is not synthetic never reaches a cloud provider unless the operator opts in."""
+    """URBANOVA_AI_CLOUD_FOR_REAL_DATA=0 (the 8 Nov 2026 rule, now opt-in): a real project never reaches a cloud provider."""
     from urbanova.ai import llm
     from urbanova.settings import settings
+
+    monkeypatch.setenv("URBANOVA_AI_CLOUD_FOR_REAL_DATA", "0")
 
     pid, b = _project_with_run(client, auth, monkeypatch)
     rid = b["run"]["id"]
@@ -467,3 +469,5 @@ def test_real_project_data_goes_only_to_a_local_model(client, auth, monkeypatch)
     assert [p["name"] for p in llm.available(local_only=True)] == ["ollama"]
     monkeypatch.setenv("URBANOVA_AI_CLOUD_FOR_REAL_DATA", "1")
     assert llm.cloud_allowed_for_real_data()
+    monkeypatch.delenv("URBANOVA_AI_CLOUD_FOR_REAL_DATA")
+    assert llm.cloud_allowed_for_real_data()  # decision of 10 Nov 2026: cloud allowed by default

@@ -113,7 +113,11 @@ Rules the UI must respect:
 | `URBANOVA_USAGE_CONTEXT` | `non_commercial_evaluation` or `commercial`. Commercial mode refuses Open-Meteo's free tier and sources whose commercial terms are unverified | `non_commercial_evaluation` |
 | `OPEN_METEO_API_KEY` | Open-Meteo customer endpoint for commercial use (server-side only; never logged or cached) | unset |
 | `URBANOVA_OFFLINE` | `1` = never call providers; analyses report *unavailable* | `0` |
-| `URBANOVA_AI_CLOUD_FOR_REAL_DATA` | `1` = allow cloud AI providers (Groq, OpenRouter) for real project data, e.g. under a data-processing agreement. Otherwise only synthetic/test projects use them and real data goes to a local model only (decision of 8 Nov 2026) | `0` |
+| `URBANOVA_AI_CLOUD_FOR_REAL_DATA` | `0` = send real project data only to a local model (the 8 Nov 2026 rule). On by default since the owner's decision of 10 Nov 2026 | `1` |
+| `URBANOVA_LLM_OPENAI_API_KEY`, `URBANOVA_LLM_OPENAI_MODEL` | OpenAI key (server environment only, paid per token) and model for the help assistant | unset, `gpt-5.4-mini` |
+| `URBANOVA_SUPPORT_PROVIDERS` | Provider order for the help assistant (S9) | `openai` |
+| `URBANOVA_SUPPORT_MAX_PER_USER_DAY` | AI answers per user per UTC day before the help centre answers automatically | `100` |
+| `URBANOVA_SUPPORT_MAX_CALLS_PER_DAY` | Model calls per UTC day for the help assistant, counted apart from the analysis AI's budget | `1000` |
 | `URBANOVA_HTTP_TIMEOUT_S`, `URBANOVA_HTTP_MAX_RETRIES` | HTTP client defaults (Overpass has its own 75 s timeout in the registry) | 45, 3 |
 
 **Concurrency:** `analyse()` can run in parallel threads or processes. Provenance is collected per call (context variable), and the file cache is protected per key. Give each call its own `output_dir`.

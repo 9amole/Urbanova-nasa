@@ -87,3 +87,40 @@ a.ev { font-size: .8em; }
 .chat .msg.bot { align-self: flex-start; max-width: 92%; }
 .chip { display: inline-block; font-size: 12px; padding: 1px 8px; margin: 2px 2px 0 0; border-radius: 10px; border: 1px solid currentColor; text-decoration: none; }
 .flash { outline: 3px solid #e09a00; outline-offset: 2px; transition: outline-color 1s; }
+
+/* Help assistant widget (S9) */
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.help-btn { position: fixed; right: 20px; bottom: 20px; z-index: 1200; border-radius: 24px; padding: 10px 18px; background: var(--accent); color: var(--accent-ink);
+  border: none; font-weight: 600; box-shadow: 0 4px 14px rgba(0,0,0,.18); cursor: pointer; }
+.help-btn:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+.help-panel { position: fixed; right: 20px; bottom: 76px; z-index: 1200; width: 380px; max-width: calc(100vw - 32px); height: min(620px, calc(100vh - 110px));
+  display: flex; flex-direction: column; background: var(--panel); color: var(--ink); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,.2); }
+.help-panel[hidden] { display: none; }
+.help-head { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border-bottom: 1px solid var(--line); }
+.help-head h2 { margin: 0; font-size: 16px; }
+.help-tabs { display: flex; border-bottom: 1px solid var(--line); }
+.help-tabs button { flex: 1; border: none; background: none; padding: 8px 4px; font-size: 13px; cursor: pointer; border-bottom: 2px solid transparent; color: var(--ink); }
+.help-tabs button[aria-selected="true"] { border-bottom-color: var(--accent); font-weight: 600; }
+.help-body { flex: 1; overflow: auto; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
+.help-log { flex: 1; overflow: auto; display: flex; flex-direction: column; gap: 8px; min-height: 120px; }
+.help-log .msg p { margin: 0 0 4px; }
+.help-log .msg.user { align-self: flex-end; background: var(--info-bg); padding: 8px 12px; border-radius: 12px; max-width: 85%; }
+.help-log .msg.assistant { align-self: flex-start; background: var(--bg); padding: 8px 12px; border-radius: 12px; max-width: 92%; }
+.help-log .msg.thinking { color: var(--muted); font-style: italic; }
+.help-log .chips { margin-top: 4px; }
+.help-log button.chip { background: none; color: var(--accent); cursor: pointer; }
+.help-form textarea, .help-onb textarea, .help-onb select { width: 100%; box-sizing: border-box; }
+.help-form .row { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+.help-faq details { border-bottom: 1px solid var(--line); padding: 6px 0; }
+.help-faq summary { cursor: pointer; font-weight: 600; }
+.help-plans { display: flex; flex-direction: column; gap: 10px; }
+.help-plans .plan { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+.help-plans .plan.hl { border-color: var(--accent); box-shadow: 0 0 0 2px var(--ok-bg); }
+.help-plans .plan h3 { margin: 0 0 2px; }
+.help-plans .price { font-weight: 600; color: var(--accent); margin: 0 0 6px; }
+ul.plain { list-style: none; padding: 0; margin: 4px 0; }
+.linklike { background: none; border: none; padding: 0; color: var(--accent); text-decoration: underline; cursor: pointer; font: inherit; }
+@media (max-width: 600px) {
+  .help-panel { inset: 0; width: auto; max-width: none; height: auto; border-radius: 0; }
+  .help-btn { right: 16px; bottom: 16px; }
+}

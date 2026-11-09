@@ -145,6 +145,7 @@ def test_chat_on_a_real_project_never_reaches_a_cloud_model(client, auth, monkey
     from urbanova.ai import llm
     from urbanova.settings import settings
 
+    monkeypatch.setenv("URBANOVA_AI_CLOUD_FOR_REAL_DATA", "0")
     pid, b = _project_with_run(client, auth, monkeypatch)
     rid = b["run"]["id"]
     client.patch(f"/api/v1/projects/{pid}", headers=auth, json={"synthetic_data": False})

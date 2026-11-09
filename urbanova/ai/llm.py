@@ -27,7 +27,10 @@ DEFAULTS = {
     "groq": {"base_url": "https://api.groq.com/openai/v1", "model": "openai/gpt-oss-120b", "needs_key": True},
     "openrouter": {"base_url": "https://openrouter.ai/api/v1", "model": "meta-llama/llama-3.3-70b-instruct:free", "needs_key": True},
     "ollama": {"base_url": "http://127.0.0.1:11434/v1", "model": "llama3.1:8b", "needs_key": False},
+    # GPT-5 models accept only the default temperature, so none is sent (S9 support assistant, decision of 2026-11-10).
+    "openai": {"base_url": "https://api.openai.com/v1", "model": "gpt-5.4-mini", "needs_key": True, "temperature": None},
 }
+CHAIN_DEFAULT = "groq,openrouter,ollama"
 _lock = threading.Lock()
 MAX_RETRY_WAIT_S = 30.0
 
@@ -76,7 +79,10 @@ def timeout_s() -> float:
     return float(os.environ.get("URBANOVA_LLM_TIMEOUT_S", "30"))
 
 
-def max_calls_per_day() -> int:
+def max_calls_per_day(budget: str = "calls") -> int:
+    """Daily call cap of a budget: "calls" (analysis AI) or "support" (the help assistant, its own counter)."""
+    if budget == "support":
+        return int(os.environ.get("URBANOVA_SUPPORT_MAX_CALLS_PER_DAY", "1000"))
     return int(os.environ.get("URBANOVA_LLM_MAX_CALLS_PER_DAY", "500"))
 
 
@@ -84,11 +90,13 @@ def _env(name: str, key: str) -> str:
     return os.environ.get(f"URBANOVA_LLM_{name.upper()}_{key}", "").strip()
 
 
-def configured() -> list[dict]:
+def configured(chain: str | None = None) -> list[dict]:
     """Providers in chain order with their settings; `ready` is False without a key or approval. Contains the key
-    (for the call only) — never return this to a client; use status() for that."""
+    (for the call only) — never return this to a client; use status() for that. `chain` overrides URBANOVA_LLM_PROVIDERS
+    (e.g. the support assistant's own list)."""
     out = []
-    for name in [n.strip().lower() for n in os.environ.get("URBANOVA_LLM_PROVIDERS", "groq,openrouter,ollama").split(",") if n.strip()]:
+    names = chain if chain is not None else os.environ.get("URBANOVA_LLM_PROVIDERS", CHAIN_DEFAULT)
+    for name in [n.strip().lower() for n in names.split(",") if n.strip()]:
         d = DEFAULTS.get(name, {"base_url": "", "model": "", "needs_key": True})
         key = _env(name, "API_KEY")
         usable, _, why = availability(name)
@@ -100,14 +108,18 @@ def configured() -> list[dict]:
             ready, reason = False, f"No API key set (URBANOVA_LLM_{name.upper()}_API_KEY)."
         elif name == "ollama" and not _env(name, "MODEL") and not _env(name, "BASE_URL"):
             ready, reason = False, "Local model not configured (set URBANOVA_LLM_OLLAMA_MODEL)."
-        out.append({"name": name, "base_url": base.rstrip("/"), "model": _env(name, "MODEL") or d["model"], "key": key, "ready": ready, "reason": reason})
+        out.append({"name": name, "base_url": base.rstrip("/"), "model": _env(name, "MODEL") or d["model"], "key": key, "ready": ready, "reason": reason,
+                    "temperature": d.get("temperature", 0)})
     return out
 
 
 def status() -> dict:
     """What a client may see: enabled, and per provider its name, model, and whether it is configured. Never keys."""
     st = _state()
+    sup = os.environ.get("URBANOVA_SUPPORT_PROVIDERS", "openai")
     return {"enabled": enabled(), "calls_today": st["calls"], "max_calls_per_day": max_calls_per_day(),
+            "support": {"calls_today": st.get("support", 0), "max_calls_per_day": max_calls_per_day("support"),
+                        "providers": [{"name": p["name"], "model": p["model"], "configured": p["ready"]} for p in configured(sup)]},
             "providers": [{"name": p["name"], "model": p["model"], "configured": p["ready"], "skipped_today": _skipped(st, p["name"]),
                            "reason": p["reason"] or None} for p in configured()]}
 
@@ -140,24 +152,24 @@ def is_local(p: dict) -> bool:
 
 
 def cloud_allowed_for_real_data() -> bool:
-    """Data decision of 2026-11-08 (docs/decisions/SUPERVISOR_DECISIONS.md, item 5): real project data goes only to a local
-    model unless the operator opts in with URBANOVA_AI_CLOUD_FOR_REAL_DATA=1 (for example under a data-processing agreement)."""
-    return os.environ.get("URBANOVA_AI_CLOUD_FOR_REAL_DATA", "0") == "1"
+    """Data decision of 2026-11-10 (docs/decisions/SUPERVISOR_DECISIONS.md, item 5b), replacing the one of 8 Nov: cloud
+    models may receive real project data. URBANOVA_AI_CLOUD_FOR_REAL_DATA=0 restores the local-only rule."""
+    return os.environ.get("URBANOVA_AI_CLOUD_FOR_REAL_DATA", "1") != "0"
 
 
-LOCAL_ONLY_REASON = ("Real project data is sent only to a local model (data decision of 8 Nov 2026), and no local model is available. "
+LOCAL_ONLY_REASON = ("Real project data is sent only to a local model on this server (URBANOVA_AI_CLOUD_FOR_REAL_DATA=0), and no local model is available. "
                      "Mark the project as synthetic for cloud AI, or configure Ollama (URBANOVA_LLM_OLLAMA_MODEL).")
 
 
-def available(local_only: bool = False) -> list[dict]:
+def available(local_only: bool = False, chain: str | None = None, budget: str = "calls") -> list[dict]:
     """Ready providers not skipped today, in chain order (empty when AI is switched off or the budget is used up).
-    `local_only` keeps only providers on this machine (real project data)."""
+    `local_only` keeps only providers on this machine (real project data); `chain` as in configured()."""
     if not enabled():
         return []
     st = _state()
-    if st["calls"] >= max_calls_per_day():
+    if st.get(budget, 0) >= max_calls_per_day(budget):
         return []
-    return [p for p in configured() if p["ready"] and not _skipped(st, p["name"]) and (not local_only or is_local(p))]
+    return [p for p in configured(chain) if p["ready"] and not _skipped(st, p["name"]) and (not local_only or is_local(p))]
 
 
 def _skipped(st: dict, name: str) -> bool:
@@ -212,19 +224,21 @@ def cache_put(key: str, value: dict) -> None:
     _cache_file(key).write_text(json.dumps(value, ensure_ascii=False), encoding="utf-8")
 
 
-def chat_json(provider: dict, messages: list[dict]) -> str:
+def chat_json(provider: dict, messages: list[dict], budget: str = "calls") -> str:
     """One chat completion asking for a JSON object; returns the message content (text). Raises ProviderFailure."""
     with _lock:
         st = _state()
-        if st["calls"] >= max_calls_per_day():
+        if st.get(budget, 0) >= max_calls_per_day(budget):
             raise ProviderFailure("daily call budget used up")
-        st["calls"] += 1
+        st[budget] = st.get(budget, 0) + 1
         _save(st)
     url = f"{provider['base_url']}/chat/completions"
     headers = {"Content-Type": "application/json", "User-Agent": settings.user_agent}
     if provider["key"]:
         headers["Authorization"] = f"Bearer {provider['key']}"
-    body = {"model": provider["model"], "messages": messages, "temperature": 0, "response_format": {"type": "json_object"}}
+    body = {"model": provider["model"], "messages": messages, "response_format": {"type": "json_object"}}
+    if provider.get("temperature", 0) is not None:
+        body["temperature"] = provider.get("temperature", 0)
     t0 = time.monotonic()
     try:
         r = httpx.post(url, json=body, headers=headers, timeout=timeout_s())
