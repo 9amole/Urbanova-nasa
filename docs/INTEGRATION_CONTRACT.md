@@ -22,7 +22,7 @@ A test fails if these schemas fall out of date. Where this document and the sche
 | AI insights | `urbanova.ai.generate_insights(bundle, ai_allowed, local_only)` | AI provider | no |
 | AI single question | `urbanova.ai.answer_question(bundle, question, ai_allowed, local_only)` | AI provider | no |
 | AI chat turn | `urbanova.ai.chat_turn(bundle, question, history, ai_allowed, local_only, comparison)` | AI provider | no |
-| Help assistant | `urbanova.ai.support.turn(user, text, history, page, project_id)` | AI provider (OpenAI) | yes: reads users and projects (§5b) |
+| Help assistant | `urbanova.ai.support.turn(user, text, history, page, project_id)` | AI provider (free Groq pool by default) | yes: reads users and projects (§5b) |
 | Result → AI input | `urbanova.ai.bundle_from_result(result, design_id)`, `comparison_from_result(result)` | no | no |
 
 For callers outside Python, the same engine calls run from the command line. They read and write JSON, and the exit
@@ -270,10 +270,10 @@ prototype app (`urbanova/ai/suggest.py`), because they read its database. They a
 | `OPEN_METEO_API_KEY` | Open-Meteo customer endpoint for commercial use | unset |
 | `URBANOVA_HTTP_TIMEOUT_S`, `URBANOVA_HTTP_MAX_RETRIES` | HTTP client | 45, 3 |
 | `URBANOVA_LLM_PROVIDERS` | AI provider order | `groq,openrouter,ollama` |
-| `URBANOVA_LLM_<NAME>_BASE_URL`, `_MODEL`, `_API_KEY` | OpenAI-compatible endpoint per provider (no key for a local Ollama) | see `urbanova/ai/llm.py` |
+| `URBANOVA_LLM_<NAME>_BASE_URL`, `_MODEL` or `_MODELS` (a pool), `_API_KEY` | OpenAI-compatible endpoint per provider (no key for a local Ollama). In a pool, a rate-limited model hands over to the next at once | see `urbanova/ai/llm.py` |
 | `URBANOVA_LLM_ENABLED`, `URBANOVA_LLM_TIMEOUT_S`, `URBANOVA_LLM_MAX_CALLS_PER_DAY` | AI switch, timeout, daily call budget | `1`, 30, 500 |
 | `URBANOVA_AI_CLOUD_FOR_REAL_DATA` | Allow cloud AI for real projects (`0` = local model only) | `1` |
-| `URBANOVA_SUPPORT_PROVIDERS`, `URBANOVA_SUPPORT_MAX_PER_USER_DAY`, `URBANOVA_SUPPORT_MAX_CALLS_PER_DAY` | Help assistant provider order; AI answers per user per day; its own daily call budget | `openai`, 100, 1000 |
+| `URBANOVA_SUPPORT_PROVIDERS`, `URBANOVA_SUPPORT_GROQ_MODELS`, `URBANOVA_SUPPORT_MAX_PER_USER_DAY`, `URBANOVA_SUPPORT_MAX_CALLS_PER_DAY` | Help assistant provider order and Groq pool; AI answers per user per day; its own daily call budget | `groq`, see HANDOFF, 100, 1000 |
 
 **Outbound hosts:**
 - `archive-api.open-meteo.com` (and the customer host when a key is set);

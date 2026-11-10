@@ -180,7 +180,7 @@ def turn(bundle: dict, question: str, history: list[dict], ai_allowed: bool, loc
             try:
                 raw = llm.chat_json(prov, msgs)
             except llm.ProviderFailure as exc:
-                llm.pause(prov["name"], exc)
+                llm.pause(prov, exc)
                 attempts.append({"provider": prov["name"], "outcome": "provider_failure", "detail": str(exc)})
                 break
             out, errs = parse(raw)

@@ -16,7 +16,8 @@ def openai_env(env, monkeypatch):
 
     monkeypatch.setattr(settings, "offline", False)
     monkeypatch.setenv("URBANOVA_LLM_OPENAI_API_KEY", KEY)
-    monkeypatch.delenv("URBANOVA_SUPPORT_PROVIDERS", raising=False)  # default: openai
+    monkeypatch.setenv("URBANOVA_SUPPORT_PROVIDERS", "openai")  # the paid opt-in; the free default is tested below
+    monkeypatch.delenv("URBANOVA_LLM_GROQ_API_KEY", raising=False)
     monkeypatch.setenv("URBANOVA_LLM_MAX_CALLS_PER_DAY", "50")
     return settings
 
@@ -80,11 +81,11 @@ def test_project_tools_only_read_the_users_own_projects(client, auth, openai_env
 def test_tool_call_then_answer_with_page_and_profile_in_the_prompt(client, auth, openai_env, monkeypatch):
     client.put("/api/v1/support/profile", headers=auth, json={"role": "municipality", "goal": "Review compounds"})
     m = _model(monkeypatch, [{"call": {"tool": "get_page_help", "args": {"page": "inputs"}}},
-                             _answer("Upload a GeoJSON or DXF plan; DXF needs an EPSG code.", [{"label": "Bad", "href": "https://evil.example"},
+                             _answer("Upload a GeoJSON or DXF plan; DXF needs an EPSG code.", [{"label": "Bad", "href": "https://evil.example"}, {"label": "Made up", "href": "#/results"},
                                                                                              {"label": "Inputs", "href": "#/projects"}])])
     r = _send(client, auth, "What do I upload here?", page="inputs").json()
     assert r["generated_by"] == "ai" and r["tool_calls"] == [{"tool": "get_page_help", "args": {"page": "inputs"}, "ok": True}]
-    assert r["links"] == [{"label": "Inputs", "href": "#/projects"}]  # off-site link dropped
+    assert r["links"] == [{"label": "Inputs", "href": "#/projects"}]  # off-site and made-up links dropped
     sent = m.bodies[0]
     assert sent["model"] == "gpt-5.4-mini" and "temperature" not in sent  # GPT-5 models take only the default temperature
     ctx = sent["messages"][1]["content"]
@@ -201,3 +202,87 @@ def test_the_open_project_and_run_reach_the_prompt_only_for_members(client, auth
     other = login(client, "other@example.com")
     _send(client, other, "What am I looking at?", page="results", project_id=pid, run_id="run_open1")
     assert pid not in m.bodies[1]["messages"][1]["content"] and "run_open1" not in m.bodies[1]["messages"][1]["content"]
+
+
+# ------------------------------------------------------------------ free model pool (owner, 10 Nov 2026: no paid credit)
+GROQ = "gsk_TEST_pool_key_never_store_me_0123456789"
+
+
+class Pool:
+    """Fake Groq: answers per model; a model in `limited` replies 429 with a 5 s reset."""
+
+    def __init__(self, limited=(), reply=None):
+        self.limited, self.models = set(limited), []
+        self.reply = reply or _answer("Upload a GeoJSON or DXF plan.")
+
+    def __call__(self, url, json=None, headers=None, timeout=None):
+        import httpx
+
+        self.models.append(json["model"])
+        req = httpx.Request("POST", url)
+        if json["model"] in self.limited:
+            return httpx.Response(429, headers={"retry-after": "5"}, json={"error": {"message": "rate limit"}}, request=req)
+        return httpx.Response(200, json={"choices": [{"message": {"content": _json.dumps(self.reply)}}]}, request=req)
+
+
+_json = json
+
+
+@pytest.fixture()
+def groq_env(env, monkeypatch):
+    from urbanova.settings import settings
+
+    monkeypatch.setattr(settings, "offline", False)
+    monkeypatch.setenv("URBANOVA_LLM_GROQ_API_KEY", GROQ)
+    for k in ("URBANOVA_SUPPORT_PROVIDERS", "URBANOVA_SUPPORT_GROQ_MODELS", "URBANOVA_LLM_GROQ_MODELS", "URBANOVA_LLM_GROQ_MODEL", "URBANOVA_LLM_PROVIDERS"):
+        monkeypatch.delenv(k, raising=False)
+    return settings
+
+
+def test_help_uses_the_free_groq_pool_by_default(client, auth, groq_env, monkeypatch):
+    from urbanova.ai import llm, support
+
+    pool = Pool()
+    monkeypatch.setattr(llm.httpx, "post", pool)
+    r = _send(client, auth, "What do I upload?", page="inputs").json()
+    assert r["generated_by"] == "ai" and pool.models == [support.SUPPORT_GROQ_MODELS[0]]
+    # the analysis AI starts its pool with another model, so the two rarely share a per-minute allowance
+    assert [p["model"] for p in llm.configured()][:3] == ["openai/gpt-oss-120b", "qwen/qwen3.8-27b", "openai/gpt-oss-20b"]
+    assert support.SUPPORT_GROQ_MODELS[0] != llm.configured()[0]["model"]
+
+
+def test_a_rate_limited_model_hands_over_to_the_next_at_once(client, auth, groq_env, monkeypatch):
+    """Found in the S8 evaluation: one model's 8,000-tokens-a-minute cap made every question wait. Now the next model answers."""
+    import time as _time
+
+    from urbanova.ai import llm, support
+
+    first, second, third = support.SUPPORT_GROQ_MODELS
+    pool = Pool(limited={first})
+    monkeypatch.setattr(llm.httpx, "post", pool)
+    monkeypatch.setattr(_time, "sleep", lambda s: pytest.fail(f"waited {s}s although another model was ready"))
+    r = _send(client, auth, "What do I upload?", page="inputs").json()
+    assert r["generated_by"] == "ai" and pool.models == [first, second]
+    names = [p["model"] for p in llm.available(chain="groq", budget="support", models=support.models())]
+    assert names == [second, third]  # only the limited model is paused, and only briefly
+    assert llm._state()["skipped"][f"groq:{first}"]["until"] - _time.time() <= 6
+    # every model limited: only the last one may wait once for its short reset, then the help centre answers from the FAQ
+    waits = []
+    monkeypatch.setattr(_time, "sleep", waits.append)
+    pool2 = Pool(limited=set(support.SUPPORT_GROQ_MODELS))
+    monkeypatch.setattr(llm.httpx, "post", pool2)
+    r2 = _send(client, auth, "Which file formats can I upload?", page="inputs").json()
+    assert r2["generated_by"] == "fallback" and "GeoJSON or DXF" in r2["answer"] and waits == [5.0]
+
+
+def test_model_pools_can_be_set_and_a_whole_provider_paused(groq_env, monkeypatch):
+    from urbanova.ai import llm
+
+    monkeypatch.setenv("URBANOVA_LLM_GROQ_MODELS", "a, b")
+    assert [(p["id"], p["model"]) for p in llm.configured("groq")] == [("groq:a", "a"), ("groq:b", "b")]
+    monkeypatch.delenv("URBANOVA_LLM_GROQ_MODELS")
+    monkeypatch.setenv("URBANOVA_LLM_GROQ_MODEL", "only-one")
+    assert [(p["id"], p["model"]) for p in llm.configured("groq")] == [("groq", "only-one")]
+    monkeypatch.delenv("URBANOVA_LLM_GROQ_MODEL")
+    llm.pause("groq", llm.ProviderFailure("HTTP 401"))  # a bad key pauses the whole pool for the day
+    assert llm.available(chain="groq") == []

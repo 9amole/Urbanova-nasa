@@ -24,10 +24,12 @@ from ..providers.base import _log, availability
 from ..settings import settings
 
 DEFAULTS = {
-    "groq": {"base_url": "https://api.groq.com/openai/v1", "model": "openai/gpt-oss-120b", "needs_key": True},
+    # A model pool: Groq's free tier limits each model separately (about 1,000 requests a day and 8,000 tokens a minute,
+    # checked 10 Nov 2026), so a rate-limited model hands the request to the next one at once instead of waiting.
+    "groq": {"base_url": "https://api.groq.com/openai/v1", "models": ["openai/gpt-oss-120b", "qwen/qwen3.8-27b", "openai/gpt-oss-20b"], "needs_key": True},
     "openrouter": {"base_url": "https://openrouter.ai/api/v1", "model": "meta-llama/llama-3.3-70b-instruct:free", "needs_key": True},
     "ollama": {"base_url": "http://127.0.0.1:11434/v1", "model": "llama3.1:8b", "needs_key": False},
-    # GPT-5 models accept only the default temperature, so none is sent (S9 support assistant, decision of 2026-11-10).
+    # Paid (prepaid credit); opt-in only. GPT-5 models accept only the default temperature, so none is sent.
     "openai": {"base_url": "https://api.openai.com/v1", "model": "gpt-5.4-mini", "needs_key": True, "temperature": None},
 }
 CHAIN_DEFAULT = "groq,openrouter,ollama"
@@ -90,10 +92,24 @@ def _env(name: str, key: str) -> str:
     return os.environ.get(f"URBANOVA_LLM_{name.upper()}_{key}", "").strip()
 
 
-def configured(chain: str | None = None) -> list[dict]:
-    """Providers in chain order with their settings; `ready` is False without a key or approval. Contains the key
-    (for the call only) — never return this to a client; use status() for that. `chain` overrides URBANOVA_LLM_PROVIDERS
-    (e.g. the support assistant's own list)."""
+def _models(name: str, d: dict, models: dict | None) -> list[str]:
+    """The provider's model pool: a caller's own order, else URBANOVA_LLM_<NAME>_MODELS (comma-separated), else a single
+    URBANOVA_LLM_<NAME>_MODEL, else the defaults."""
+    if models and models.get(name):
+        return list(models[name])
+    pool = [m.strip() for m in _env(name, "MODELS").split(",") if m.strip()]
+    if pool:
+        return pool
+    if _env(name, "MODEL"):
+        return [_env(name, "MODEL")]
+    return list(d.get("models") or [d["model"]])
+
+
+def configured(chain: str | None = None, models: dict | None = None) -> list[dict]:
+    """Provider entries in chain order, one per model of each provider's pool; `ready` is False without a key or approval.
+    Contains the key (for the call only) — never return this to a client; use status() for that. `chain` overrides
+    URBANOVA_LLM_PROVIDERS and `models` a provider's pool order (e.g. the help assistant's own lists). Each entry has an
+    `id` ("groq:openai/gpt-oss-20b" in a pool, else the provider name) under which its rate limits are tracked."""
     out = []
     names = chain if chain is not None else os.environ.get("URBANOVA_LLM_PROVIDERS", CHAIN_DEFAULT)
     for name in [n.strip().lower() for n in names.split(",") if n.strip()]:
@@ -108,19 +124,22 @@ def configured(chain: str | None = None) -> list[dict]:
             ready, reason = False, f"No API key set (URBANOVA_LLM_{name.upper()}_API_KEY)."
         elif name == "ollama" and not _env(name, "MODEL") and not _env(name, "BASE_URL"):
             ready, reason = False, "Local model not configured (set URBANOVA_LLM_OLLAMA_MODEL)."
-        out.append({"name": name, "base_url": base.rstrip("/"), "model": _env(name, "MODEL") or d["model"], "key": key, "ready": ready, "reason": reason,
-                    "temperature": d.get("temperature", 0)})
+        pool = _models(name, d, models)
+        for model in pool:
+            out.append({"name": name, "id": f"{name}:{model}" if len(pool) > 1 else name, "base_url": base.rstrip("/"), "model": model, "key": key,
+                        "ready": ready, "reason": reason, "temperature": d.get("temperature", 0)})
     return out
 
 
 def status() -> dict:
     """What a client may see: enabled, and per provider its name, model, and whether it is configured. Never keys."""
     st = _state()
-    sup = os.environ.get("URBANOVA_SUPPORT_PROVIDERS", "openai")
+    from .support import chain as support_chain, models as support_models
+
     return {"enabled": enabled(), "calls_today": st["calls"], "max_calls_per_day": max_calls_per_day(),
             "support": {"calls_today": st.get("support", 0), "max_calls_per_day": max_calls_per_day("support"),
-                        "providers": [{"name": p["name"], "model": p["model"], "configured": p["ready"]} for p in configured(sup)]},
-            "providers": [{"name": p["name"], "model": p["model"], "configured": p["ready"], "skipped_today": _skipped(st, p["name"]),
+                        "providers": [{"name": p["name"], "model": p["model"], "configured": p["ready"]} for p in configured(support_chain(), support_models())]},
+            "providers": [{"name": p["name"], "model": p["model"], "configured": p["ready"], "skipped_today": _skipped(st, p),
                            "reason": p["reason"] or None} for p in configured()]}
 
 
@@ -161,27 +180,39 @@ LOCAL_ONLY_REASON = ("Real project data is sent only to a local model on this se
                      "Mark the project as synthetic for cloud AI, or configure Ollama (URBANOVA_LLM_OLLAMA_MODEL).")
 
 
-def available(local_only: bool = False, chain: str | None = None, budget: str = "calls") -> list[dict]:
-    """Ready providers not skipped today, in chain order (empty when AI is switched off or the budget is used up).
-    `local_only` keeps only providers on this machine (real project data); `chain` as in configured()."""
+def available(local_only: bool = False, chain: str | None = None, budget: str = "calls", models: dict | None = None) -> list[dict]:
+    """Ready provider entries not paused, in chain order (empty when AI is switched off or the budget is used up).
+    `local_only` keeps only providers on this machine (real project data); `chain` and `models` as in configured().
+    Each entry knows whether another one follows (`more_after`), so a rate limit moves on at once instead of waiting."""
     if not enabled():
         return []
     st = _state()
     if st.get(budget, 0) >= max_calls_per_day(budget):
         return []
-    return [p for p in configured(chain) if p["ready"] and not _skipped(st, p["name"]) and (not local_only or is_local(p))]
+    out = [p for p in configured(chain, models) if p["ready"] and not _skipped(st, p) and (not local_only or is_local(p))]
+    for i, p in enumerate(out):
+        p["more_after"] = i < len(out) - 1
+    return out
 
 
-def _skipped(st: dict, name: str) -> bool:
-    """True while the provider is paused: for the day (a plain reason) or until a time (rate limit)."""
-    v = st["skipped"].get(name)
+def _paused(v) -> bool:
     if isinstance(v, dict):
         return time.time() < v.get("until", 0)
     return v is not None
 
 
-def pause(name: str, exc: ProviderFailure) -> None:
-    """Record a provider failure: a rate limit pauses it briefly, anything else (except a too-large request) for today."""
+def _skipped(st: dict, p: dict | str) -> bool:
+    """True while the entry is paused: for the day (a plain reason) or until a time (rate limit). Pausing a provider's name
+    pauses every model of its pool; pausing an entry's id pauses that model only."""
+    if isinstance(p, str):
+        return _paused(st["skipped"].get(p))
+    return _paused(st["skipped"].get(p["name"])) or _paused(st["skipped"].get(p.get("id") or p["name"]))
+
+
+def pause(provider: dict | str, exc: ProviderFailure) -> None:
+    """Record a failure of a provider entry (or a whole provider, by name): a rate limit pauses it briefly, anything else
+    (except a too-large request) for today."""
+    name = provider if isinstance(provider, str) else (provider.get("id") or provider["name"])
     if isinstance(exc, RequestTooLarge):
         return
     if isinstance(exc, RateLimited):
@@ -245,7 +276,7 @@ def chat_json(provider: dict, messages: list[dict], budget: str = "calls") -> st
         if r.status_code == 429:
             # Per-minute limits clear quickly: wait as asked (up to MAX_RETRY_WAIT_S) and try once more.
             wait = _retry_after(r)
-            if wait is not None and wait <= MAX_RETRY_WAIT_S:
+            if wait is not None and wait <= MAX_RETRY_WAIT_S and not provider.get("more_after"):  # with another model ready, move on
                 _log(provider["name"], url, 429, int((time.monotonic() - t0) * 1000), "rate_limited_wait", 1, False, f"retry after {wait:.0f}s")
                 time.sleep(wait)
                 r = httpx.post(url, json=body, headers=headers, timeout=timeout_s())

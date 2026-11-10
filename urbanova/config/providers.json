@@ -507,7 +507,7 @@
       "approval_status": "approved",
       "approved_by": "Project decision maker (data science lead)",
       "approved_on": "2026-11-10",
-      "approval_note": "Approved in the stage S9 plan (support assistant, OpenAI chosen by the project owner)."
+      "approval_note": "Approved in the stage S9 plan as a paid opt-in for the help assistant (URBANOVA_SUPPORT_PROVIDERS=openai); the default is the free Groq pool (owner decision of 10 Nov 2026)."
     },
     {
       "id": "pc_esa_worldcover",

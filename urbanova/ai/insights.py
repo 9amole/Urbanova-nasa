@@ -54,7 +54,7 @@ def _ask_model(messages: list[dict], check, version: str, phash: str, attempts: 
             try:
                 raw = llm.chat_json(prov, msgs)
             except llm.ProviderFailure as exc:
-                llm.pause(prov["name"], exc)
+                llm.pause(prov, exc)
                 attempts.append({"provider": prov["name"], "model": prov["model"], "outcome": "provider_failure", "detail": str(exc)})
                 break  # next provider
             out, errs = check(raw)

@@ -7,7 +7,7 @@ project lookup goes through the user's project membership, so the assistant neve
 never changes data: change requests are refused before any model call, as are temperature predictions. Without a
 provider (no key, budget used, AI off) it answers from the FAQ and the page help, labelled as automatic.
 
-Providers come from URBANOVA_SUPPORT_PROVIDERS (default "openai", decision of 2026-11-10).
+Providers come from URBANOVA_SUPPORT_PROVIDERS (default "groq", a free pool of three models; "openai" is opt-in and paid).
 """
 
 from __future__ import annotations
@@ -32,7 +32,8 @@ MAX_TEXT = 1000
 BUDGET = "support"  # own daily call counter (URBANOVA_SUPPORT_MAX_CALLS_PER_DAY), so help traffic never stops the analysis AI
 ROLES = {"urban_planner": "Urban planner", "architect": "Architect", "developer": "Developer", "municipality": "Municipality or authority",
          "consultant": "Consultant", "student_researcher": "Student or researcher", "other": "Other"}
-LINK = re.compile(r"^#/[A-Za-z0-9_/\-]{0,120}$")  # in-app links only
+PAGE_TABS = "overview|inputs|rules|readiness|scenarios|analysis|results|compare|report"
+LINK = re.compile(rf"^#/(projects|p/prj_[a-z0-9]{{6,32}}(/({PAGE_TABS})(/[a-z]+_[a-z0-9]{{6,32}})?)?)$")  # real in-app routes only
 PRICE = re.compile(r"(EGP|USD|EUR|GBP|SAR|AED|\$|€|£)\s?\d|\d[\d,.]*\s?(EGP|USD|EUR|GBP|SAR|AED|pounds?|dollars?|euros?|جنيه)", re.I)
 # A request for the assistant to act ("please delete…", "can you create … for me"). A plain imperative such as
 # "Upload a DXF — which EPSG?" is a how-to question, so it goes to the model or the FAQ; the assistant has no write tools.
@@ -42,8 +43,18 @@ READ_ONLY = ("I can't change anything in your projects: I only read and explain.
              "for example, new projects are created on the Projects page and analyses are started on the 6 · Run analysis tab.")
 
 
+# Free by default (owner, 10 Nov 2026: no paid credit). The help assistant starts its Groq pool with other models than the
+# analysis AI does, so the two rarely compete for the same model's per-minute allowance. OpenAI stays available as opt-in.
+SUPPORT_GROQ_MODELS = ["openai/gpt-oss-20b", "qwen/qwen3.8-27b", "openai/gpt-oss-120b"]
+
+
 def chain() -> str:
-    return os.environ.get("URBANOVA_SUPPORT_PROVIDERS", "openai")
+    return os.environ.get("URBANOVA_SUPPORT_PROVIDERS", "groq")
+
+
+def models() -> dict:
+    pool = [m.strip() for m in os.environ.get("URBANOVA_SUPPORT_GROQ_MODELS", "").split(",") if m.strip()]
+    return {"groq": pool or SUPPORT_GROQ_MODELS}
 
 
 def max_per_user_day() -> int:
@@ -206,8 +217,15 @@ designs and writes a report. It does NOT predict temperatures or comfort, run si
 authority, or guarantee savings or health outcomes.
 You are a support centre: explain the platform and the page the user is on, answer questions, help the user choose a
 subscription plan, and guide them through their own projects. Tailor the answer to the user's role and goal.
+Design hotspots are of three kinds only: H1 sun-exposed hard surface, H3 shade deficit, H4 planning-rule violation. Their
+likely causes are only: large paved area, no afternoon shade, no trees nearby, exposed west edge, street orientation that
+exposes streets to the sun, and exceeding a verified planning rule. Existing-land context (an observed hot cluster, land
+cover) is shown separately and is never a design hotspot. Do not name any other kind or cause (no airflow, wind or CFD).
 Rules:
 - Use tools to look things up; never invent project facts, results, numbers, features or prices.
+- When the user asks about their projects or results, call list_my_projects and then get_project for the relevant one
+  before answering; never say you cannot see them. A project with AI switched off shares only its name and status:
+  then say so and how to switch AI on.
 - Plans: quote only the plans from list_plans. When a price is null say pricing is not announced yet; never guess one.
   When you recommend a plan, set "suggest_plan" to its id and explain why from the user's needs and the plan's limits.
 - For detailed questions about a run's numbers, point to the results chat at the bottom of the 7 · Results tab.
@@ -223,7 +241,8 @@ Tools (read-only; ask for ONE per reply with {"call": {"tool": NAME, "args": {..
 - search_faq {"query": "words"} : the matching FAQ entries.
 - list_plans {} : the subscription plans with limits, features and prices.
 When ready, reply {"answer": "text", "links": [{"label": "short", "href": "#/..."}], "suggest_plan": null or a plan id}.
-Links must be in-app links starting with "#/" (from tool results or "#/projects"). At most 4 links."""
+Links must be copied exactly from tool results or the context ("#/projects", "#/p/<project id>/<page>"); never make one
+up. At most 4 links."""
 
 
 def _context(user: dict, page: str, project: dict | None, role: str | None, run: dict | None = None) -> str:
@@ -231,7 +250,8 @@ def _context(user: dict, page: str, project: dict | None, role: str | None, run:
     ctx = {"user": {"name": u.get("name"), "role": ROLES.get(u.get("support_role") or ""), "goal": u.get("support_goal")},
            "today": datetime.now(timezone.utc).date().isoformat(), "current_page": {"key": page, **pages()[page]}}
     if project:
-        ctx["current_project"] = {"id": project["id"], "name": project["name"], "your_role": role}
+        ctx["current_project"] = {"id": project["id"], "name": project["name"], "your_role": role,
+                                  "links": {k: f"#/p/{project['id']}/{k}" for k in PAGE_TABS.split("|")}}
         if run:
             ctx["current_project"]["open_run"] = {"id": run["id"], "status": run["status"], "completed": (run.get("completed_at") or "")[:16]}
     return json.dumps(ctx, ensure_ascii=False)
@@ -290,7 +310,7 @@ def turn(user: dict, text: str, history: list[dict], page: str | None, project_i
         return _reply("rule", READ_ONLY, refusal="read_only")
     if not ai_allowed:
         return fallback(q, page, "You have used today's AI messages; the help centre answers automatically until tomorrow.")
-    provs = llm.available(not llm.cloud_allowed_for_real_data(), chain=chain(), budget=BUDGET)
+    provs = llm.available(not llm.cloud_allowed_for_real_data(), chain=chain(), budget=BUDGET, models=models())
     if not provs:
         return fallback(q, page, "No AI provider is available (not configured, switched off or over today's budget).")
     project = db.get("projects", project_id) if project_id else None
@@ -314,7 +334,7 @@ def turn(user: dict, text: str, history: list[dict], page: str | None, project_i
             try:
                 raw = llm.chat_json(prov, m, budget=BUDGET)
             except llm.ProviderFailure as exc:
-                llm.pause(prov["name"], exc)
+                llm.pause(prov, exc)
                 attempts.append({"provider": prov["name"], "outcome": "provider_failure", "detail": str(exc)})
                 break
             out, errs = parse(raw)

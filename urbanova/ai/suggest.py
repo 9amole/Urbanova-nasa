@@ -49,7 +49,7 @@ def _run(prompt: str, payload: dict, version: str, local_only: bool = False) -> 
         try:
             raw = llm.chat_json(prov, [{"role": "system", "content": prompt}, {"role": "user", "content": blob}])
         except llm.ProviderFailure as exc:
-            llm.pause(prov["name"], exc)
+            llm.pause(prov, exc)
             continue
         try:
             out = json.loads(raw)

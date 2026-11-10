@@ -176,6 +176,7 @@ def ai_env(env, monkeypatch):
     for k in ("GROQ", "OPENROUTER"):
         monkeypatch.setenv(f"URBANOVA_LLM_{k}_API_KEY", SENTINEL)
     monkeypatch.setenv("URBANOVA_LLM_PROVIDERS", "groq,openrouter")
+    monkeypatch.setenv("URBANOVA_LLM_GROQ_MODELS", "openai/gpt-oss-120b")  # one model per provider here; pools: test_stage_s9
     monkeypatch.setenv("URBANOVA_LLM_MAX_CALLS_PER_DAY", "50")
     return settings
 
