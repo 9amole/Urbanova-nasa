@@ -124,3 +124,23 @@ ul.plain { list-style: none; padding: 0; margin: 4px 0; }
   .help-panel { inset: 0; width: auto; max-width: none; height: auto; border-radius: 0; }
   .help-btn { right: 16px; bottom: 16px; }
 }
+
+/* 10 · Dashboard (S10) */
+.dash-status { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+.dash-status .row { display: flex; gap: 6px; flex-wrap: wrap; }
+a.button { display: inline-block; padding: 6px 12px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); color: var(--ink); text-decoration: none; }
+a.button:hover { border-color: var(--accent); }
+.tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 12px; margin: 12px 0; }
+.tile { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
+.tile h3 { margin: 0 0 6px; font-size: 13px; color: var(--muted); font-weight: 600; }
+.tile-v { font-size: 15px; }
+.tile-v strong { font-size: 22px; }
+.tile .hint { margin: 6px 0 0; }
+svg.bars { width: 100%; max-width: 620px; height: auto; display: block; margin: 6px 0 10px; }
+svg.bars .bl, svg.bars .bv { font-size: 12px; fill: var(--ink); }
+svg.bars .bar { fill: var(--info); }
+svg.bars .bar.base { fill: var(--muted); }
+svg.bars .bar.sev-high { fill: var(--bad); }
+svg.bars .bar.sev-moderate { fill: var(--warn); }
+svg.bars .bar.sev-low { fill: var(--ok); }
+.scroll-x { overflow-x: auto; max-width: 100%; }

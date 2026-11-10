@@ -39,6 +39,10 @@
     "compare": {"title": "8 · Compare", "purpose": "Compares the baseline with alternatives analysed in the same joint run.",
                 "steps": ["Select the alternatives.", "Optionally set criteria weights and a budget.", "Read the trade-offs and what each design gives up."],
                 "questions": ["Why can't I compare these designs?", "Why is there no single best design?"]},
+    "dashboard": {"title": "10 · Dashboard", "purpose": "Every important output of the project on one page: key figures, all design hotspots with the suggested option and cost, the designs side by side, planning rules, existing land, the AI summary, data quality, reports and recent runs.",
+                  "steps": ["Read the key figures at the top; a value that is missing says why instead of showing 0.", "Click a hotspot to open it on the Results tab.",
+                            "Use Designs side by side to see which alternative is better or worse on each indicator.", "Download reports and the data export at the bottom."],
+                  "questions": ["What does the dashboard show?", "Why is a value not available?", "Why are my designs not comparable?"]},
     "report": {"title": "9 · Report", "purpose": "Generates the PDF and HTML report and the data export of a run.",
                "steps": ["Click Generate PDF + HTML report.", "Download the report or the data export (GeoJSON and CSV)."],
                "questions": ["What is in the report?", "Why is my report labelled partial or synthetic?"]}

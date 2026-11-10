@@ -235,7 +235,7 @@ async function viewProjects() {
 }
 
 // ------------------------------------------------------------------ project workspace
-const TABS = [["overview", "1 · Site"], ["inputs", "2 · Inputs"], ["rules", "3 · Planning rules"], ["readiness", "4 · Readiness"], ["scenarios", "5 · Scenarios"], ["analysis", "6 · Run analysis"], ["results", "7 · Results"], ["compare", "8 · Compare"], ["report", "9 · Report"]];
+const TABS = [["overview", "1 · Site"], ["inputs", "2 · Inputs"], ["rules", "3 · Planning rules"], ["readiness", "4 · Readiness"], ["scenarios", "5 · Scenarios"], ["analysis", "6 · Run analysis"], ["results", "7 · Results"], ["compare", "8 · Compare"], ["report", "9 · Report"], ["dashboard", "10 · Dashboard"]];
 
 async function viewProject(pid, tab, extra) {
   const data = await api(`/projects/${pid}`);
@@ -246,8 +246,9 @@ async function viewProject(pid, tab, extra) {
     <nav class="tabs" aria-label="Project steps">${TABS.map(([k, l]) => `<a href="#/p/${pid}/${k}" ${k === tab ? 'aria-current="page"' : ""}>${esc(l)}</a>`).join("")}</nav>
     <div id="tab">${LOADING}</div>`;
   const el = document.getElementById("tab");
-  const views = { overview: tabOverview, inputs: tabInputs, rules: tabRules, readiness: tabReadiness, scenarios: tabScenarios, analysis: tabAnalysis, results: tabResults, compare: tabCompare, report: tabReport };
+  const views = { overview: tabOverview, inputs: tabInputs, rules: tabRules, readiness: tabReadiness, scenarios: tabScenarios, analysis: tabAnalysis, results: tabResults, compare: tabCompare, report: tabReport, dashboard: tabDashboard };
   await (views[tab] || tabOverview)(el, data, extra);
+  focusPending();
   document.getElementById("main").focus({ preventScroll: true });
 }
 
@@ -1080,6 +1081,168 @@ async function tabReport(el, data) {
   }, f.querySelector("button")); };
   el.querySelectorAll(".dl").forEach((b) => (b.onclick = () => guarded(() => download(`/reports/${b.dataset.id}/download?format=${b.dataset.f}`, `urbanova_${b.dataset.id}.${b.dataset.f}`), b)));
   el.querySelectorAll(".ex").forEach((b) => (b.onclick = () => guarded(() => download(`/analysis-runs/${b.dataset.run}/export`, `urbanova_${b.dataset.run}.zip`), b)));
+}
+
+// ------------------------------------------------------------------ 10 · Dashboard (S10): every important output on one page
+function focusLater(id) { try { sessionStorage.setItem("urbanova_focus", id); } catch (e) { /* storage may be blocked */ } }
+function focusPending() {
+  let id = null;
+  try { id = sessionStorage.getItem("urbanova_focus"); sessionStorage.removeItem("urbanova_focus"); } catch (e) { return; }
+  if (!id) return;
+  // The Results page keeps loading (layers, cards) after the router returns: wait for the element, then scroll once the page settles.
+  let tries = 0;
+  const go = () => {
+    const t = document.getElementById(`ev-${id}`);
+    if (!t) { if (++tries < 40) setTimeout(go, 150); return; }
+    const show = () => t.scrollIntoView({ block: "start" });
+    show(); setTimeout(show, 700);
+    t.classList.add("flash"); setTimeout(() => t.classList.remove("flash"), 2500);
+  };
+  go();
+}
+
+// Horizontal bars as inline SVG; the numbers are also in the text, so the chart is decorative for screen readers.
+function barsSvg(items, unit, opts = {}) {
+  const max = Math.max(...items.map((i) => Math.abs(i.value || 0)), 1e-9);
+  const rowH = 26, w = 520, labelW = opts.labelW || 190, barW = w - labelW - 90;
+  const rows = items.map((i, k) => {
+    const len = i.value == null ? 0 : Math.max(2, (Math.abs(i.value) / max) * barW);
+    const y = k * rowH;
+    return `<text x="0" y="${y + 17}" class="bl">${esc(i.label.length > 30 ? i.label.slice(0, 29) + "…" : i.label)}</text>
+      <rect x="${labelW}" y="${y + 5}" width="${i.value == null ? 0 : len}" height="16" rx="3" class="bar ${esc(i.cls || "")}"></rect>
+      <text x="${labelW + (i.value == null ? 0 : len) + 6}" y="${y + 17}" class="bv">${i.value == null ? "n/a" : esc(fmt(i.value, 2))}${unit ? " " + esc(unit) : ""}</text>`;
+  }).join("");
+  return `<svg class="bars" viewBox="0 0 ${w} ${items.length * rowH}" role="img" aria-hidden="true" preserveAspectRatio="xMinYMin meet">${rows}</svg>`;
+}
+
+function dashValue(m) {
+  if (!m || m.state !== "available") return `<span class="muted">Not available${m && m.reason ? ": " + esc(m.reason) : ""}</span>`;
+  return `<strong>${esc(fmt(m.value, 2))}</strong> ${esc(m.unit || "")}`;
+}
+
+function tile(title, body, foot) {
+  return `<div class="tile"><h3>${esc(title)}</h3><div class="tile-v">${body}</div>${foot ? `<p class="hint">${foot}</p>` : ""}</div>`;
+}
+
+const moneyRange = (c) => (c.low != null && c.high != null && c.low !== c.high ? `${fmt(c.low, 0)}–${fmt(c.high, 0)}` : fmt(c.typical, 0));
+
+async function tabDashboard(el, data) {
+  const p = data.project;
+  const pid = p.id;
+  const d = await api(`/projects/${pid}/project-dashboard`);
+  const sevBadge = (s) => `<span class="badge sev-${esc(s)}">${esc(s.toUpperCase())}</span>`;
+  const rd = d.readiness || {};
+  const reports = (d.reports || []).map((r) => `<li>${esc(r.created_at)} — ${badge([r.status, r.status === "complete" ? "b-ok" : "b-warn"])}
+     ${r.pdf ? `<button class="small dl" data-rp="${esc(r.id)}" data-f="pdf">PDF</button>` : ""} ${r.html ? `<button class="small dl" data-rp="${esc(r.id)}" data-f="html">HTML</button>` : ""}</li>`).join("");
+  const activity = (d.activity || []).map((r) => `<tr><td>${esc(r.scenario || "—")}</td><td>${badge(RUN_STATUS[r.status] || [r.status, "b-mute"])}</td><td>${esc(r.completed_at || r.started_at || "")}</td></tr>`).join("");
+  const outputs = `<section class="panel"><h2>Outputs and activity</h2><div class="grid">
+     <div><h3>Reports</h3>${reports ? `<ul class="plain">${reports}</ul>` : `<p class="muted">No report yet. <a href="#/p/${pid}/report">Generate one on 9 · Report</a>.</p>`}
+     ${d.run ? `<p><button class="small" id="dash-export">Download the data export (GeoJSON, CSV)</button></p>` : ""}</div>
+     <div><h3>Latest runs</h3>${activity ? `<table><thead><tr><th>Scenario</th><th>Status</th><th>When</th></tr></thead><tbody>${activity}</tbody></table>` : `<p class="muted">No runs yet.</p>`}</div></div></section>`;
+  const wire = () => {
+    el.querySelectorAll(".dl").forEach((b) => (b.onclick = () => guarded(() => download(`/reports/${b.dataset.rp}/download?format=${b.dataset.f}`, `urbanova_report_${b.dataset.rp}.${b.dataset.f}`), b)));
+    const ex = document.getElementById("dash-export");
+    if (ex) ex.onclick = () => guarded(() => download(`/analysis-runs/${d.run.id}/export`, `urbanova_${d.run.id}.zip`), ex);
+    el.querySelectorAll("[data-focus]").forEach((a) => a.addEventListener("click", () => focusLater(a.dataset.focus)));
+  };
+  if (d.state === "empty") {
+    el.innerHTML = `<section class="panel"><h2>Dashboard</h2><p>No analysed baseline yet, so there are no results to show.</p><p><strong>Next step:</strong> ${esc(d.next_step || "")}</p>
+      <p class="hint">Readiness: ${rd.ready || 0} analyses ready, ${rd.ready_with_limitations || 0} with limitations, ${rd.blocked || 0} blocked.</p></section>${outputs}`;
+    return wire();
+  }
+  const t = d.tiles;
+  const res = `#/p/${pid}/results/${d.run.id}`;
+  const costCur = Object.entries(t.costs.by_currency);
+  const tiles = [
+    tile("Design hotspots", t.hotspots.assessed ? `<strong>${t.hotspots.count}</strong> <span class="muted">${t.hotspots.high} high · ${t.hotspots.moderate} moderate · ${t.hotspots.low} low</span>`
+      : `<span class="muted">Not assessed: ${esc(t.hotspots.reason)}</span>`, "Proposed design"),
+    tile("Hotspot area", `<strong>${esc(fmt(t.hotspot_area.area_m2, 0))}</strong> m² <span class="muted">(${esc(fmt(t.hotspot_area.site_share_pct, 1))} % of the site)</span>`, "Located hotspots only (site-wide rule shortfalls are not drawn)"),
+    ...t.metrics.map((m) => tile(m.label, dashValue(m), m.state === "available" ? `${esc(KIND[m.output_kind] || m.output_kind || "")} · ${m.condition === "design" ? "proposed design" : "existing land"}` : "")),
+    tile("Planning rules", t.rules.checked ? `<strong>${t.rules.failed}</strong> failed of ${t.rules.checked} checked` : `<span class="muted">No verified rule checked</span>`,
+      t.rules.not_checked ? `${t.rules.not_checked} could not be checked` : "Geometric checks, not a statutory approval"),
+    tile("Cost of the suggested options", costCur.length ? costCur.map(([cur, c]) => `<strong>${esc(moneyRange(c))}</strong> ${esc(cur)}`).join("<br>") : `<span class="muted">Price required</span>`,
+      `${t.costs.priced_options} priced, ${t.costs.price_required_options} need a price${t.costs.test_prices ? " · <strong>TEST prices, not real</strong>" : ""}`),
+  ].join("");
+
+  const hsRows = d.hotspots.map((h) => {
+    const o = h.option;
+    const eff = o && o.effect.before != null ? `${esc(fmt(o.effect.before, 0))} → ${esc(fmt(o.effect.after, 0))} ${esc(o.effect.unit || "")}${o.effect.change_pct != null ? ` (${o.effect.after < o.effect.before ? "−" : "+"}${esc(fmt(Math.abs(o.effect.change_pct), 1))} %)` : ""}` : "";
+    const cst = !o ? "" : o.cost.status === "priced" ? `${esc(moneyRange(o.cost))} ${esc(o.cost.currency)}` : `<span class="muted">price required</span>`;
+    return `<tr><td><a href="${res}" data-focus="${esc(h.id)}">Hotspot ${h.number}</a></td><td>${esc(h.types.join(" + "))}</td><td>${sevBadge(h.severity)}${h.severity_capped ? ` <span class="hint">provisional</span>` : ""}</td>
+      <td>${esc(fmt(h.area_m2, 0))} m²${h.site_wide ? ` <span class="hint">site-wide</span>` : ""}</td><td>${esc(h.main_cause || "—")}</td>
+      <td>${o ? `${esc(o.title)} <span class="hint">(${esc(o.size)})</span>` : `<span class="muted">no measured option</span>`}</td><td>${eff}</td><td>${cst}</td></tr>`;
+  }).join("");
+  const sev = ["high", "moderate", "low"].map((s) => ({ label: s[0].toUpperCase() + s.slice(1), value: t.hotspots[s], cls: `sev-${s}` }));
+
+  const D = d.designs;
+  const withRuns = D.designs.filter((x) => x.run);
+  const indKeys = Object.keys((withRuns[0] || {}).indicators || {});
+  const dirMark = (k, x) => {
+    const base = withRuns[0].indicators[k], v = x.indicators[k], dir = D.directions[k];
+    if (x === withRuns[0] || !dir || base.state !== "available" || v.state !== "available" || v.value === base.value) return "";
+    const better = dir === "higher" ? v.value > base.value : v.value < base.value;
+    return better ? ` <span class="badge b-ok">better</span>` : ` <span class="badge b-bad">worse</span>`;
+  };
+  const designTable = withRuns.length ? `<div class="scroll-x"><table><thead><tr><th>Indicator</th>${withRuns.map((x) => `<th>${esc(x.name)}${x.kind === "baseline" ? ` <span class="hint">(baseline)</span>` : ""}</th>`).join("")}</tr></thead><tbody>
+      <tr><td>Design hotspots</td>${withRuns.map((x) => `<td>${x.hotspots.count} <span class="hint">(${x.hotspots.high} high)</span></td>`).join("")}</tr>
+      <tr><td>Failed verified rules</td>${withRuns.map((x) => `<td>${x.rules_failed == null ? `<span class="muted">not checked</span>` : x.rules_failed}</td>`).join("")}</tr>
+      ${indKeys.map((k) => `<tr><td>${esc(withRuns[0].indicators[k].label)}</td>${withRuns.map((x) => `<td>${dashValue(x.indicators[k])}${dirMark(k, x)}</td>`).join("")}</tr>`).join("")}
+      <tr><td>Indicative cost vs baseline</td>${withRuns.map((x) => `<td>${x.kind === "baseline" ? "—" : x.cost && Object.keys(x.cost.totals_by_currency).length && x.cost.status === "complete"
+        ? Object.entries(x.cost.totals_by_currency).map(([c, v]) => `${esc(fmt(v, 0))} ${esc(c)}`).join(", ") : `<span class="muted">price required</span>`}</td>`).join("")}</tr>
+    </tbody></table></div>` : "";
+  const chartKey = "heat_stress_hard_surface_very_strong_m2h";
+  const chart = withRuns.length > 1 && withRuns[0].indicators[chartKey] ? `<h3>${esc(withRuns[0].indicators[chartKey].label)} <span class="hint">(lower is better)</span></h3>
+     ${barsSvg(withRuns.map((x) => ({ label: x.name, value: x.indicators[chartKey].value, cls: x.kind === "baseline" ? "base" : "" })), withRuns[0].indicators[chartKey].unit)}` : "";
+  const notComparable = withRuns.filter((x) => x.comparable === false);
+  const lc = D.latest_comparison;
+  const designs = `<section class="panel"><h2>Designs side by side</h2>
+     ${notComparable.length ? `<div class="alert warn">Not comparable with the baseline (analysed with other settings): ${notComparable.map((x) => `${esc(x.name)} (${esc(x.not_comparable_because.join(", "))})`).join("; ")}. Re-run all scenarios together on 6 · Run analysis.</div>` : ""}
+     ${withRuns.length < 2 ? `<p class="muted">Only the baseline has been analysed. Add alternatives on <a href="#/p/${pid}/scenarios">5 · Scenarios</a> and run them together.</p>` : ""}
+     ${designTable}${chart}
+     ${lc ? `<p><strong>Latest comparison (${esc(lc.created_at)}):</strong> ${lc.comparable === false ? esc((lc.issues || []).join(" ")) : esc(lc.statement || "")} <a href="#/p/${pid}/compare">Open 8 · Compare</a></p>` : `<p class="muted">No comparison made yet. <a href="#/p/${pid}/compare">Compare designs on 8 · Compare</a>.</p>`}
+     ${D.designs.filter((x) => !x.run).map((x) => `<p class="hint">${esc(x.name)}: not analysed yet.</p>`).join("")}</section>`;
+
+  const rules = d.rules.length ? `<table><thead><tr><th>Rule</th><th>Result</th><th>Measured</th><th>Limit</th><th>Source</th></tr></thead><tbody>${d.rules.map((r) => `<tr>
+      <td>${esc(r.label)}</td><td>${badge(r.status === "passes" ? ["Passes", "b-ok"] : r.status === "fails" ? ["Fails", "b-bad"] : ["Not checked", "b-mute"])}</td>
+      <td>${r.measured == null ? `<span class="muted">—</span>` : `${esc(fmt(r.measured, 2))} ${esc(r.unit || "")}`}</td><td>${esc(r.operator || "")} ${r.limit == null ? "" : `${esc(fmt(r.limit, 2))} ${esc(r.unit || "")}`}</td>
+      <td>${r.source ? `${esc(r.source.document || "")}${r.source.page ? `, p. ${esc(r.source.page)}` : ""}` : ""}</td></tr>`).join("")}</tbody></table>
+      <p class="hint">Geometric checks against the rules you verified; not a statutory approval.</p>` : `<p class="muted">No verified planning rule. Verify rules on <a href="#/p/${pid}/rules">3 · Planning rules</a>.</p>`;
+
+  const E = d.existing;
+  const existing = `<section class="panel"><h2>Existing land <span class="hint">(today's site — context, not design problems)</span></h2>
+     ${E.context.map((s) => `<p>${esc(s)}</p>`).join("")}
+     <div class="grid"><div><h3>Surface and vegetation</h3><table>${E.surface.map((m) => `<tr><td>${esc(m.label)}</td><td>${dashValue(m)}</td></tr>`).join("")}</table></div>
+     <div><h3>Climate baseline</h3><table>${E.climate.map((m) => `<tr><td>${esc(m.label)}</td><td>${dashValue(m)}</td></tr>`).join("")}</table>
+     ${E.climate_limitations.length ? `<details><summary>Limitations</summary><ul>${E.climate_limitations.map((x) => `<li>${esc(x)}</li>`).join("")}</ul></details>` : ""}</div></div>
+     ${E.land_cover.length ? `<h3>Land cover on the site</h3>${barsSvg(E.land_cover.map((m) => ({ label: m.label.replace(/^Site: /, "").replace(/ \(\d{4} land cover\)$/, ""), value: m.value })), "%", { labelW: 220 })}` : ""}</section>`;
+
+  const I = d.insights;
+  const insights = I ? `<section class="panel"><h2>Summary</h2><p class="hint">${esc(I.label || (I.generated_by === "ai" ? "AI-written, checked by the grounding validator" : "Automatic summary"))}</p>
+     ${[...I.site_status, ...I.attention_first].map((c) => `<p>${esc(c.text)}</p>`).join("")}</section>` : "";
+
+  const Q = d.quality;
+  const quality = `<section class="panel"><h2>Data quality and limitations</h2>
+     <table><thead><tr><th>Analysis</th><th>Status</th><th>Note</th></tr></thead><tbody>${Q.modules.map((m) => `<tr><td>${esc(m.label)}</td><td>${badge(MOD_STATUS[m.status] || [m.status, "b-mute"])}</td><td class="muted">${esc(m.reason || "")}</td></tr>`).join("")}</tbody></table>
+     ${Q.provisional_hotspots.length || Q.provisional_findings.length ? `<div class="alert warn">Provisional values: ${Q.provisional_hotspots.length} hotspot severities are capped at moderate${Q.provisional_findings.length ? `; findings with provisional thresholds: ${Q.provisional_findings.map(esc).join("; ")}` : ""}.</div>` : ""}
+     <details><summary>Data sources (${Q.datasets.length})</summary><ul>${Q.datasets.map((x) => `<li>${esc(x.source_id)} — ${esc(x.dataset_type || "")}${x.license ? ` · ${esc(x.license)}` : ""}${x.attribution ? ` · ${esc(x.attribution)}` : ""}</li>`).join("")}</ul></details>
+     <details><summary>Limitations (${Q.limitations.length})</summary><ul>${Q.limitations.map((x) => `<li>${esc(x)}</li>`).join("")}</ul></details></section>`;
+
+  el.innerHTML = `<section class="panel dash-status"><div><h2>Dashboard</h2>
+      <p class="muted">Latest baseline run of ${esc(d.run.scenario || "")}: ${badge(RUN_STATUS[d.run.status] || [d.run.status, "b-mute"])} ${esc(d.run.completed_at || "")}
+      ${d.run.stale ? ` ${badge(["results out of date", "b-warn"])} <span class="hint">changed since: ${esc(d.run.stale_inputs.join(", "))}</span>` : ""}
+      ${d.project.synthetic_data ? ` ${badge(["synthetic / test data", "b-warn"])}` : ""}</p>
+      <p class="hint">Readiness: ${rd.ready || 0} analyses ready, ${rd.ready_with_limitations || 0} with limitations, ${rd.blocked || 0} blocked.</p></div>
+      <div class="row"><a class="button" href="${res}">7 · Results</a><a class="button" href="#/p/${pid}/compare">8 · Compare</a><a class="button" href="#/p/${pid}/report">9 · Report</a></div></section>
+    <div class="tiles">${tiles}</div>
+    ${insights}
+    <section class="panel"><h2>Design hotspots</h2>${d.hotspots.length ? `${barsSvg(sev, "", { labelW: 90 })}
+      <div class="scroll-x"><table><thead><tr><th>Hotspot</th><th>Type</th><th>Severity</th><th>Area</th><th>Main cause</th><th>Suggested option</th><th>Measured effect</th><th>Cost</th></tr></thead><tbody>${hsRows}</tbody></table></div>
+      <p class="hint">The suggested option is the one the report explains (best value per cost, else largest benefit). Costs come only from your unit rates.</p>`
+      : `<p class="muted">${t.hotspots.assessed ? "No design hotspot was found." : esc(t.hotspots.reason)}</p>`}</section>
+    ${designs}
+    <section class="panel"><h2>Planning rules</h2>${rules}</section>
+    ${existing}${quality}${outputs}`;
+  wire();
 }
 
 // ------------------------------------------------------------------ router

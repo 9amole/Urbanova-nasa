@@ -11,7 +11,7 @@ function helpContext() {
   if (!state.token) return { page: "login" };
   if (parts[0] === "p" && parts[1]) {
     const page = parts[2] || "overview";
-    return { page, project_id: parts[1], run_id: page === "results" ? parts[3] : undefined };
+    return { page, project_id: parts[1], run_id: page === "results" ? parts[3] : undefined };  // includes "dashboard"
   }
   return { page: "projects" };
 }
@@ -50,7 +50,7 @@ function mountHelp() {
     else if (!e.shiftKey && document.activeElement === f[f.length - 1]) { e.preventDefault(); f[0].focus(); }
   });
   window.addEventListener("hashchange", () => {
-    if (help.owner !== undefined && help.owner !== state.token) {  // signed out or another account: never show the previous user's chat
+    if ((help.owner ?? null) !== state.token) {  // signed in, signed out or another account: never show the previous session's chat
       resetHelpUser();
       if (help.open) renderHelp();
     } else if (help.open) renderHelpContext();

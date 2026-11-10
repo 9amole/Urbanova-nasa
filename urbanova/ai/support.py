@@ -32,7 +32,7 @@ MAX_TEXT = 1000
 BUDGET = "support"  # own daily call counter (URBANOVA_SUPPORT_MAX_CALLS_PER_DAY), so help traffic never stops the analysis AI
 ROLES = {"urban_planner": "Urban planner", "architect": "Architect", "developer": "Developer", "municipality": "Municipality or authority",
          "consultant": "Consultant", "student_researcher": "Student or researcher", "other": "Other"}
-PAGE_TABS = "overview|inputs|rules|readiness|scenarios|analysis|results|compare|report"
+PAGE_TABS = "overview|inputs|rules|readiness|scenarios|analysis|results|compare|report|dashboard"
 LINK = re.compile(rf"^#/(projects|p/prj_[a-z0-9]{{6,32}}(/({PAGE_TABS})(/[a-z]+_[a-z0-9]{{6,32}})?)?)$")  # real in-app routes only
 PRICE = re.compile(r"(EGP|USD|EUR|GBP|SAR|AED|\$|€|£)\s?\d|\d[\d,.]*\s?(EGP|USD|EUR|GBP|SAR|AED|pounds?|dollars?|euros?|جنيه)", re.I)
 # A request for the assistant to act ("please delete…", "can you create … for me"). A plain imperative such as

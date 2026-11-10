@@ -16,6 +16,7 @@ log, not a screen recording.
 | 7 | 6 · Run analysis → Advanced → "Experimental: downscale …" → "Run all active scenarios" | Three runs queued with per-scenario progress bars | ok |
 | 8 | 8 · Compare after the joint run (both alternatives) | "No single best design" without weights; cost vs heat-stress trade-off chart; give-up list (parking, irrigation water "value required"); hotspots per design; indicator differences | ok |
 | 8b | 9 · Report → "Generate PDF + HTML report" | New report listed with PDF, HTML and data-export downloads; labelled partial because some analyses were limited | ok |
+| 8c | 10 · Dashboard (S10, 10 Nov 2026) | Key-figure tiles, all 8 hotspots with option, effect and cost, 3 designs side by side (better/worse marks, latest comparison verdict), rule checks, existing land, data quality, reports; a hotspot link opens it on Results; phone width without horizontal scroll | ok, after 2 fixes: the Help panel kept its signed-out text after sign-in; the Results page was not yet built when the hotspot link tried to scroll |
 | 9 | Rapid switching between map tabs (Site ↔ Results ↔ Inputs, < 0.3 s apart) | Browser console | **no errors** after fix 2 |
 
 **Defects found and fixed during the walkthrough**

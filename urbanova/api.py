@@ -19,6 +19,7 @@ from .ai import llm as ai_llm
 from .ai import suggest as ai_suggest
 from .ai import support as ai_support
 from . import __version__, comparison, cost, db, documents, explain, files, geo, orchestrator, plans, projects, readiness, report, scenarios, security, supplementary
+from . import dashboard as project_dash
 from .catalog import public_dataset
 from .providers import geocode
 from .providers.base import ProviderError, registry
@@ -418,6 +419,13 @@ def option_draft(rid: str, oid: str, user: dict = Depends(current_user)):
 def dashboard(pid: str, user: dict = Depends(current_user)):
     p, _ = _project(pid, user)
     return projects.dashboard(p)
+
+
+@app.get(f"{API}/projects/{{pid}}/project-dashboard")
+def project_dashboard(pid: str, user: dict = Depends(current_user)):
+    """The Dashboard tab (S10): every important output of the project, read-only, no model calls."""
+    p, _ = _project(pid, user)
+    return project_dash.build(p)
 
 
 @app.post(f"{API}/scenarios/{{sid}}/archive")

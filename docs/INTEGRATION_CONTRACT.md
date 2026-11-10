@@ -297,7 +297,7 @@ and its endpoints are under `/api/v1`:
 
 | Area | Endpoints |
 |---|---|
-| Projects | `POST/GET /projects`, `GET/PATCH /projects/{pid}`, `POST /projects/{pid}/confirm-location`, `/site-area-basis`, `/members`, `/readiness-check`, `GET /projects/{pid}/dashboard` |
+| Projects | `POST/GET /projects`, `GET/PATCH /projects/{pid}`, `GET /projects/{pid}/project-dashboard` (S10: every important output on one page), `POST /projects/{pid}/confirm-location`, `/site-area-basis`, `/members`, `/readiness-check`, `GET /projects/{pid}/dashboard` |
 | Inputs | `POST /projects/{pid}/uploads`, `GET /projects/{pid}/files`, `POST /files/{fid}/confirm-units`, `GET /projects/{pid}/features`, `PATCH /features/{fid}`, `GET/POST /projects/{pid}/rules`, `POST /rules/{rid}/decision`, `GET/POST /projects/{pid}/rates` |
 | Scenarios | `GET/POST /projects/{pid}/scenarios`, `GET/PATCH /scenarios/{sid}`, `POST /scenarios/{sid}/import`, `/approve`, `/archive`, `POST /analysis-runs/{rid}/options/{oid}/draft`, `/package/draft` |
 | Runs | `POST /projects/{pid}/analysis-runs`, `/analysis-runs/all-scenarios`, `GET /jobs/{jid}`, `GET /analysis-runs/{rid}` (+ `/metrics`, `/findings`, `/recommendations`, `/export`), `GET /layers/{lid}/data` |
