@@ -184,8 +184,18 @@ def dashboard(project: dict) -> dict:
     rd = readiness.assess(project)
     completeness = {"readiness": {s: sum(1 for a in rd["analyses"] if a["status"] == s) for s in ("ready", "ready_with_limitations", "blocked")}}
     if not run:
-        step = "Create the baseline scenario on the Inputs tab." if not base else "Run the analysis for the baseline on the Run analysis tab."
-        return {"state": "empty", "next_step": step, "completeness": completeness}
+        from .dashboard import SITE_NEXT_STEP, SITE_TILES, _metric, site_run
+
+        srun = site_run(project["id"])
+        if srun:  # site analysis only (S11): what the land is like today
+            sb = orchestrator.run_bundle(srun)
+            ms_ = {m["metric_name"]: m for m in sb["metrics"]}
+            return {"state": "site", "run_id": srun["id"], "run_status": srun["status"], "completed_at": srun.get("completed_at"),
+                    "stale": bool(sb["run"]["stale_modules"]), "site": [_metric(ms_.get(k), k, label) for k, label in SITE_TILES],
+                    "existing": [c["statement"] for c in sb.get("site_context") or []], "next_step": SITE_NEXT_STEP, "completeness": completeness}
+        step = ("Analyse the site now, or upload a design plan on the Inputs tab and create the baseline." if not base
+                else "Run the analysis for the baseline on the Run analysis tab.")
+        return {"state": "empty", "next_step": step, "completeness": completeness, "can_analyse_site": not base}
     b = orchestrator.run_bundle(run)
     hs = b["hotspots"]
     from .report_front import _options_by_hotspot, suited

@@ -11,9 +11,9 @@ from typing import Any, Literal, get_args
 
 from pydantic import BaseModel, ConfigDict, Field
 
-CONTRACT_VERSION = "1.1"
+CONTRACT_VERSION = "1.2"
 # Requests written for these versions are accepted unchanged (1.1 only added result fields).
-RequestVersion = Literal["1.0", "1.1"]
+RequestVersion = Literal["1.0", "1.1", "1.2"]
 ACCEPTED_REQUEST_VERSIONS = get_args(RequestVersion)
 
 FeatureType = Literal["site_boundary", "building", "road", "green_space", "tree", "parking", "open_space", "water",
@@ -267,6 +267,7 @@ class ModuleOutcome(BaseModel):
     status: ModuleStatus
     label: str
     reason: str | None = None
+    site_mode: bool = Field(False, description="True when a design-only module was left out because the run is a site analysis (contract 1.2).")
     warnings: list[str] = []
     limitations: list[str] = []
     details: dict[str, Any] = {}
@@ -288,6 +289,8 @@ class DesignResult(BaseModel):
     design_name: str | None
     kind: Literal["baseline", "alternative"] | None
     status: Literal["succeeded", "partially_succeeded", "failed"]
+    analysis_mode: Literal["site", "design"] = Field("design", description="'site' for a site analysis (no design: the design-only modules are left "
+                                                     "out with a note, not blocked); 'design' otherwise (contract 1.2).")
     modules: dict[str, ModuleOutcome]
     metrics: list[Metric]
     findings: list[Finding]

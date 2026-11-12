@@ -673,7 +673,8 @@
     "contract_version": {
       "enum": [
         "1.0",
-        "1.1"
+        "1.1",
+        "1.2"
       ],
       "title": "Contract Version",
       "type": "string"

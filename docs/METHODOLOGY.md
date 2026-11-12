@@ -2,6 +2,17 @@
 
 All vector data is stored in WGS 84. Areas and distances are computed in the project's local UTM zone (`EPSG:326xx/327xx`, chosen from the coordinates). Every metric records a **state** (`available`, `unknown`, `unavailable`, `invalid`, `blocked`, `not_applicable`) and an **output kind** (observed, reanalysis, calculated, classified, modelled, user-provided). Non-available values never carry a number. Every metric also records a **condition**: `existing` (it describes the land as it is today, so it is the same for every design) or `design` (it describes the proposed design). The condition comes from `urbanova/config/analyses.json` (see docs/ANALYSES.md); only design values are compared between designs. Every threshold, band and default has a basis record in `urbanova/config/basis.json` (standard, regulatory, literature, statistical, project choice or provisional), listed in each report.
 
+
+## Site analysis and full analysis (S11)
+* **Site analysis** (a run without a design scenario, or an engine request with 0 designs): the land as it is today.
+  It covers the climate baseline, the surroundings (OpenStreetMap), land cover, satellite surface temperature and
+  vegetation, the sun position, and heat stress in full sun and in shade on the hot day (UTCI). Without a design nothing
+  casts shade, so the shade step passes on the sun positions only.
+* The design-only analyses (urban form, planning checks, hotspots, options) are left out with a note (`site_mode`)
+  instead of being blocked, so a complete site analysis is reported as complete.
+* **Full analysis:** once a baseline design exists, its runs include everything above plus the design analyses. The
+  1 · Site summary and the Dashboard use the baseline run when there is one, else the latest site analysis.
+
 ## Climate & heat baseline (FR-17)
 * Source: Open-Meteo Historical API, `models=era5`, daily Tmax/Tmin/Tmean, RH mean, 10 m max wind, precipitation, shortwave sum, `timezone=auto`. Units are checked against expected units; values outside physical ranges become missing. Fallback: NASA POWER daily (T2M_MAX/MIN, T2M, RH2M, PRECTOTCORR, ALLSKY_SFC_SW_DWN ×3.6 → MJ/m²); fill −999 → missing; wind excluded.
 * Monthly climatology = mean of daily values per calendar month; hottest 3 months = highest mean Tmax.

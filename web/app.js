@@ -252,9 +252,27 @@ async function viewProject(pid, tab, extra) {
   document.getElementById("main").focus({ preventScroll: true });
 }
 
-function dashboardHtml(d, pid) {
+function siteRunButton(p, label) {
+  if (p.role === "viewer") return "";
+  return `<p><button class="primary" id="dash-site-run" ${p.location_confirmed ? "" : "disabled"}>${esc(label)}</button>
+    ${p.location_confirmed ? "" : `<span class="hint">Confirm the site location below first.</span>`}</p><div id="dash-site-progress" aria-live="polite"></div>`;
+}
+
+function siteTilesHtml(list) {
+  return `<div class="tiles">${list.map((m) => tile(m.label, dashValue(m), m.state === "available" ? `${esc(KIND[m.output_kind] || m.output_kind || "")} · existing land` : "")).join("")}</div>`;
+}
+
+function dashboardHtml(d, pid, p) {
   if (!d) return "";
-  if (d.state === "empty") return `<section class="panel dash"><h2>Site dashboard</h2><p>No analysed baseline yet. Next step: ${esc(d.next_step)}</p></section>`;
+  if (d.state === "empty") return `<section class="panel dash"><h2>Site dashboard</h2><p>Nothing analysed yet. Next step: ${esc(d.next_step)}</p>
+    ${d.can_analyse_site && p ? `<p class="hint">No design yet? A <strong>site analysis</strong> shows what the land is like today: climate, surface temperature, vegetation, land cover, the surroundings and how hot it feels outdoors in sun and shade. It takes a few minutes.</p>${siteRunButton(p, "Analyse this site now")}` : ""}</section>`;
+  if (d.state === "site") return `<section class="panel dash"><h2>Site dashboard — site analysis</h2>
+    <div class="alert info">${esc(d.next_step)}</div>
+    <p class="muted">Latest site analysis ${esc(d.run_id)} (${esc(d.run_status.replace(/_/g, " "))}, ${esc(d.completed_at || "")})${d.stale ? " — " + badge(["out of date", "b-warn"]) : ""}
+      · <a href="#/p/${pid}/results/${esc(d.run_id)}">Open the results</a> · <a href="#/p/${pid}/dashboard">10 · Dashboard</a></p>
+    ${siteTilesHtml(d.site)}
+    ${d.existing.length ? `<p class="muted">${d.existing.map(esc).join(" ")}</p>` : ""}
+    ${p ? siteRunButton(p, "Run the site analysis again") : ""}</section>`;
   const c = d.condition.design;
   const sevBadge = (s) => `<span class="badge sev-${esc(s)}">${esc(s.toUpperCase())}</span>`;
   return `<section class="panel dash"><h2>Site dashboard</h2>
@@ -272,12 +290,28 @@ function dashboardHtml(d, pid) {
    </div></section>`;
 }
 
+async function startSiteAnalysis(pid, btn) {
+  // One click: a run without a design scenario is a site analysis (S11); the design-only analyses are left out.
+  const box = document.getElementById("dash-site-progress");
+  const r = await api(`/projects/${pid}/analysis-runs`, { body: { scenario_id: null, config: {} } });
+  for (;;) {
+    const j = await api(`/jobs/${r.job_id}`);
+    if (box) box.innerHTML = `<p>${badge(RUN_STATUS[j.status] || [j.status, "b-info"])} ${esc(j.stage || "")}</p>
+      <div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round((j.progress || 0) * 100)}"><div style="width:${Math.round((j.progress || 0) * 100)}%"></div></div>`;
+    if (!["queued", "running"].includes(j.status)) break;
+    await new Promise((res) => setTimeout(res, 2000));
+  }
+  notify("Site analysis finished. Opening the results.", "ok");
+  location.hash = `#/p/${pid}/results/${r.id}`;
+}
+
 async function tabOverview(el, data) {
   const p = data.project;
   const canEdit = p.role !== "viewer";
   let dash = null;
   try { dash = await api(`/projects/${p.id}/dashboard`); } catch (_) { dash = null; }
-  el.innerHTML = `${dashboardHtml(dash, p.id)}<div class="grid">
+  setTimeout(() => { const b = document.getElementById("dash-site-run"); if (b) b.onclick = () => guarded(() => startSiteAnalysis(p.id, b), b); }, 0);
+  el.innerHTML = `${dashboardHtml(dash, p.id, p)}<div class="grid">
    <section class="panel"><h2>Site</h2>
     <table><tr><th>Project ID</th><td class="mono">${esc(p.id)}</td></tr><tr><th>Coordinates (WGS 84)</th><td class="mono">${fmt(p.latitude, 6)}, ${fmt(p.longitude, 6)}</td></tr>
     <tr><th>Local CRS for areas</th><td class="mono">${esc(p.local_crs)}</td></tr><tr><th>Site boundary</th><td>${p.boundary ? `Supplied — ${fmt(p.site_area_m2, 0)} m² (${fmt(p.site_area_m2 / 10000, 2)} ha)` : "Not supplied"}</td></tr>
@@ -630,8 +664,9 @@ async function tabAnalysis(el, data) {
   ${canEdit ? `<section class="panel"><h2>Run analysis</h2>
    <p class="hint">Heat analysis = regional climate baseline + satellite land surface temperature (only if its data source is approved — see Readiness), interpreted with the design's green, hard-surface and shade indicators. Modules run independently; a failed data source does not stop the others.</p>
    <form id="f-run"><div class="grid"><div>
-    <label for="ru-scen">Design scenario</label><select id="ru-scen">${active.map((s) => `<option value="${s.id}">${esc(s.name)}${s.kind === "baseline" ? " (baseline)" : ""}</option>`).join("")}<option value="">No design — site context only</option></select>
-    <fieldset><legend>Modules <span class="hint">(defaults follow your objectives)</span></legend>${state.meta.runnable_modules.map((m) => `<label class="check"><input type="checkbox" name="mod" value="${m}" checked> ${esc(state.meta.analyses[m])}</label>`).join("")}</fieldset>
+    <label for="ru-scen">What to analyse</label><select id="ru-scen">${active.map((s) => `<option value="${s.id}">${esc(s.name)}${s.kind === "baseline" ? " (baseline)" : ""}</option>`).join("")}<option value="" ${active.length ? "" : "selected"}>Site analysis — the land as it is (no design)</option></select>
+    <p class="hint" id="ru-mode"></p>
+    <fieldset><legend>Modules <span class="hint">(defaults follow your objectives)</span></legend>${state.meta.runnable_modules.map((m) => `<label class="check" data-mod="${m}"><input type="checkbox" name="mod" value="${m}" checked> ${esc(state.meta.analyses[m])}<span class="hint needs-design" hidden> — needs a design plan</span></label>`).join("")}</fieldset>
    </div><div><details><summary>Advanced settings</summary>
     <label for="cf-ctx">Context study buffer (m)</label><input id="cf-ctx" type="number" value="${dc.context_buffer_m}" min="100" max="3000">
     <label for="cf-lst">Surface-temperature surroundings buffer (m)</label><input id="cf-lst" type="number" value="${dc.lst_buffer_m}" min="100" max="3000">
@@ -641,7 +676,7 @@ async function tabAnalysis(el, data) {
     <label for="cf-date">Shade analysis date override</label><input id="cf-date" type="date">
     <label class="check"><input type="checkbox" id="cf-ds"> Experimental: downscale land surface temperature to 30 m (machine learning)</label>
     <p class="hint">Adds the vegetation and land-cover inputs. Existing land only; the 30 m map is kept only if it passes its own checks, and is labelled with its error.</p></details>
-    <p><button id="run-one" class="primary" type="submit" ${p.location_confirmed ? "" : "disabled"}>Run for selected scenario</button>
+    <p><button id="run-one" class="primary" type="submit" ${p.location_confirmed ? "" : "disabled"}>Run the analysis</button>
     <button id="run-all" type="button" ${p.location_confirmed && active.length ? "" : "disabled"}>Run all active scenarios with these settings</button></p>
     <p class="hint">Use "Run all" before comparing so the baseline and alternatives share identical settings.</p></div></div></form>
    <div id="progress" aria-live="polite"></div></section>` : ""}
@@ -651,13 +686,28 @@ async function tabAnalysis(el, data) {
   </tbody></table></section>`;
   const f = document.getElementById("f-run");
   if (!f) return;
+  const DESIGN_ONLY = state.meta.design_only_modules || [];
+  const syncMode = () => {
+    const site = !document.getElementById("ru-scen").value;
+    document.getElementById("ru-mode").textContent = site
+      ? "Site analysis: climate, surroundings, land cover, surface temperature, vegetation, sun position and heat stress in sun and shade. Upload a design plan for hotspots, options, costs and rule checks."
+      : "Full analysis of this design, including the site analysis.";
+    document.querySelectorAll("label[data-mod]").forEach((l) => {
+      const off = site && DESIGN_ONLY.includes(l.dataset.mod);
+      const box = l.querySelector("input");
+      box.disabled = off; if (off) box.checked = false; else if (box.dataset.was !== "0") box.checked = true;
+      l.classList.toggle("muted", off); l.querySelector(".needs-design").hidden = !off;
+    });
+  };
+  document.getElementById("ru-scen").onchange = syncMode;
+  syncMode();
   const config = () => {
     const c = { modules: [...document.querySelectorAll("input[name=mod]:checked")].map((x) => x.value), context_buffer_m: +document.getElementById("cf-ctx").value, lst_buffer_m: +document.getElementById("cf-lst").value,
       max_scene_cloud_pct: +document.getElementById("cf-cloud").value, satellite_years: +document.getElementById("cf-years").value };
     const months = document.getElementById("cf-months").value.trim(); if (months) c.hot_months = months.split(",").map((x) => parseInt(x, 10));
     const d = document.getElementById("cf-date").value; if (d) c.solar_date = d;
     if (document.getElementById("cf-ds").checked) c.lst_downscale = true;
-    if (!c.modules.length) throw new Error("Select at least one module.");
+    if (!c.modules.length) throw new Error("Select at least one analysis.");
     return c;
   };
   const follow = async (runList) => {
@@ -670,7 +720,7 @@ async function tabAnalysis(el, data) {
       await new Promise((res) => setTimeout(res, 2000));
     }
     notify("Analysis finished. Opening results.", "ok");
-    location.hash = `#/p/${pid}/results`; // Results opens on the latest baseline run
+    location.hash = runList.length === 1 ? `#/p/${pid}/results/${runList[0].id}` : `#/p/${pid}/results`; // several runs: the latest baseline run
   };
   f.onsubmit = (e) => { e.preventDefault(); guarded(async () => {
     const sid = document.getElementById("ru-scen").value;
@@ -772,7 +822,8 @@ async function tabResults(el, data, runId) {
   const scen = run.scenario_id ? await api(`/scenarios/${run.scenario_id}`) : null;
   const stale = Object.keys(run.stale_modules);
   const incomplete = Object.entries(ms).filter(([, s]) => !["completed", "skipped"].includes(s.status));
-  const skipped = Object.values(ms).filter((s) => s.status === "skipped");
+  const skipped = Object.values(ms).filter((s) => s.status === "skipped" && !s.site_mode);
+  const siteMode = !run.scenario_id;
   const byMod = {};
   b.metrics.forEach((m) => (byMod[m.module] = byMod[m.module] || []).push(m));
   const recsByFinding = {};
@@ -784,11 +835,12 @@ async function tabResults(el, data, runId) {
   state.canEditRun = p.role !== "viewer";
   const profile = ms.heat_stress?.details?.profile || [];
   el.innerHTML = `
-  <section class="panel"><div class="row"><div><label for="rs-run">Analysis run</label><select id="rs-run">${runs.map((r) => `<option value="${r.id}" ${r.id === rid ? "selected" : ""}>${esc(names[r.scenario_id] || "site only")} — ${esc(r.completed_at)} (${esc(RUN_STATUS[r.status][0])})</option>`).join("")}</select></div></div>
+  <section class="panel"><div class="row"><div><label for="rs-run">Analysis run</label><select id="rs-run">${runs.map((r) => `<option value="${r.id}" ${r.id === rid ? "selected" : ""}>${esc(names[r.scenario_id] || "site analysis")} — ${esc(r.completed_at)} (${esc(RUN_STATUS[r.status][0])})</option>`).join("")}</select></div></div>
    <div class="alert ${run.status === "succeeded" && !stale.length ? "ok" : "warn"}"><strong>${run.status === "succeeded" && !stale.length ? "Complete result" : "Partial or preliminary result"}</strong> for
-    <strong>${esc(scen ? scen.name : "site context only")}</strong>. ${incomplete.length ? `${incomplete.length} module(s) did not complete fully: ${incomplete.map(([k, s]) => `${esc(s.label)} (${esc(MOD_STATUS[s.status][0].toLowerCase())})`).join("; ")}.` : ""}
+    <strong>${esc(scen ? scen.name : "the site analysis (the land as it is, no design)")}</strong>. ${incomplete.length ? `${incomplete.length} module(s) did not complete fully: ${incomplete.map(([k, s]) => `${esc(s.label)} (${esc(MOD_STATUS[s.status][0].toLowerCase())})`).join("; ")}.` : ""}
     ${stale.length ? ` Inputs changed after this run — out-of-date modules: ${stale.map(esc).join(", ")}. Re-run to refresh.` : ""}
     ${skipped.length ? ` Not selected for this run: ${skipped.map((s) => esc(s.label)).join("; ")}.` : ""}</div>
+   ${siteMode ? `<div class="alert info"><strong>Site analysis.</strong> These results describe the plot as it is today. Upload a design plan on <a href="#/p/${p.id}/inputs">2 · Inputs</a> and create the baseline to get design hotspots, options, costs, rule checks and comparisons.</div>` : ""}
    <h3>Your questions</h3><ul>${b.objectives.map((o) => `<li>${esc(o.question)} — ${!o.answerable ? badge(["cannot be answered with available data", "b-bad"]) : o.not_available?.length ? badge(["partly answered — some evidence unavailable", "b-warn"]) : badge(["answered with available evidence", "b-ok"])}
      ${o.not_available?.length ? `<div class="muted">${o.not_available.map(esc).join("<br>")}</div>` : ""}</li>`).join("")}</ul></section>
   <section class="panel" id="insights-panel"><h2>Insights</h2><div id="ins-body" aria-live="polite"><p class="muted">Loading…</p></div></section>
@@ -1145,8 +1197,20 @@ async function tabDashboard(el, data) {
     if (ex) ex.onclick = () => guarded(() => download(`/analysis-runs/${d.run.id}/export`, `urbanova_${d.run.id}.zip`), ex);
     el.querySelectorAll("[data-focus]").forEach((a) => a.addEventListener("click", () => focusLater(a.dataset.focus)));
   };
+  if (d.state === "site") {
+    const lc0 = d.tiles.land_cover;
+    el.innerHTML = `<section class="panel dash-status"><div><h2>Dashboard — site analysis</h2>
+        <p class="muted">Latest site analysis: ${badge(RUN_STATUS[d.run.status] || [d.run.status, "b-mute"])} ${esc(d.run.completed_at || "")}
+        ${d.run.stale ? ` ${badge(["results out of date", "b-warn"])} <span class="hint">changed since: ${esc(d.run.stale_inputs.join(", "))}</span>` : ""}</p></div>
+        <div class="row"><a class="button" href="#/p/${pid}/results/${esc(d.run.id)}">7 · Results</a><a class="button" href="#/p/${pid}/inputs">2 · Inputs: add a design</a></div></section>
+      <div class="alert info">${esc(d.next_step)}</div>
+      <div class="tiles">${d.tiles.site.map((m) => tile(m.label, dashValue(m), m.state === "available" ? `${esc(KIND[m.output_kind] || m.output_kind || "")} · existing land` : "")).join("")}
+        ${lc0 ? tile("Main land cover on the site", `<strong>${esc(fmt(lc0.value, 1))}</strong> % <span class="muted">${esc(lc0.label.replace(/^Site: /, "").replace(/ \(\d{4} land cover\)$/, ""))}</span>`, "Classified · existing land") : ""}</div>
+      ${siteSections(d, pid)}${outputs}`;
+    return wire();
+  }
   if (d.state === "empty") {
-    el.innerHTML = `<section class="panel"><h2>Dashboard</h2><p>No analysed baseline yet, so there are no results to show.</p><p><strong>Next step:</strong> ${esc(d.next_step || "")}</p>
+    el.innerHTML = `<section class="panel"><h2>Dashboard</h2><p>No analysis yet, so there are no results to show.</p><p><strong>Next step:</strong> ${esc(d.next_step || "")}</p>
       <p class="hint">Readiness: ${rd.ready || 0} analyses ready, ${rd.ready_with_limitations || 0} with limitations, ${rd.blocked || 0} blocked.</p></section>${outputs}`;
     return wire();
   }
@@ -1208,6 +1272,34 @@ async function tabDashboard(el, data) {
       <td>${r.source ? `${esc(r.source.document || "")}${r.source.page ? `, p. ${esc(r.source.page)}` : ""}` : ""}</td></tr>`).join("")}</tbody></table>
       <p class="hint">Geometric checks against the rules you verified; not a statutory approval.</p>` : `<p class="muted">No verified planning rule. Verify rules on <a href="#/p/${pid}/rules">3 · Planning rules</a>.</p>`;
 
+  const { existing, insights, quality } = commonSections(d);
+
+  el.innerHTML = `<section class="panel dash-status"><div><h2>Dashboard</h2>
+      <p class="muted">Latest baseline run of ${esc(d.run.scenario || "")}: ${badge(RUN_STATUS[d.run.status] || [d.run.status, "b-mute"])} ${esc(d.run.completed_at || "")}
+      ${d.run.stale ? ` ${badge(["results out of date", "b-warn"])} <span class="hint">changed since: ${esc(d.run.stale_inputs.join(", "))}</span>` : ""}
+      ${d.project.synthetic_data ? ` ${badge(["synthetic / test data", "b-warn"])}` : ""}</p>
+      <p class="hint">Readiness: ${rd.ready || 0} analyses ready, ${rd.ready_with_limitations || 0} with limitations, ${rd.blocked || 0} blocked.</p></div>
+      <div class="row"><a class="button" href="${res}">7 · Results</a><a class="button" href="#/p/${pid}/compare">8 · Compare</a><a class="button" href="#/p/${pid}/report">9 · Report</a></div></section>
+    <div class="tiles">${tiles}</div>
+    ${insights}
+    <section class="panel"><h2>Design hotspots</h2>${d.hotspots.length ? `${barsSvg(sev, "", { labelW: 90 })}
+      <div class="scroll-x"><table><thead><tr><th>Hotspot</th><th>Type</th><th>Severity</th><th>Area</th><th>Main cause</th><th>Suggested option</th><th>Measured effect</th><th>Cost</th></tr></thead><tbody>${hsRows}</tbody></table></div>
+      <p class="hint">The suggested option is the one the report explains (best value per cost, else largest benefit). Costs come only from your unit rates.</p>`
+      : `<p class="muted">${t.hotspots.assessed ? "No design hotspot was found." : esc(t.hotspots.reason)}</p>`}</section>
+    ${designs}
+    <section class="panel"><h2>Planning rules</h2>${rules}</section>
+    ${existing}${quality}${outputs}`;
+  wire();
+}
+
+// The site-analysis dashboard: summary, existing land and data quality (no design sections).
+function siteSections(d) {
+  const { existing, insights, quality } = commonSections(d);
+  return insights + existing + quality;
+}
+
+// Existing land, the AI summary and data quality: shared by the design and the site dashboard.
+function commonSections(d) {
   const E = d.existing;
   const existing = `<section class="panel"><h2>Existing land <span class="hint">(today's site — context, not design problems)</span></h2>
      ${E.context.map((s) => `<p>${esc(s)}</p>`).join("")}
@@ -1226,23 +1318,7 @@ async function tabDashboard(el, data) {
      ${Q.provisional_hotspots.length || Q.provisional_findings.length ? `<div class="alert warn">Provisional values: ${Q.provisional_hotspots.length} hotspot severities are capped at moderate${Q.provisional_findings.length ? `; findings with provisional thresholds: ${Q.provisional_findings.map(esc).join("; ")}` : ""}.</div>` : ""}
      <details><summary>Data sources (${Q.datasets.length})</summary><ul>${Q.datasets.map((x) => `<li>${esc(x.source_id)} — ${esc(x.dataset_type || "")}${x.license ? ` · ${esc(x.license)}` : ""}${x.attribution ? ` · ${esc(x.attribution)}` : ""}</li>`).join("")}</ul></details>
      <details><summary>Limitations (${Q.limitations.length})</summary><ul>${Q.limitations.map((x) => `<li>${esc(x)}</li>`).join("")}</ul></details></section>`;
-
-  el.innerHTML = `<section class="panel dash-status"><div><h2>Dashboard</h2>
-      <p class="muted">Latest baseline run of ${esc(d.run.scenario || "")}: ${badge(RUN_STATUS[d.run.status] || [d.run.status, "b-mute"])} ${esc(d.run.completed_at || "")}
-      ${d.run.stale ? ` ${badge(["results out of date", "b-warn"])} <span class="hint">changed since: ${esc(d.run.stale_inputs.join(", "))}</span>` : ""}
-      ${d.project.synthetic_data ? ` ${badge(["synthetic / test data", "b-warn"])}` : ""}</p>
-      <p class="hint">Readiness: ${rd.ready || 0} analyses ready, ${rd.ready_with_limitations || 0} with limitations, ${rd.blocked || 0} blocked.</p></div>
-      <div class="row"><a class="button" href="${res}">7 · Results</a><a class="button" href="#/p/${pid}/compare">8 · Compare</a><a class="button" href="#/p/${pid}/report">9 · Report</a></div></section>
-    <div class="tiles">${tiles}</div>
-    ${insights}
-    <section class="panel"><h2>Design hotspots</h2>${d.hotspots.length ? `${barsSvg(sev, "", { labelW: 90 })}
-      <div class="scroll-x"><table><thead><tr><th>Hotspot</th><th>Type</th><th>Severity</th><th>Area</th><th>Main cause</th><th>Suggested option</th><th>Measured effect</th><th>Cost</th></tr></thead><tbody>${hsRows}</tbody></table></div>
-      <p class="hint">The suggested option is the one the report explains (best value per cost, else largest benefit). Costs come only from your unit rates.</p>`
-      : `<p class="muted">${t.hotspots.assessed ? "No design hotspot was found." : esc(t.hotspots.reason)}</p>`}</section>
-    ${designs}
-    <section class="panel"><h2>Planning rules</h2>${rules}</section>
-    ${existing}${quality}${outputs}`;
-  wire();
+  return { existing, insights, quality };
 }
 
 // ------------------------------------------------------------------ router

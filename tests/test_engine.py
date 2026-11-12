@@ -24,7 +24,7 @@ def test_example_request_runs_and_matches_the_result_contract(env, tmp_path, req
     AnalysisRequest.model_validate(request_sample)
     res = analyse(request_sample, tmp_path / "out")
     AnalysisResult.model_validate(res)
-    assert res["contract_version"] == "1.1" and res["request_id"] == "example-synthetic-site"
+    assert res["contract_version"] == "1.2" and res["request_id"] == "example-synthetic-site"
     assert [d["design_id"] for d in res["designs"]] == ["baseline", "alt-greener"]
     base = res["designs"][0]
     # Offline: external modules are honestly unavailable, design modules complete; missing is never 0.
@@ -94,7 +94,9 @@ def test_site_only_request(env, tmp_path):
     res = analyse({"contract_version": "1.0", "site": {"latitude": 30.12, "longitude": 31.85}}, tmp_path)
     AnalysisResult.model_validate(res)
     [d] = res["designs"]
-    assert d["design_id"] is None and d["modules"]["urban_form"]["status"] == "blocked" and res["comparison"] is None
+    # S11: a request without designs is a site analysis; design-only modules are left out with a note, not blocked
+    assert d["design_id"] is None and d["analysis_mode"] == "site" and res["comparison"] is None
+    assert d["modules"]["urban_form"]["status"] == "skipped" and d["modules"]["urban_form"]["site_mode"] and "design plan" in d["modules"]["urban_form"]["reason"]
 
 
 def test_site_data_is_fetched_once_and_shared_by_every_design(env, tmp_path, request_sample, monkeypatch):

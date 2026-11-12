@@ -29,13 +29,17 @@ MODULES = {
 SITE_LEVEL = {"climate_baseline", "site_context", "land_cover", "surface_heat"}
 # Existing-land context records (H2 hot cluster first, then land cover): each lives in its module's details.
 CONTEXT_MODULES = ("surface_heat", "land_cover")
+# Site analysis (no design, stage S11): these need a design plan, so they are not part of the run rather than "blocked".
+DESIGN_ONLY = {"urban_form", "planning_compliance", "hotspots", "interventions"}
+SITE_MODE_NOTE = "Not part of a site analysis: upload a design plan (GeoJSON or DXF) to get design indicators, hotspots, options, costs and rule checks."
 
 
 def run_design(ctx: Context, selected: list[str], on_module: Callable[[str, int], None] | None = None) -> dict:
     """Run the selected modules in order for ctx.scenario (None = site only).
 
     Returns {"results", "module_status", "metrics", "layers", "dataset_ids", "findings", "recommendations", "status", "warnings",
-    "hotspots", "site_context"}.
+    "hotspots", "site_context", "analysis_mode"}. With no scenario the run is a site analysis ("site"): the design-only
+    modules are left out with a note instead of being blocked.
     Metric, finding and recommendation records carry ids; nothing is persisted here.
     """
     results: dict[str, dict] = {}
@@ -43,7 +47,11 @@ def run_design(ctx: Context, selected: list[str], on_module: Callable[[str, int]
     metrics: list[dict] = []
     layers: list[dict] = []
     dataset_ids: list[str] = []
+    mode = "site" if not ctx.scenario else "design"
     for i, mod in enumerate(RUNNABLE):
+        if mode == "site" and mod in DESIGN_ONLY:
+            module_status[mod] = {"status": SKIPPED, "label": ANALYSES[mod], "reason": SITE_MODE_NOTE, "site_mode": True}
+            continue
         if mod not in selected:
             module_status[mod] = {"status": SKIPPED, "label": ANALYSES[mod], "reason": "Not selected for this run."}
             continue
@@ -73,7 +81,8 @@ def run_design(ctx: Context, selected: list[str], on_module: Callable[[str, int]
         status = "failed"
     warnings = [f"{ANALYSES[m]}: {w}" for m, s in module_status.items() for w in s.get("warnings", [])]
     return {"results": results, "module_status": module_status, "metrics": metrics, "layers": layers, "dataset_ids": dataset_ids,
-            "findings": fnds, "recommendations": recs, "status": status, "warnings": warnings, "hotspots": hotspots, "site_context": jsonable(site_context)}
+            "findings": fnds, "recommendations": recs, "status": status, "warnings": warnings, "hotspots": hotspots, "site_context": jsonable(site_context),
+            "analysis_mode": mode}
 
 
 def link_hotspots(hotspots: list[dict], metrics: list[dict], run_id: str) -> list[dict]:

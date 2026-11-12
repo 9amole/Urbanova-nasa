@@ -21,6 +21,7 @@ from .ai import support as ai_support
 from . import __version__, comparison, cost, db, documents, explain, files, geo, orchestrator, plans, projects, readiness, report, scenarios, security, supplementary
 from . import dashboard as project_dash
 from .catalog import public_dataset
+from .engine.core import DESIGN_ONLY
 from .providers import geocode
 from .providers.base import ProviderError, registry
 from .settings import ROOT, settings
@@ -133,7 +134,7 @@ def meta():
         "version": __version__, "offline": settings.offline, "project_types": projects.PROJECT_TYPES, "objectives": projects.OBJECTIVES,
         "feature_types": plans.FEATURE_TYPES, "rule_types": documents.RULE_TYPES, "quantity_types": cost.QUANTITY_TYPES,
         "upload_categories": {k: {**v, "capabilities": {t: files.CAPABILITIES[t] for t in v["types"]}} for k, v in files.ALLOWLIST.items()},
-        "max_upload_mb": settings.max_upload_mb, "analyses": readiness.ANALYSES, "runnable_modules": readiness.RUNNABLE,
+        "max_upload_mb": settings.max_upload_mb, "analyses": readiness.ANALYSES, "runnable_modules": readiness.RUNNABLE, "design_only_modules": sorted(DESIGN_ONLY),
         "default_config": orchestrator.DEFAULT_CONFIG, "module_condition": readiness.CONDITION, "ai": ai_llm.status(),
         "comparison_criteria": comparison.CRITERIA,
         "basemap": {"url": settings.tile_url, "attribution": settings.tile_attribution, "max_zoom": settings.tile_max_zoom,

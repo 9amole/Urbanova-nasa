@@ -131,6 +131,16 @@
           "title": "Status",
           "type": "string"
         },
+        "analysis_mode": {
+          "default": "design",
+          "description": "'site' for a site analysis (no design: the design-only modules are left out with a note, not blocked); 'design' otherwise (contract 1.2).",
+          "enum": [
+            "site",
+            "design"
+          ],
+          "title": "Analysis Mode",
+          "type": "string"
+        },
         "modules": {
           "additionalProperties": {
             "$ref": "#/$defs/ModuleOutcome"
@@ -918,6 +928,12 @@
           ],
           "default": null,
           "title": "Reason"
+        },
+        "site_mode": {
+          "default": false,
+          "description": "True when a design-only module was left out because the run is a site analysis (contract 1.2).",
+          "title": "Site Mode",
+          "type": "boolean"
         },
         "warnings": {
           "default": [],

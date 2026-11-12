@@ -196,9 +196,11 @@ def build(project: dict, run: dict, user: dict, comparison: dict | None = None) 
     incomplete = [k for k, v in ran.items() if v["status"] != "completed"]
     stale = bundle["run"]["stale_modules"]
     complete = not incomplete and not stale
-    skipped = [k for k, v in ms.items() if v["status"] == "skipped"]
+    skipped = [k for k, v in ms.items() if v["status"] == "skipped" and not v.get("site_mode")]
     if not complete:
         label = "Partial — some analyses were limited, blocked, unavailable or are out of date"
+    elif not run.get("scenario_id") and not skipped:
+        label = "Complete site analysis (the design analyses need a design plan)"
     elif skipped:
         label = f"Complete for the {len(ran)} selected analyses; {len(skipped)} analyses were not selected for this run"
     else:
@@ -360,11 +362,17 @@ def _insight_lines(ins: dict) -> list[tuple[str, list[str]]]:
     return [x for x in out if x[1]]
 
 
+def _title(run: dict) -> str:
+    return "URBANOVA analysis report" if run.get("scenario_id") else "URBANOVA site analysis report"
+
+
 def _html(project, run, bundle, scenario, files_, rules, comparison, summary, map_png, clim_png, front=()) -> str:
     ms = run.get("module_status") or {}
     rows = []
     sec = []
-    sec.append(f"<h1>URBANOVA analysis report — {_e(project['name'])}</h1>")
+    sec.append(f"<h1>{_e(_title(run))} — {_e(project['name'])}</h1>")
+    if not run.get("scenario_id"):
+        sec.append('<p class="banner ok"><strong>Site analysis:</strong> this report describes the plot as it is today. Design hotspots, options, costs and rule checks need a design plan.</p>')
     banner = "ok" if summary["complete"] else "warn"
     sec.append(f'<p class="banner {banner}"><strong>Report status: {_e(summary["label"])}.</strong> URBANOVA is a decision-support tool; this report is not a statutory approval, engineering design or professional sign-off.</p>')
     if summary.get("synthetic"):
@@ -542,7 +550,7 @@ def _pdf(path: Path, project, run, bundle, scenario, files_, rules, comparison, 
     for name in ("Title", "Heading2", "BodyText"):
         ss[name].fontName = "DejaVu-Bold" if name != "BodyText" else "DejaVu"
     small = ss["BodyText"].clone("small", fontSize=8, leading=10, fontName="DejaVu")
-    story = [Paragraph(f"URBANOVA analysis report — {_e(project['name'])}", ss["Title"]),
+    story = [Paragraph(f"{_e(_title(run))} — {_e(project['name'])}", ss["Title"]),
              Paragraph(f"<b>Report status: {_e(summary['label'])}.</b> Decision support only — not a statutory approval or professional sign-off.", ss["BodyText"]),
              Paragraph(f"Project {project['id']} · {project['latitude']:.5f}, {project['longitude']:.5f} · Run {run['id']} ({run['status']}) · Scenario: {_e(scenario['name']) if scenario else 'none'}", small),
              Spacer(1, 6)]

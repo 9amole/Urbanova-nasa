@@ -115,6 +115,8 @@ def build(project: dict, run: dict, bundle: dict, scenario: dict | None, compari
     if hs:
         ex.append(f"Design: {len(hs)} hotspots were found on the drawing ({sev['high']} high, {sev['moderate']} moderate, {sev['low']} low severity), "
                   f"covering {_n(located)} m² of located area." + _ids(*[h["id"] for h in hs]))
+    elif not run.get("scenario_id"):
+        ex.append("Site analysis: this run describes the land as it is today; there is no design yet, so there are no design hotspots, options or costs.")
     else:
         reason = ((run.get("module_status") or {}).get("hotspots") or {}).get("details", {}).get("notes") or ["hotspot detection was not part of this run"]
         ex.append(f"Design: no design hotspot is reported ({'; '.join(reason)}).")

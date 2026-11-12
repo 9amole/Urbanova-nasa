@@ -88,7 +88,10 @@ def assess(project: dict, scenario: dict | None = None) -> dict:
     veg_block, veg_step = source_block(["pc_sentinel2_l2a"])
     out.append(_entry("vegetation", BLOCKED if veg_block else (READY if has_boundary else LIMITED), veg_block + ([] if has_boundary else ["Site boundary"]),
                       "Observed vegetation indicator." if veg_block else ("Site-specific vegetation statistics." if not has_boundary else ""), veg_step or "Run the analysis.", pt_limit))
-    if not buildings:
+    if not sfeats:
+        out.append(_entry("solar_shade", READY, [], "", "Run the analysis (site analysis: sun position; shade from a design needs a plan).",
+                          ["Flat terrain; off-site obstructions not modelled."]))
+    elif not buildings:
         out.append(_entry("solar_shade", LIMITED, ["Building footprints with heights"], "Building-cast shade; only sun position is calculated.",
                           "Upload plan geometry and add building heights."))
     elif len(with_h) < len(buildings):
@@ -99,7 +102,8 @@ def assess(project: dict, scenario: dict | None = None) -> dict:
     # Hourly shadows come from buildings with heights, sized trees and shade structures with heights (solar.run).
     casters = with_h or [f for f in sfeats if f["properties"].get("height_m") and (f["properties"].get("feature_type") == "shade_structure"
                          or (f["properties"].get("feature_type") == "tree" and f["properties"].get("canopy_radius_m")))]
-    hs_missing = ([] if casters else ["Building, tree or shade-structure heights (for hourly shadows)"]) + climate_block
+    # Without a design (site analysis) heat stress is assessed in open sun and shade, so no shadows are needed.
+    hs_missing = ([] if casters or not sfeats else ["Building, tree or shade-structure heights (for hourly shadows)"]) + climate_block
     out.append(_entry("heat_stress", BLOCKED if hs_missing else READY, hs_missing, "UTCI heat stress in sun and shade on the hot day." if hs_missing else "",
                       climate_step or ("Add building heights." if not casters else "Run the analysis."),
                       ["Needs ERA5 hourly data (Open-Meteo); unavailable with the fallback climate provider.", "Surfaces assumed at air temperature."]))

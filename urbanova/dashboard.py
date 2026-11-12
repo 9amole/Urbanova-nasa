@@ -19,6 +19,25 @@ TILE_METRICS = [
 DESIGN_INDICATORS = [k for k, v in comparison.CRITERIA.items() if v["source"] == "metric"] + ["hotspot_total_area_m2", "building_coverage_ratio_pct"]
 CLIMATE_METRICS = ["climate_hot_season_mean_tmax_c", "climate_mean_annual_TX35_days", "climate_mean_annual_TR_days", "climate_tmax_record_c"]
 SURFACE_METRICS = ["lst_site_median_c", "lst_site_minus_surroundings_k", "lst_site_percentile_in_surroundings", "ndvi_site_mean"]
+# Site analysis (S11): what the land is like today, for a plot without a design yet.
+SITE_TILES = [
+    ("lst_site_median_c", "Surface temperature on the site (median, hot season)"),
+    ("lst_site_minus_surroundings_k", "Site compared with its surroundings"),
+    ("lst_site_hot_cluster_share_pct", "Share of the site in an observed hot cluster"),
+    ("ndvi_site_mean", "Vegetation on the site (NDVI)"),
+    ("utci_sun_peak_c", "Peak felt temperature in full sun (UTCI, hot day)"),
+    ("utci_shade_peak_c", "Peak felt temperature in shade (UTCI, hot day)"),
+    ("utci_sun_very_strong_hours", "Hours of very strong heat stress in full sun"),
+    ("climate_mean_annual_TX35_days", "Days above 35 °C a year"),
+    ("climate_mean_annual_TR_days", "Tropical nights a year"),
+]
+SITE_NEXT_STEP = "Site analysis only: upload a design plan (2 · Inputs) and create the baseline to get design hotspots, options, costs and comparisons."
+
+
+def site_run(project_id: str) -> dict | None:
+    """The latest finished site analysis (a run without a design scenario)."""
+    runs = db.select("runs", "project_id = ? AND scenario_id IS NULL AND status IN ('succeeded', 'partially_succeeded')", [project_id], order="completed_at DESC")
+    return runs[0] if runs else None
 
 
 def _metric(m: dict | None, name: str, label: str | None = None) -> dict:
@@ -115,11 +134,22 @@ def build(project: dict) -> dict:
                for r in db.select("reports", "project_id = ?", [project["id"]], order="created_at DESC")[:5]]
     head = {"project": {"id": project["id"], "name": project["name"], "synthetic_data": bool(project.get("synthetic_data"))},
             "readiness": summary["completeness"]["readiness"], "activity": activity, "reports": reports}
+    mode = "design"
     if not run:
-        return {**head, "state": "empty", "next_step": summary.get("next_step")}
+        run = site_run(project["id"])
+        if not run:
+            return {**head, "state": "empty", "mode": None, "next_step": summary.get("next_step")}
+        mode = "site"
 
     b = orchestrator.run_bundle(run)
     metrics = {m["metric_name"]: m for m in b["metrics"]}
+    common = _common(run, b, metrics, names)
+    if mode == "site":
+        lc = common["existing"]["land_cover"]
+        return {**head, **common, "state": "site", "mode": "site", "next_step": SITE_NEXT_STEP,
+                "tiles": {"site": [_metric(metrics.get(k), k, label) for k, label in SITE_TILES],
+                          "land_cover": lc[0] if lc else None},
+                "hotspots": [], "designs": None, "rules": []}
     rows, costs = _hotspot_rows(b)
     checks = _checks(run)
     assessed = [c for c in checks if c["status"] in ("passes", "fails")]
@@ -134,22 +164,28 @@ def build(project: dict) -> dict:
         "rules": {"checked": len(assessed), "failed": sum(c["status"] == "fails" for c in assessed), "not_checked": len(checks) - len(assessed)},
         "costs": costs,
     }
-    lc = sorted([m for m in b["metrics"] if m["metric_name"].startswith("landcover_site_") and m["state"] == "available" and (m["value"] or 0) > 0],
-                key=lambda m: -m["value"])
-    ms = run.get("module_status") or {}
-    ins = next(iter(db.select("insights", "run_id = ?", [run["id"]], order="created_at DESC")), None)
-    blocks = (ins or {}).get("blocks") or {}
-    provisional = [{"number": r["number"], "severity": r["severity"]} for r in rows if r["severity_capped"]]
-    provisional_findings = [f["title"] for f in b["findings"] if ((f.get("threshold") or {}).get("status") == "provisional_not_approved")]
+    common["quality"]["provisional_hotspots"] = [{"number": r["number"], "severity": r["severity"]} for r in rows if r["severity_capped"]]
     return {
-        **head, "state": "ready", "next_step": None,
-        "run": {"id": run["id"], "status": run["status"], "completed_at": run.get("completed_at"), "scenario": names.get(run.get("scenario_id")),
-                "stale": bool(b["run"]["stale_modules"]), "stale_inputs": sorted({w for why in b["run"]["stale_modules"].values() for w in why})},
+        **head, **common, "state": "ready", "mode": "design", "next_step": None,
         "tiles": tiles,
         "hotspots": rows,
         "designs": _designs(project, base, run),
         "rules": [{"label": c["label"], "status": c["status"], "measured": c.get("measured"), "limit": c.get("limit"), "unit": c.get("unit"),
                    "operator": c.get("operator"), "source": c.get("rule_source"), "note": c.get("label_result") or c.get("reason")} for c in checks],
+    }
+
+
+def _common(run: dict, b: dict, metrics: dict, names: dict) -> dict:
+    """Sections shared by the design and the site dashboard: the run, existing land, the AI summary and data quality."""
+    lc = sorted([m for m in b["metrics"] if m["metric_name"].startswith("landcover_site_") and m["state"] == "available" and (m["value"] or 0) > 0],
+                key=lambda m: -m["value"])
+    ms = run.get("module_status") or {}
+    ins = next(iter(db.select("insights", "run_id = ?", [run["id"]], order="created_at DESC")), None)
+    blocks = (ins or {}).get("blocks") or {}
+    return {
+        "run": {"id": run["id"], "status": run["status"], "completed_at": run.get("completed_at"),
+                "scenario": names.get(run.get("scenario_id")) or ("Site analysis (no design)" if not run.get("scenario_id") else None),
+                "stale": bool(b["run"]["stale_modules"]), "stale_inputs": sorted({w for why in b["run"]["stale_modules"].values() for w in why})},
         "existing": {"context": [c["statement"] for c in b.get("site_context") or []],
                      "land_cover": [{"label": m["label"], "value": m["value"], "unit": m["unit"], "id": m["id"]} for m in lc],
                      "climate": [_metric(metrics.get(k), k) for k in CLIMATE_METRICS],
@@ -158,7 +194,8 @@ def build(project: dict) -> dict:
         "insights": ({"generated_by": ins["generated_by"], "label": ins.get("label"), "model": ins.get("model"),
                       "site_status": blocks.get("site_status") or [], "attention_first": blocks.get("attention_first") or []} if ins else None),
         "quality": {"modules": [{"key": k, "label": v.get("label") or k, "status": v["status"], "reason": v.get("reason")} for k, v in ms.items() if v.get("status") != "skipped"],
-                    "provisional_hotspots": provisional, "provisional_findings": provisional_findings,
+                    "provisional_hotspots": [],
+                    "provisional_findings": [f["title"] for f in b["findings"] if ((f.get("threshold") or {}).get("status") == "provisional_not_approved")],
                     "datasets": [{"source_id": d.get("source_id"), "dataset_type": d.get("dataset_type"), "license": d.get("license"), "attribution": d.get("attribution"),
                                   "approval_label": d.get("approval_label")} for d in b["datasets"] if d],
                     "limitations": sorted({t for v in ms.values() for t in (v.get("limitations") or [])})[:20]},

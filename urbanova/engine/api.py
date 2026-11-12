@@ -76,7 +76,7 @@ def analyse(request: dict[str, Any], output_dir: str | os.PathLike) -> dict[str,
             available = {m["metric_name"] for m in out["metrics"] if m["state"] == "available"}
             design_results.append({
                 "design_id": d["id"] if d else None, "design_name": d["name"] if d else None, "kind": d["kind"] if d else None,
-                "status": out["status"], "modules": out["module_status"],
+                "status": out["status"], "analysis_mode": out["analysis_mode"], "modules": out["module_status"],
                 "metrics": [_metric(m) for m in out["metrics"]],
                 "findings": [_finding(f) for f in sorted(out["findings"], key=findings.sort_key)],
                 "recommendations": [_rec(r) for r in out["recommendations"]],

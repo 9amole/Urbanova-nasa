@@ -118,13 +118,22 @@ def run(ctx: Context) -> dict:
         "Trees and shade structures are treated as opaque; real canopies transmit some light.",
         "Times are true solar time (12:00 = sun due south/north), not clock time.",
     ]
+    if not feats:
+        # Site analysis (S11): no design, so no shadows; the sun positions still drive heat stress in sun and shade on the open site.
+        ctx.shared["solar"] = {"date": day.isoformat(), "positions": positions, "shade_by_hour": {h: None for h in DAY_HOURS},
+                               "buildings_without_height": 0, "local_crs": local, "no_design": True}
+        why = "Site analysis: there is no design, so nothing casts shade on the site."
+        for h in REPORT_HOURS:
+            m.append(V.missing(f"solar_open_space_exposed_pct_{h:02d}00", f"Open space not in building shade at {h:02d}:00", "%", V.NOT_APPLICABLE, why))
+        m.append(V.missing("solar_open_space_shade_hours", "Mean building-cast shade duration on open space (07–17 h)", "h", V.NOT_APPLICABLE, why))
+        return result(COMPLETED, metrics=m, limitations=limitations[2:],
+                      details={"date": day.isoformat(), "date_basis": day_basis, "positions": {h: positions[h] for h in REPORT_HOURS}, "no_design": True})
     if not casters:
-        reason = ("No building heights are available, so building-cast shade cannot be calculated. Add heights on the Inputs screen."
-                  if feats else "No design geometry is available for shade analysis.")
+        reason = "No building heights are available, so building-cast shade cannot be calculated. Add heights on the Inputs screen."
         for h in REPORT_HOURS:
             m.append(V.missing(f"solar_open_space_exposed_pct_{h:02d}00", f"Open space not in building shade at {h:02d}:00", "%", V.BLOCKED, reason))
         m.append(V.missing("solar_open_space_shade_hours", "Mean building-cast shade duration on open space (07–17 h)", "h", V.BLOCKED, reason))
-        return result(PARTIAL if feats else BLOCKED, metrics=m, limitations=limitations, reason=reason,
+        return result(PARTIAL, metrics=m, limitations=limitations, reason=reason,
                       details={"date": day.isoformat(), "date_basis": day_basis, "positions": {h: positions[h] for h in REPORT_HOURS}})
     buildings_u = unary_union([g for k, g, _ in casters if k == "prism"]) if any(k == "prism" for k, _, _ in casters) else None
     site_l = geo.to_local(shape(ctx.project["boundary"]), local) if ctx.project.get("boundary") else None

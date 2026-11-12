@@ -79,6 +79,8 @@ Exit codes: 0 success, 2 invalid input (the errors are printed as JSON), 1 unexp
 
 ## 4. The contract
 
+**Site analysis (S11).** A run without a design scenario (or an engine request with 0 designs) is a site analysis of the land as it is: the design-only modules are `skipped` with `site_mode: true`, heat stress runs in open sun and shade, and the result carries `analysis_mode: "site"` (contract 1.2). The prototype starts one with "Analyse this site now" on 1 · Site, and its summaries and Dashboard show the site results until a design is analysed.
+
 **Dashboard tab (S10).** `GET /projects/{pid}/project-dashboard` (`urbanova/dashboard.py`) gathers every important output of a project from what is stored, with no recalculation and no model call: the status, key figures (missing values keep their reason), every hotspot with the option the report explains and its cost per currency, the designs side by side with the latest comparison, the rule checks, existing land, the stored AI summary, data quality, reports and the latest runs. The prototype shows it as the tab "10 · Dashboard".
 
 **Chat assistant (S8).** `POST /analysis-runs/{rid}/chat` `{question}` (editors) answers one turn about the run and stores the question and answer in `chat_messages` (`seq`, `role`, `text`, `claims`, `based_on`, `tool_calls`, `generated_by`, `label`, `provider`, `model`, `reason`); `GET /analysis-runs/{rid}/chat` returns the conversation (viewers included). For an integrating backend: `urbanova.ai.chat.turn(bundle, question, history, ai_allowed, local_only, comparison)` returns the same reply without storage. The tools only read the given bundle and comparison; `/ask` remains the single-turn endpoint.

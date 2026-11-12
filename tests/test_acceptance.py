@@ -28,11 +28,12 @@ def test_coordinates_only_project_runs_available_analyses(client, auth):
     assert "Site boundary" in items and "Urban plan / design geometry" in items
     b = run(client, auth, pid)
     ms = b["run"]["module_status"]
-    # Offline: external modules are honestly unavailable; design modules are blocked, not zero.
+    # Offline: external modules are honestly unavailable; without a design this is a site analysis (S11): the design
+    # modules are left out with a note, and only the sun position (no network) is produced, so the run is partial.
     assert ms["climate_baseline"]["status"] == "unavailable"
-    assert ms["urban_form"]["status"] == "blocked"
-    assert ms["solar_shade"]["status"] == "blocked"
-    assert b["run"]["status"] == "failed"  # nothing could be produced — not reported as success
+    assert ms["urban_form"]["status"] == "skipped" and "design plan" in ms["urban_form"]["reason"]
+    assert ms["solar_shade"]["status"] == "completed"
+    assert b["run"]["status"] == "partially_succeeded"  # not reported as success while the site data is unavailable
     assert all(m["state"] != "available" or m["value"] is not None for m in b["metrics"])
 
 

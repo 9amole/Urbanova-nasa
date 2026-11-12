@@ -1,6 +1,6 @@
 # URBANOVA integration contract (for the backend team)
 
-**Contract version 1.1, as of 9 Nov 2026.** This document lists what the backend can call, what goes in and what
+**Contract version 1.2, as of 12 Nov 2026.** This document lists what the backend can call, what goes in and what
 comes back. For the reasons behind it, ownership and operations, see [HANDOFF.md](HANDOFF.md). For the methods, see
 [METHODOLOGY.md](METHODOLOGY.md).
 
@@ -163,6 +163,18 @@ HTTP 422 and show the messages. Nothing is analysed when the request is invalid.
 | Hotspot | `id`, `number` (priority: severity, then area), `types` (H1 sun-exposed hard surface, H3 shade deficit, H4 planning violation), `geometry` (null when `site_wide`), `area_m2`, `severity`, `severity_capped`, `likely_causes[]` (`code`, `text`, `evidence_ids`), `supporting_metrics[]` |
 | Recommendation | `id`, `finding_id`, `hotspot_id`, `intervention_id` (I1–I7), `expected_direction` (direction only, never a predicted number), `options[]` (effect before → after, cost range or "price required", effect and cost confidence, roles: best_value / largest_benefit / cheapest_effective), `literature` |
 | Layer | `id`, `module`, `name`, `output_kind`, `file` (relative to `output_dir`: PNG overlay in Web Mercator with WGS 84 `bounds`, or GeoJSON), `legend`, `meta.geotiff` (analysis-grade GeoTIFF, local UTM) |
+
+### Site analysis (contract 1.2)
+
+A request with **no designs** is a **site analysis** of the land as it is, for a plot before any design exists.
+- The result has one entry in `designs`, with `design_id: null` and **`analysis_mode: "site"`**; every other entry
+  has `analysis_mode: "design"`.
+- The design-only modules (`urban_form`, `planning_compliance`, `hotspots`, `interventions`) have status `skipped`
+  with **`site_mode: true`** and a reason saying a design plan is needed. They are not failures, so a complete site
+  analysis has `status: "succeeded"`.
+- Heat stress gives the UTCI in full sun and in shade (existing-land values) without any design.
+- To show a site analysis, present the existing-land results, and invite the user to add a design for hotspots,
+  options and costs.
 
 ### Rules the UI must follow
 
