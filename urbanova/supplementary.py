@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from shapely.geometry import Point, box, mapping
 
-from . import catalog, geo
+from . import catalog
 
 
 class SupplementaryError(ValueError):

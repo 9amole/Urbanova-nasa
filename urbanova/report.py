@@ -368,7 +368,6 @@ def _title(run: dict) -> str:
 
 def _html(project, run, bundle, scenario, files_, rules, comparison, summary, map_png, clim_png, front=()) -> str:
     ms = run.get("module_status") or {}
-    rows = []
     sec = []
     sec.append(f"<h1>{_e(_title(run))} — {_e(project['name'])}</h1>")
     if not run.get("scenario_id"):

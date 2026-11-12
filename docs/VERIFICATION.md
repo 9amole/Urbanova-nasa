@@ -1,5 +1,55 @@
 # Verification record
 
+## J. Full check after stages S1–S11 — 12 Nov 2026
+
+The whole project (about 14,000 lines) was checked again: tests, a clean install, live runs, the validation scripts,
+a security review, a logic review, a static scan and a browser walkthrough.
+
+**Automated (actual runs, Windows 11, Python 3.11):**
+
+| Check | Result |
+|---|---|
+| `pytest` (offline, mocked providers) | **337 passed** (338 with the new policy test) |
+| Clean install: wheel into a fresh virtual environment | Pulls in no FastAPI or ReportLab. `urbanova-engine analyse examples/engine_request_sample.json` exits 0 and `validate` reports the result valid |
+| `scripts/smoke.py` (live providers) | Exit 0 in 92 s. Two designs analysed, comparison, PDF report (420 KB), data export (238 KB) |
+| `scripts/validate_climate_ghcn.py` | Unchanged from VALIDATION.md §1 (cached station data) |
+| `scripts/plausibility_satellite.py` (live) | All 3 checks pass: NDVI water < desert < farmland, LST water < farmland < desert |
+| `scripts/validate_real_geometry.py` | Pass: engine and independent equal-area areas agree to 0.00 points (129 real buildings) |
+| Static scan (`ruff`: undefined names, likely bugs) | 3 unused names, removed. The rest are the FastAPI `Depends` pattern and intentional plain errors (`raise … from`) |
+
+**Security review:**
+- **Access:** every one of the 74 endpoints was listed with its checks. All of them need a signed-in user, except
+  sign-in and registration, the public help content (FAQ, plans, page help), meta and health. Every project, run,
+  file, scenario, report, chat and help-conversation endpoint goes through the membership check, and changes need the
+  editor role. Adding members needs the owner.
+- **Accounts:** passwords are hashed with scrypt and compared in constant time. There is a lockout after failed
+  sign-ins, and tokens are random and stored only as hashes.
+- **Uploads:** reads are capped before parsing, stored names are cleaned, and file types are allow-listed. Files are
+  served only from paths stored by the server.
+- **Secrets:** keys are read from the server environment only, URLs in the request log are redacted, and the secret
+  scan of every pushed commit was clean.
+- **Browser:** every value from the database or a model is escaped before it reaches the page (map layer names and
+  popups included), help links are limited to app routes, and there are no inline scripts or handlers.
+- **Fixed:** the pages had no **Content-Security-Policy**. They now send one: scripts only from this server and the
+  pinned unpkg libraries, images also from the configured map-tile host, no plugins, no framing. The walkthrough
+  below ran with it and nothing was blocked.
+- **Left to the backend platform** (HANDOFF): rate limiting of sign-in and registration, HTTPS, and monitoring. The
+  AI already has its own daily and per-user caps.
+
+**Logic review:**
+- **Costs:** never summed across currencies, "price required" without a rate, only increases costed.
+- **Comparison:** refuses designs analysed with other settings; missing values are never 0.
+- **Site analysis:** design-only modules are left out, not blocked; heat stress runs without shadows.
+- **AI:** grounding validator, read-only tools, refusals before any model call, data rule.
+- **Fixed:** the Dashboard cost tile now says it adds up each hotspot's option on its own (the site-wide package is
+  evaluated together on 7 · Results).
+
+**Browser walkthrough** (the demo design project and the site-analysis project, all 10 tabs each, with the new
+policy):
+- every view rendered with no error alerts, no script errors and no blocked content;
+- map tiles 6/6 loaded, and Leaflet and Geoman loaded;
+- a full comparison of 3 designs rendered every section.
+
 ## I. Integration readiness (Phase C/D, engine) — 4 Nov 2026 (uncommitted, awaiting review)
 
 The Phase C decisions were taken ([DECISIONS.md](DECISIONS.md) §0). The data-science D items were carried out, and the analysis side is handed over as `urbanova.engine` ([HANDOFF.md](HANDOFF.md)).

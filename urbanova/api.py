@@ -58,10 +58,26 @@ for _cls in DOMAIN_ERRORS:
     app.add_exception_handler(_cls, lambda _r, exc: JSONResponse({"detail": str(exc)}, status_code=422))
 
 
+def _csp() -> str:
+    """Content-Security-Policy for the web client (full check, 12 Nov 2026): no inline scripts exist, so scripts may come only
+    from this server and the pinned unpkg libraries; map tiles come from the configured tile host."""
+    from urllib.parse import urlparse
+
+    u = urlparse(settings.tile_url.replace("{s}", "a"))
+    tiles = f"{u.scheme}://{u.netloc.replace('a.', '*.', 1) if '{s}' in settings.tile_url else u.netloc}" if u.netloc else ""
+    return ("default-src 'self'; script-src 'self' https://unpkg.com; style-src 'self' 'unsafe-inline' https://unpkg.com; "
+            f"img-src 'self' data: blob: {tiles} https://unpkg.com; connect-src 'self'; font-src 'self' data:; object-src 'none'; "
+            "base-uri 'self'; form-action 'self'; frame-ancestors 'none'")
+
+
+CSP = _csp()
+
+
 @app.middleware("http")
 async def _headers(request: Request, call_next):
     resp = await call_next(request)
     resp.headers["X-Content-Type-Options"] = "nosniff"
+    resp.headers["Content-Security-Policy"] = CSP
     # Send only the origin (never the path) to other sites. OSM's tile servers reject requests
     # without a Referer under their tile usage policy, so "no-referrer" broke the basemap.
     resp.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"

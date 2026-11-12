@@ -18,7 +18,7 @@ from shapely.ops import unary_union
 
 from .. import geo
 from .. import values as V
-from .common import BLOCKED, COMPLETED, PARTIAL, Context, layer, result, save_geojson
+from .common import COMPLETED, PARTIAL, Context, layer, result, save_geojson
 
 REPORT_HOURS = (9, 12, 15)
 DAY_HOURS = range(7, 18)  # 07:00–17:00 solar time, hourly

@@ -1225,7 +1225,7 @@ async function tabDashboard(el, data) {
     tile("Planning rules", t.rules.checked ? `<strong>${t.rules.failed}</strong> failed of ${t.rules.checked} checked` : `<span class="muted">No verified rule checked</span>`,
       t.rules.not_checked ? `${t.rules.not_checked} could not be checked` : "Geometric checks, not a statutory approval"),
     tile("Cost of the suggested options", costCur.length ? costCur.map(([cur, c]) => `<strong>${esc(moneyRange(c))}</strong> ${esc(cur)}`).join("<br>") : `<span class="muted">Price required</span>`,
-      `${t.costs.priced_options} priced, ${t.costs.price_required_options} need a price${t.costs.test_prices ? " · <strong>TEST prices, not real</strong>" : ""}`),
+      `Each hotspot's option on its own, added up (the site-wide package on 7 · Results is evaluated together). ${t.costs.priced_options} priced, ${t.costs.price_required_options} need a price${t.costs.test_prices ? " · <strong>TEST prices, not real</strong>" : ""}`),
   ].join("");
 
   const hsRows = d.hotspots.map((h) => {

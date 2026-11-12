@@ -86,3 +86,11 @@ def test_the_tab_is_listed_and_the_help_assistant_knows_the_page(client):
     from urbanova.ai.support import LINK
 
     assert LINK.match("#/p/prj_69e5367f2ebb/dashboard")
+
+
+def test_pages_send_a_content_security_policy(client):
+    """Full check of 12 Nov 2026: scripts only from this server and the pinned unpkg libraries; no framing."""
+    csp = client.get("/").headers["content-security-policy"]
+    assert "script-src 'self' https://unpkg.com;" in csp and "frame-ancestors 'none'" in csp and "object-src 'none'" in csp
+    assert "https://tile.openstreetmap.org" in csp  # the configured map tiles
+    assert "unsafe-eval" not in csp and "script-src 'self' 'unsafe-inline'" not in csp

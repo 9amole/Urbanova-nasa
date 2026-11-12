@@ -1,28 +1,28 @@
 {
-  "generated_at": "2026-11-04T16:50:23+00:00",
+  "generated_at": "2026-11-12T18:13:09+00:00",
   "method": "D3: compare the product's ERA5 climate baseline with NOAA GHCN-Daily weather stations.",
   "era5_requests": [
     {
       "provider": "open_meteo_archive",
-      "url": "https://archive-api.open-meteo.com/v1/archive?latitude=28.083&longitude=30.733&start_date=2015-01-01&end_date=2019-12-31&daily=temperature_2m_max%2Ctemperature_2m_min%2Ctemperature_2m_mean%2Crelative_humidity_2m_mean%2Cwind_speed_10m_max%2Cprecipitation_sum%2Cshortwave_radiation_sum&timezone=auto&models=era5",
-      "status_code": 200,
-      "duration_ms": 1437,
-      "outcome": "success",
-      "attempt": 1,
-      "cache_hit": 0,
+      "url": "https://archive-api.open-meteo.com/v1/archive",
+      "status_code": null,
+      "duration_ms": 0,
+      "outcome": "cache_hit",
+      "attempt": 0,
+      "cache_hit": 1,
       "message": "",
-      "at": "2026-11-04T16:50:22+00:00"
+      "at": "2026-11-12T18:13:08+00:00"
     },
     {
       "provider": "open_meteo_archive",
-      "url": "https://archive-api.open-meteo.com/v1/archive?latitude=31.073&longitude=33.836&start_date=2001-01-01&end_date=2004-12-31&daily=temperature_2m_max%2Ctemperature_2m_min%2Ctemperature_2m_mean%2Crelative_humidity_2m_mean%2Cwind_speed_10m_max%2Cprecipitation_sum%2Cshortwave_radiation_sum&timezone=auto&models=era5",
-      "status_code": 200,
-      "duration_ms": 1391,
-      "outcome": "success",
-      "attempt": 1,
-      "cache_hit": 0,
+      "url": "https://archive-api.open-meteo.com/v1/archive",
+      "status_code": null,
+      "duration_ms": 0,
+      "outcome": "cache_hit",
+      "attempt": 0,
+      "cache_hit": 1,
       "message": "",
-      "at": "2026-11-04T16:50:23+00:00"
+      "at": "2026-11-12T18:13:09+00:00"
     }
   ],
   "stations": [
