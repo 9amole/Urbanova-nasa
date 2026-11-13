@@ -66,7 +66,8 @@
       "valid_range": [
         -90,
         65
-      ]
+      ],
+      "caution": "Daytime-high trends agree in direction with ERA5 (an independent dataset) everywhere we checked, but the two datasets can differ on how fast."
     },
     {
       "id": "t2m_min",
@@ -109,7 +110,8 @@
       "valid_range": [
         0,
         200
-      ]
+      ],
+      "caution": "Rainfall trends differ between datasets: in our check against ERA5 (an independent dataset), they agreed on the direction only about half the time. Treat a rainfall trend from one dataset as a lead to check, not a final answer."
     },
     {
       "id": "rh",

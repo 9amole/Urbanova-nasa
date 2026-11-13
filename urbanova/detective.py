@@ -86,6 +86,8 @@ def trend(lat, lon, var_id: str, start_year: int = 1981, end_year: int | None = 
         if v.get("joined_sources"):
             res["source_join"] = segment_check(series, v, res)
             res["notes"].append(res["source_join"]["note"])
+        if v.get("caution"):
+            res["notes"].append(v["caution"])
     src = pm.catalog()["source"]
     return {"variable": {k: val for k, val in v.items() if k not in ("power", "scale")}, "point": {"lat": lat, "lon": lon},
             "request": {"start_year": start_year, "end_year": end_year, "deseasonalised": deseason}, "result": res,

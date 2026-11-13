@@ -1,0 +1,1207 @@
+{
+ "method": "Same yearly-anomaly trend analysis on NASA POWER and on ERA5 (Open-Meteo archive, models=era5), monthly means of daily values",
+ "points": 15,
+ "summary": {
+  "t2m": {
+   "points": 15,
+   "same_direction_pct": 100.0,
+   "ci_overlap_pct": 93.3,
+   "same_verdict_pct": 86.7,
+   "rate_correlation": 0.891,
+   "significant_in_either": 15,
+   "significant_same_direction_pct": 100.0
+  },
+  "t2m_max": {
+   "points": 15,
+   "same_direction_pct": 100.0,
+   "ci_overlap_pct": 80.0,
+   "same_verdict_pct": 80.0,
+   "rate_correlation": 0.087,
+   "significant_in_either": 15,
+   "significant_same_direction_pct": 100.0
+  },
+  "precip": {
+   "points": 15,
+   "same_direction_pct": 53.3,
+   "ci_overlap_pct": 80.0,
+   "same_verdict_pct": 46.7,
+   "rate_correlation": 0.598,
+   "significant_in_either": 8,
+   "significant_same_direction_pct": 50.0
+  }
+ },
+ "rows": [
+  {
+   "place": "New Cairo",
+   "lat": 30.03,
+   "lon": 31.47,
+   "variable": "t2m",
+   "demo": true,
+   "power": {
+    "per_decade": 0.3188797493145318,
+    "ci": [
+     0.23333333333333323,
+     0.40119047619047665
+    ],
+    "level": "significant"
+   },
+   "era5": {
+    "per_decade": 0.564353348018176,
+    "ci": [
+     0.481055576946845,
+     0.6501815603883381
+    ],
+    "level": "significant"
+   },
+   "same_direction": true,
+   "ci_overlap": false,
+   "same_verdict": true
+  },
+  {
+   "place": "New Cairo",
+   "lat": 30.03,
+   "lon": 31.47,
+   "variable": "t2m_max",
+   "demo": true,
+   "power": {
+    "per_decade": 0.3330357142857141,
+    "ci": [
+     0.14636752136752107,
+     0.5451388888888887
+    ],
+    "level": "significant"
+   },
+   "era5": {
+    "per_decade": 0.45697819751742097,
+    "ci": [
+     0.3644793996515444,
+     0.5561394698491469
+    ],
+    "level": "significant"
+   },
+   "same_direction": true,
+   "ci_overlap": true,
+   "same_verdict": true
+  },
+  {
+   "place": "New Cairo",
+   "lat": 30.03,
+   "lon": 31.47,
+   "variable": "precip",
+   "demo": true,
+   "power": {
+    "per_decade": 0.009097222222222222,
+    "ci": [
+     -0.03903508771929824,
+     0.07777777777777777
+    ],
+    "level": "not_significant"
+   },
+   "era5": {
+    "per_decade": -0.0005873654512684612,
+    "ci": [
+     -0.011375128008192525,
+     0.007896683165500367
+    ],
+    "level": "not_significant"
+   },
+   "same_direction": false,
+   "ci_overlap": true,
+   "same_verdict": true
+  },
+  {
+   "place": "Svalbard",
+   "lat": 78.22,
+   "lon": 15.65,
+   "variable": "t2m",
+   "demo": true,
+   "power": {
+    "per_decade": 0.790694444444443,
+    "ci": [
+     0.5166666666666665,
+     1.0599206349206352
+    ],
+    "level": "significant"
+   },
+   "era5": {
+    "per_decade": 1.211267778915628,
+    "ci": [
+     0.8790166570660527,
+     1.5061088069636455
+    ],
+    "level": "significant"
+   },
+   "same_direction": true,
+   "ci_overlap": true,
+   "same_verdict": true
+  },
+  {
+   "place": "Svalbard",
+   "lat": 78.22,
+   "lon": 15.65,
+   "variable": "t2m_max",
+   "demo": true,
+   "power": {
+    "per_decade": 0.27229437229437226,
+    "ci": [
+     0.10740740740740744,
+     0.46666666666666656
+    ],
+    "level": "significant"
+   },
+   "era5": {
+    "per_decade": 1.110568212128059,
+    "ci": [
+     0.8325361267565562,
+     1.3866732016005014
+    ],
+    "level": "significant"
+   },
+   "same_direction": true,
+   "ci_overlap": false,
+   "same_verdict": true
+  },
+  {
+   "place": "Svalbard",
+   "lat": 78.22,
+   "lon": 15.65,
+   "variable": "precip",
+   "demo": true,
+   "power": {
+    "per_decade": 0.0025682471264367526,
+    "ci": [
+     -0.045833333333333316,
+     0.05104166666666667
+    ],
+    "level": "not_significant"
+   },
+   "era5": {
+    "per_decade": 0.07492289730463049,
+    "ci": [
+     0.023876582446104178,
+     0.1274326128300782
+    ],
+    "level": "significant"
+   },
+   "same_direction": true,
+   "ci_overlap": true,
+   "same_verdict": false
+  },
+  {
+   "place": "Sahel",
+   "lat": 14.5,
+   "lon": 2.0,
+   "variable": "t2m",
+   "demo": true,
+   "power": {
+    "per_decade": 0.16288771712158806,
+    "ci": [
+     0.06249999999999992,
+     0.2711111111111111
+    ],
+    "level": "significant"
+   },
+   "era5": {
+    "per_decade": 0.3222248326386259,
+    "ci": [
+     0.23930491551459276,
+     0.4011510069977805
+    ],
+    "level": "significant"
+   },
+   "same_direction": true,
+   "ci_overlap": true,
+   "same_verdict": true
+  },
+  {
+   "place": "Sahel",
+   "lat": 14.5,
+   "lon": 2.0,
+   "variable": "t2m_max",
+   "demo": true,
+   "power": {
+    "per_decade": 0.09178921568627416,
+    "ci": [
+     -0.054629629629629514,
+     0.21698717948717977
+    ],
+    "level": "not_significant"
+   },
+   "era5": {
+    "per_decade": 0.3331961306955121,
+    "ci": [
+     0.23279722178081202,
+     0.4360901312694163
+    ],
+    "level": "significant"
+   },
+   "same_direction": true,
+   "ci_overlap": false,
+   "same_verdict": false
+  },
+  {
+   "place": "Sahel",
+   "lat": 14.5,
+   "lon": 2.0,
+   "variable": "precip",
+   "demo": true,
+   "power": {
+    "per_decade": 0.04618055555555556,
+    "ci": [
+     0.010416666666666671,
+     0.08541666666666661
+    ],
+    "level": "significant"
+   },
+   "era5": {
+    "per_decade": 0.0025326044396253152,
+    "ci": [
+     -0.03703094140882161,
+     0.044512048771121374
+    ],
+    "level": "not_significant"
+   },
+   "same_direction": true,
+   "ci_overlap": true,
+   "same_verdict": false
+  },
+  {
+   "place": "Perth",
+   "lat": -31.95,
+   "lon": 115.86,
+   "variable": "t2m",
+   "demo": true,
+   "power": {
+    "per_decade": 0.17159722222222215,
+    "ci": [
+     0.03240740740740655,
+     0.3305555555555557
+    ],
+    "level": "significant"
+   },
+   "era5": {
+    "per_decade": 0.15938037257913876,
+    "ci": [
+     0.027705731235764273,
+     0.2818649910835663
+    ],
+    "level": "significant"
+   },
+   "same_direction": true,
+   "ci_overlap": true,
+   "same_verdict": true
+  },
+  {
+   "place": "Perth",
+   "lat": -31.95,
+   "lon": 115.86,
+   "variable": "t2m_max",
+   "demo": true,
+   "power": {
+    "per_decade": 0.23854299702000842,
+    "ci": [
+     0.05378787878787885,
+     0.4281746031746029
+    ],
+    "level": "significant"
+   },
+   "era5": {
+    "per_decade": 0.20328998343250332,
+    "ci": [
+     0.05552175634807162,
+     0.36976446492575477
+    ],
+    "level": "significant"
+   },
+   "same_direction": true,
+   "ci_overlap": true,
+   "same_verdict": true
+  },
+  {
+   "place": "Perth",
+   "lat": -31.95,
+   "lon": 115.86,
+   "variable": "precip",
+   "demo": true,
+   "power": {
+    "per_decade": -0.20529847756410258,
+    "ci": [
+     -0.286231884057971,
+     -0.11759259259259244
+    ],
+    "level": "significant"
+   },
+   "era5": {
+    "per_decade": -0.06603646641226078,
+    "ci": [
+     -0.13599429575315466,
+     0.013059395801331364
+    ],
+    "level": "not_significant"
+   },
+   "same_direction": true,
+   "ci_overlap": true,
+   "same_verdict": false
+  },
+  {
+   "place": "Sydney",
+   "lat": -33.87,
+   "lon": 151.21,
+   "variable": "t2m",
+   "demo": true,
+   "power": {
+    "per_decade": 0.31454772079772086,
+    "ci": [
+     0.16018518518518501,
+     0.4533333333333334
+    ],
+    "level": "significant"
+   },
+   "era5": {
+    "per_decade": 0.25464902896642505,
+    "ci": [
+     0.12634117674440193,
+     0.36788868773315825
+    ],
+    "level": "significant"
+   },
+   "same_direction": true,
+   "ci_overlap": true,
+   "same_verdict": true
+  },
+  {
+   "place": "Sydney",
+   "lat": -33.87,
+   "lon": 151.21,
+   "variable": "t2m_max",
+   "demo": true,
+   "power": {
+    "per_decade": 0.42771592442645046,
+    "ci": [
+     0.1861111111111114,
+     0.6281249999999996
+    ],
+    "level": "significant"
+   },
+   "era5": {
+    "per_decade": 0.3293552864230598,
+    "ci": [
+     0.13842677931387676,
+     0.5365327033104034
+    ],
+    "level": "significant"
+   },
+   "same_direction": true,
+   "ci_overlap": true,
+   "same_verdict": true
+  },
+  {
+   "place": "Sydney",
+   "lat": -33.87,
+   "lon": 151.21,
+   "variable": "precip",
+   "demo": true,
+   "power": {
+    "per_decade": -0.14343966059082336,
+    "ci": [
+     -0.304824561403509,
+     0.048214285714285696
+    ],
+    "level": "not_significant"
+   },
+   "era5": {
+    "per_decade": 0.004764962428859694,
+    "ci": [
+     -0.12027338994802844,
+     0.15376354118011532
+    ],
+    "level": "not_significant"
+   },
+   "same_direction": false,
+   "ci_overlap": true,
+   "same_verdict": true
+  },
+  {
+   "place": "Amazon",
+   "lat": -3.5,
+   "lon": -60.0,
+   "variable": "t2m",
+   "demo": true,
+   "power": {
+    "per_decade": 0.3209920634920635,
+    "ci": [
+     0.11666666666665826,
+     0.5287037037037028
+    ],
+    "level": "significant"
+   },
+   "era5": {
+    "per_decade": 0.20206463449595216,
+    "ci": [
+     0.11659765995138635,
+     0.29271633384537016
+    ],
+    "level": "significant"
+   },
+   "same_direction": true,
+   "ci_overlap": true,
+   "same_verdict": true
+  },
+  {
+   "place": "Amazon",
+   "lat": -3.5,
+   "lon": -60.0,
+   "variable": "t2m_max",
+   "demo": true,
+   "power": {
+    "per_decade": 0.556401515151515,
+    "ci": [
+     0.10617283950617278,
+     0.9932539682539681
+    ],
+    "level": "significant"
+   },
+   "era5": {
+    "per_decade": 0.19392382801388164,
+    "ci": [
+     0.06607923345965686,
+     0.31898166700060115
+    ],
+    "level": "significant"
+   },
+   "same_direction": true,
+   "ci_overlap": true,
+   "same_verdict": true
+  },
+  {
+   "place": "Amazon",
+   "lat": -3.5,
+   "lon": -60.0,
+   "variable": "precip",
+   "demo": true,
+   "power": {
+    "per_decade": -0.40357277526395174,
+    "ci": [
+     -0.6344444444444444,
+     -0.10374999999999995
+    ],
+    "level": "significant"
+   },
+   "era5": {
+    "per_decade": -0.4201967099687484,
+    "ci": [
+     -0.7144286567673661,
+     -0.083103903265193
+    ],
+    "level": "significant"
+   },
+   "same_direction": true,
+   "ci_overlap": true,
+   "same_verdict": true
+  },
+  {
+   "place": "Madrid",
+   "lat": 40.42,
+   "lon": -3.7,
+   "variable": "t2m",
+   "demo": false,
+   "power": {
+    "per_decade": 0.34829022988505753,
+    "ci": [
+     0.22499999999999992,
+     0.5048611111111112
+    ],
+    "level": "significant"
+   },
+   "era5": {
+    "per_decade": 0.26702518273338793,
+    "ci": [
+     0.167571738914898,
+     0.3815340181771638
+    ],
+    "level": "significant"
+   },
+   "same_direction": true,
+   "ci_overlap": true,
+   "same_verdict": true
+  },
+  {
+   "place": "Madrid",
+   "lat": 40.42,
+   "lon": -3.7,
+   "variable": "t2m_max",
+   "demo": false,
+   "power": {
+    "per_decade": 0.40641025641025647,
+    "ci": [
+     0.21574074074074065,
+     0.5755050505050507
+    ],
+    "level": "significant"
+   },
+   "era5": {
+    "per_decade": 0.345531097898312,
+    "ci": [
+     0.18804810934955438,
+     0.5058446712018142
+    ],
+    "level": "significant"
+   },
+   "same_direction": true,
+   "ci_overlap": true,
+   "same_verdict": true
+  },
+  {
+   "place": "Madrid",
+   "lat": 40.42,
+   "lon": -3.7,
+   "variable": "precip",
+   "demo": false,
+   "power": {
+    "per_decade": 0.05956196581196581,
+    "ci": [
+     -0.00925925925925925,
+     0.12569444444444444
+    ],
+    "level": "not_significant"
+   },
+   "era5": {
+    "per_decade": 0.03370224861928607,
+    "ci": [
+     -0.03749631961534074,
+     0.09889716018748274
+    ],
+    "level": "not_significant"
+   },
+   "same_direction": true,
+   "ci_overlap": true,
+   "same_verdict": true
+  },
+  {
+   "place": "Moscow",
+   "lat": 55.76,
+   "lon": 37.62,
+   "variable": "t2m",
+   "demo": false,
+   "power": {
+    "per_decade": 0.35173684210526324,
+    "ci": [
+     0.07777777777777785,
+     0.6633333333333333
+    ],
+    "level": "significant"
+   },
+   "era5": {
+    "per_decade": 0.5152019902619529,
+    "ci": [
+     0.2509683819764465,
+     0.7950005964385082
+    ],
+    "level": "significant"
+   },
+   "same_direction": true,
+   "ci_overlap": true,
+   "same_verdict": true
+  },
+  {
+   "place": "Moscow",
+   "lat": 55.76,
+   "lon": 37.62,
+   "variable": "t2m_max",
+   "demo": false,
+   "power": {
+    "per_decade": 0.35240461049284577,
+    "ci": [
+     0.14672619047619048,
+     0.5395833333333334
+    ],
+    "level": "significant"
+   },
+   "era5": {
+    "per_decade": 0.5792714269945161,
+    "ci": [
+     0.3472042210701481,
+     0.8245436507936514
+    ],
+    "level": "significant"
+   },
+   "same_direction": true,
+   "ci_overlap": true,
+   "same_verdict": true
+  },
+  {
+   "place": "Moscow",
+   "lat": 55.76,
+   "lon": 37.62,
+   "variable": "precip",
+   "demo": false,
+   "power": {
+    "per_decade": 0.03465320910973087,
+    "ci": [
+     -0.022849462365591405,
+     0.09749999999999998
+    ],
+    "level": "not_significant"
+   },
+   "era5": {
+    "per_decade": -0.03408443781427657,
+    "ci": [
+     -0.1033206125192012,
+     0.022591441990218397
+    ],
+    "level": "not_significant"
+   },
+   "same_direction": false,
+   "ci_overlap": true,
+   "same_verdict": true
+  },
+  {
+   "place": "Lagos",
+   "lat": 6.52,
+   "lon": 3.38,
+   "variable": "t2m",
+   "demo": false,
+   "power": {
+    "per_decade": 0.17338541666666574,
+    "ci": [
+     0.11000000000000003,
+     0.22395833333333323
+    ],
+    "level": "significant"
+   },
+   "era5": {
+    "per_decade": 0.23023330320725588,
+    "ci": [
+     0.1797739055299541,
+     0.2856556152927125
+    ],
+    "level": "significant"
+   },
+   "same_direction": true,
+   "ci_overlap": true,
+   "same_verdict": true
+  },
+  {
+   "place": "Lagos",
+   "lat": 6.52,
+   "lon": 3.38,
+   "variable": "t2m_max",
+   "demo": false,
+   "power": {
+    "per_decade": 0.05024509803921589,
+    "ci": [
+     -0.05249999999999963,
+     0.12583333333333319
+    ],
+    "level": "not_significant"
+   },
+   "era5": {
+    "per_decade": 0.20955981182795735,
+    "ci": [
+     0.13700290151903632,
+     0.2747802526028329
+    ],
+    "level": "significant"
+   },
+   "same_direction": true,
+   "ci_overlap": false,
+   "same_verdict": false
+  },
+  {
+   "place": "Lagos",
+   "lat": 6.52,
+   "lon": 3.38,
+   "variable": "precip",
+   "demo": false,
+   "power": {
+    "per_decade": 0.20905483405483402,
+    "ci": [
+     0.024218749999999966,
+     0.3824324324324324
+    ],
+    "level": "significant"
+   },
+   "era5": {
+    "per_decade": -0.1039585480179195,
+    "ci": [
+     -0.23508778125018653,
+     0.018176410349085865
+    ],
+    "level": "not_significant"
+   },
+   "same_direction": false,
+   "ci_overlap": false,
+   "same_verdict": false
+  },
+  {
+   "place": "Nairobi",
+   "lat": -1.29,
+   "lon": 36.82,
+   "variable": "t2m",
+   "demo": false,
+   "power": {
+    "per_decade": 0.2646405677655677,
+    "ci": [
+     0.19053030303030294,
+     0.3469696969696967
+    ],
+    "level": "significant"
+   },
+   "era5": {
+    "per_decade": 0.3000903385547766,
+    "ci": [
+     0.24482308017138407,
+     0.37682091653865757
+    ],
+    "level": "significant"
+   },
+   "same_direction": true,
+   "ci_overlap": true,
+   "same_verdict": true
+  },
+  {
+   "place": "Nairobi",
+   "lat": -1.29,
+   "lon": 36.82,
+   "variable": "t2m_max",
+   "demo": false,
+   "power": {
+    "per_decade": 0.31580357142857146,
+    "ci": [
+     0.18214285714285738,
+     0.40833333333333344
+    ],
+    "level": "significant"
+   },
+   "era5": {
+    "per_decade": 0.3175864752752344,
+    "ci": [
+     0.21752122458417966,
+     0.4265414319849798
+    ],
+    "level": "significant"
+   },
+   "same_direction": true,
+   "ci_overlap": true,
+   "same_verdict": true
+  },
+  {
+   "place": "Nairobi",
+   "lat": -1.29,
+   "lon": 36.82,
+   "variable": "precip",
+   "demo": false,
+   "power": {
+    "per_decade": -0.06718750000000001,
+    "ci": [
+     -0.17803030303030304,
+     0.022972972972972995
+    ],
+    "level": "not_significant"
+   },
+   "era5": {
+    "per_decade": -0.11201156874039933,
+    "ci": [
+     -0.2746905213698382,
+     0.08486844696522114
+    ],
+    "level": "not_significant"
+   },
+   "same_direction": true,
+   "ci_overlap": true,
+   "same_verdict": true
+  },
+  {
+   "place": "Johannesburg",
+   "lat": -26.2,
+   "lon": 28.05,
+   "variable": "t2m",
+   "demo": false,
+   "power": {
+    "per_decade": 0.20137310606060627,
+    "ci": [
+     0.0681034482758622,
+     0.3586956521739131
+    ],
+    "level": "significant"
+   },
+   "era5": {
+    "per_decade": 0.2898262793729981,
+    "ci": [
+     0.130967315241509,
+     0.45890540804135316
+    ],
+    "level": "significant"
+   },
+   "same_direction": true,
+   "ci_overlap": true,
+   "same_verdict": true
+  },
+  {
+   "place": "Johannesburg",
+   "lat": -26.2,
+   "lon": 28.05,
+   "variable": "t2m_max",
+   "demo": false,
+   "power": {
+    "per_decade": 0.3010294117647057,
+    "ci": [
+     0.08442028985507252,
+     0.5289473684210524
+    ],
+    "level": "significant"
+   },
+   "era5": {
+    "per_decade": 0.3459549539906176,
+    "ci": [
+     0.1358748901574253,
+     0.552057376116514
+    ],
+    "level": "significant"
+   },
+   "same_direction": true,
+   "ci_overlap": true,
+   "same_verdict": true
+  },
+  {
+   "place": "Johannesburg",
+   "lat": -26.2,
+   "lon": 28.05,
+   "variable": "precip",
+   "demo": false,
+   "power": {
+    "per_decade": -0.10594017094017091,
+    "ci": [
+     -0.2194444444444445,
+     0.0080808080808081
+    ],
+    "level": "borderline"
+   },
+   "era5": {
+    "per_decade": -0.04206343519747305,
+    "ci": [
+     -0.15145543107862353,
+     0.055731456468386426
+    ],
+    "level": "not_significant"
+   },
+   "same_direction": true,
+   "ci_overlap": true,
+   "same_verdict": false
+  },
+  {
+   "place": "Riyadh",
+   "lat": 24.71,
+   "lon": 46.68,
+   "variable": "t2m",
+   "demo": false,
+   "power": {
+    "per_decade": 0.38991869918699196,
+    "ci": [
+     0.23796296296296257,
+     0.5358974358974357
+    ],
+    "level": "significant"
+   },
+   "era5": {
+    "per_decade": 0.6179011585477099,
+    "ci": [
+     0.47317866604332176,
+     0.7360459363252323
+    ],
+    "level": "significant"
+   },
+   "same_direction": true,
+   "ci_overlap": true,
+   "same_verdict": true
+  },
+  {
+   "place": "Riyadh",
+   "lat": 24.71,
+   "lon": 46.68,
+   "variable": "t2m_max",
+   "demo": false,
+   "power": {
+    "per_decade": 0.3386718749999995,
+    "ci": [
+     0.188095238095238,
+     0.5267857142857141
+    ],
+    "level": "significant"
+   },
+   "era5": {
+    "per_decade": 0.4914437687230373,
+    "ci": [
+     0.3227496741609647,
+     0.6486161321221098
+    ],
+    "level": "significant"
+   },
+   "same_direction": true,
+   "ci_overlap": true,
+   "same_verdict": true
+  },
+  {
+   "place": "Riyadh",
+   "lat": 24.71,
+   "lon": 46.68,
+   "variable": "precip",
+   "demo": false,
+   "power": {
+    "per_decade": -0.002083333333333329,
+    "ci": [
+     -0.03333333333333333,
+     0.024305555555555552
+    ],
+    "level": "not_significant"
+   },
+   "era5": {
+    "per_decade": -0.002186408157868697,
+    "ci": [
+     -0.025618870376934902,
+     0.019149679633550597
+    ],
+    "level": "not_significant"
+   },
+   "same_direction": true,
+   "ci_overlap": true,
+   "same_verdict": true
+  },
+  {
+   "place": "Tehran",
+   "lat": 35.69,
+   "lon": 51.39,
+   "variable": "t2m",
+   "demo": false,
+   "power": {
+    "per_decade": 0.5140204973118279,
+    "ci": [
+     0.25956790123456774,
+     0.7539062499999999
+    ],
+    "level": "significant"
+   },
+   "era5": {
+    "per_decade": 0.8577783246327,
+    "ci": [
+     0.6125902870377408,
+     1.1111499707409844
+    ],
+    "level": "significant"
+   },
+   "same_direction": true,
+   "ci_overlap": true,
+   "same_verdict": true
+  },
+  {
+   "place": "Tehran",
+   "lat": 35.69,
+   "lon": 51.39,
+   "variable": "t2m_max",
+   "demo": false,
+   "power": {
+    "per_decade": 0.4000000000000007,
+    "ci": [
+     0.1887499999999993,
+     0.6557291666666666
+    ],
+    "level": "significant"
+   },
+   "era5": {
+    "per_decade": 0.7398778739230618,
+    "ci": [
+     0.567961731926322,
+     0.9850433020816816
+    ],
+    "level": "significant"
+   },
+   "same_direction": true,
+   "ci_overlap": true,
+   "same_verdict": true
+  },
+  {
+   "place": "Tehran",
+   "lat": 35.69,
+   "lon": 51.39,
+   "variable": "precip",
+   "demo": false,
+   "power": {
+    "per_decade": 0.09678776683087029,
+    "ci": [
+     0.020666666666666667,
+     0.18333333333333335
+    ],
+    "level": "significant"
+   },
+   "era5": {
+    "per_decade": -0.04443237714069685,
+    "ci": [
+     -0.10308345251337464,
+     0.01884024741057244
+    ],
+    "level": "not_significant"
+   },
+   "same_direction": false,
+   "ci_overlap": false,
+   "same_verdict": false
+  },
+  {
+   "place": "Ulaanbaatar",
+   "lat": 47.89,
+   "lon": 106.91,
+   "variable": "t2m",
+   "demo": false,
+   "power": {
+    "per_decade": 0.10267857142857165,
+    "ci": [
+     -0.08333333333333262,
+     0.27866666666666673
+    ],
+    "level": "not_significant"
+   },
+   "era5": {
+    "per_decade": 0.29990291441348116,
+    "ci": [
+     0.05571707177494687,
+     0.5953838562909405
+    ],
+    "level": "significant"
+   },
+   "same_direction": true,
+   "ci_overlap": true,
+   "same_verdict": false
+  },
+  {
+   "place": "Ulaanbaatar",
+   "lat": 47.89,
+   "lon": 106.91,
+   "variable": "t2m_max",
+   "demo": false,
+   "power": {
+    "per_decade": 0.35220445736434114,
+    "ci": [
+     0.12749999999999972,
+     0.5793650793650795
+    ],
+    "level": "significant"
+   },
+   "era5": {
+    "per_decade": 0.4059669494229723,
+    "ci": [
+     0.17322196620583813,
+     0.6564938892931249
+    ],
+    "level": "significant"
+   },
+   "same_direction": true,
+   "ci_overlap": true,
+   "same_verdict": true
+  },
+  {
+   "place": "Ulaanbaatar",
+   "lat": 47.89,
+   "lon": 106.91,
+   "variable": "precip",
+   "demo": false,
+   "power": {
+    "per_decade": 0.0065088593576965725,
+    "ci": [
+     -0.13541666666666669,
+     0.15868055555555555
+    ],
+    "level": "not_significant"
+   },
+   "era5": {
+    "per_decade": -0.056326906778797765,
+    "ci": [
+     -0.10092613927291347,
+     -0.007538112389931872
+    ],
+    "level": "significant"
+   },
+   "same_direction": false,
+   "ci_overlap": true,
+   "same_verdict": false
+  },
+  {
+   "place": "Beijing",
+   "lat": 39.9,
+   "lon": 116.4,
+   "variable": "t2m",
+   "demo": false,
+   "power": {
+    "per_decade": 0.24534970238095255,
+    "ci": [
+     0.00833333333333358,
+     0.4818627450980392
+    ],
+    "level": "significant"
+   },
+   "era5": {
+    "per_decade": 0.21274676794625827,
+    "ci": [
+     -0.011407857375600157,
+     0.44890490462654065
+    ],
+    "level": "not_significant"
+   },
+   "same_direction": true,
+   "ci_overlap": true,
+   "same_verdict": false
+  },
+  {
+   "place": "Beijing",
+   "lat": 39.9,
+   "lon": 116.4,
+   "variable": "t2m_max",
+   "demo": false,
+   "power": {
+    "per_decade": 0.23923611111111404,
+    "ci": [
+     -0.08141025641025666,
+     0.5472222222222225
+    ],
+    "level": "not_significant"
+   },
+   "era5": {
+    "per_decade": 0.28366262659201,
+    "ci": [
+     0.06803223977763123,
+     0.5039182710533217
+    ],
+    "level": "significant"
+   },
+   "same_direction": true,
+   "ci_overlap": true,
+   "same_verdict": false
+  },
+  {
+   "place": "Beijing",
+   "lat": 39.9,
+   "lon": 116.4,
+   "variable": "precip",
+   "demo": false,
+   "power": {
+    "per_decade": 0.1444017320607989,
+    "ci": [
+     0.02717391304347824,
+     0.26645833333333335
+    ],
+    "level": "significant"
+   },
+   "era5": {
+    "per_decade": -0.06831146901004002,
+    "ci": [
+     -0.14929994767314003,
+     0.009678333699070665
+    ],
+    "level": "not_significant"
+   },
+   "same_direction": false,
+   "ci_overlap": false,
+   "same_verdict": false
+  }
+ ],
+ "note": "ERA5 (ECMWF) is produced independently of MERRA-2 (NASA). Grids differ (ERA5 about 0.25°, POWER about 0.5° × 0.625°).",
+ "generated": "2026-11-13"
+}

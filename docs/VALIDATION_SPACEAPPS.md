@@ -114,7 +114,48 @@ The checks appear in the scientists' view of each result (`test_impossible_value
 - **Coverage:** air temperature, daytime highs and rainfall at the demo places and 20 land points on every continent.
 - **Results:** see `validation/detective/era5.json` and the table below.
 
-ERA5_SUMMARY_PLACEHOLDER
+Result at **15 places** (2026-11-13). Open-Meteo's free hourly limit stopped the other places of the run;
+`scripts/validate_detective.py era5` resumes from its cache and adds them.
+
+| Variable | Places | Same direction | Same direction where either is significant | 95 % ranges overlap | Rate correlation |
+|---|---|---|---|---|---|
+| Air temperature | 15 | 100 % | 100 % (15 places) | 93 % | 0.89 |
+| Daytime high temperature | 15 | 100 % | 100 % (15 places) | 80 % | 0.09 |
+| Rainfall | 15 | 53 % | 50 % (8 places) | 80 % | 0.60 |
+
+**What this means:**
+- **Air temperature trends are robust.** Two independent datasets agree on the direction everywhere, their 95 % ranges
+  almost always overlap, and their rates are strongly correlated.
+- **Daytime highs: the direction is robust, the size is not.** The datasets disagree on how fast, most at Svalbard
+  (NASA POWER +0.27, ERA5 +1.11 °C per decade).
+- **Rainfall trends are not robust.** Even where one dataset finds a significant trend, the other agrees on its
+  direction only about half the time. **The app therefore warns on every rainfall result** to check it with a second
+  source before relying on it. The Sahel and Perth demos are examples: NASA POWER finds a significant change, and ERA5
+  the same direction but weaker or not significant.
+
+Demo places (rate per decade, NASA POWER against ERA5):
+
+| Place | Variable | NASA POWER | ERA5 | Same direction |
+|---|---|---|---|---|
+| New Cairo | Air temperature | +0.319 (significant) | +0.564 (significant) | yes |
+| New Cairo | Daytime high temperature | +0.333 (significant) | +0.457 (significant) | yes |
+| New Cairo | Rainfall | +0.009 (not significant) | -0.001 (not significant) | **no** |
+| Svalbard | Air temperature | +0.791 (significant) | +1.211 (significant) | yes |
+| Svalbard | Daytime high temperature | +0.272 (significant) | +1.111 (significant) | yes |
+| Svalbard | Rainfall | +0.003 (not significant) | +0.075 (significant) | yes |
+| Sahel | Air temperature | +0.163 (significant) | +0.322 (significant) | yes |
+| Sahel | Daytime high temperature | +0.092 (not significant) | +0.333 (significant) | yes |
+| Sahel | Rainfall | +0.046 (significant) | +0.003 (not significant) | yes |
+| Perth | Air temperature | +0.172 (significant) | +0.159 (significant) | yes |
+| Perth | Daytime high temperature | +0.239 (significant) | +0.203 (significant) | yes |
+| Perth | Rainfall | -0.205 (significant) | -0.066 (not significant) | yes |
+| Sydney | Air temperature | +0.315 (significant) | +0.255 (significant) | yes |
+| Sydney | Daytime high temperature | +0.428 (significant) | +0.329 (significant) | yes |
+| Sydney | Rainfall | -0.143 (not significant) | +0.005 (not significant) | **no** |
+| Amazon | Air temperature | +0.321 (significant) | +0.202 (significant) | yes |
+| Amazon | Daytime high temperature | +0.556 (significant) | +0.194 (significant) | yes |
+| Amazon | Rainfall | -0.404 (significant) | -0.420 (significant) | yes |
+
 
 ### 3.4 Published science (same periods as each study)
 
