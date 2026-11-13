@@ -22,17 +22,30 @@ Built for high-school and college students, with no account and no installation 
 | **4. Rate of change and significance** | On the **yearly averages** of the anomalies: the **Mann-Kendall test** (with ties) and **Sen's slope** with its 95 % CI, plus a **least-squares fit with a t-test** and its 95 % CI. A big headline number gives the **total change since 1981**, with a short verdict: "Yes", "Probably (the tests disagree)" or "Not yet (a longer record may change that)". Kendall's τ, R², the autocorrelation and the monthly-basis comparison sit in a "For scientists" section. |
 | **Audience and approach** | A three-question guided start, **seven watchable demos** (each card shows its answer before you click), a "What does significant mean?" explainer, plain units (soil wetness in %), and a help assistant that answers questions about the page. |
 
-## Demo examples (NASA POWER, 1981–2025, yearly averages, checked 13 Nov 2026)
+## Demo examples (NASA POWER, 1981–2025, yearly averages, corrected tests, checked 13 Nov 2026)
 
 | Demo | Variable | Result |
 |---|---|---|
-| **Same planet, opposite rain** | Rainfall | **Sahel +0.046 mm/day per decade** (95 % range +0.01 to +0.085) against **Perth −0.21** (−0.27 to −0.13): both significant, in opposite directions. Around Perth, 30 cells are drying and 7 getting wetter; the biggest decline is in **June**, the winter rains. |
-| **New Cairo, Egypt** (desert city) | Daytime high temperature | **+0.33 °C per decade** (+0.16 to +0.52), **significant**: about **+1.5 °C since 1981**. All 80 surrounding cells warm significantly. |
-| **Svalbard, Arctic Norway** | Air temperature | **+0.79 °C per decade** (+0.59 to +1.00), **significant**: about **+3.5 °C since 1981**, more than twice Cairo's rate (Arctic amplification) |
-| **Sahel, Niger** | Rainfall | **+0.046 mm/day per decade**, **significant**: the rains have partly recovered since the 1980s droughts |
-| **Sydney, Australia** | Rainfall | **Not significant yet:** a drying tendency of −0.14 mm/day per decade (−0.27 to +0.008), Mann-Kendall p = 0.07. The range includes zero, so a longer record is needed. |
-| **Central Amazon, Brazil** | Root-zone soil wetness | **−2.1 % per decade** (−3.5 to −0.65), **significant drying** |
-| **Delhi, India** | Sunshine reaching the ground | **−0.61 MJ/m²/day per decade** (−0.68 to −0.53), **significant dimming**, consistent with air pollution |
+| **Same planet, opposite rain** | Rainfall | **Sahel +0.046 mm/day per decade** (95 % range +0.01 to +0.085) against **Perth −0.21** (−0.29 to −0.12): both significant, in opposite directions. Around Perth the coast dries while a strip inland gets wetter; the biggest decline is in **June**, the winter rains. |
+| **New Cairo, Egypt** (desert city) | Daytime high temperature | **+0.33 °C per decade** (+0.15 to +0.55), **significant**: about **+1.5 °C since 1981**. All 80 surrounding cells warm. |
+| **Svalbard, Arctic Norway** | Air temperature | **+0.79 °C per decade** (+0.52 to +1.06), **significant**: about **+3.5 °C since 1981**, more than twice Cairo's rate (Arctic amplification) |
+| **Delhi, India** | Sunshine reaching the ground | **−0.61 MJ/m²/day per decade** (−0.68 to −0.53), **significant dimming**. Checked against the satellite-product join (same trend on both sides) and against published station studies |
+| **Sahel, Niger** | Rainfall | **+0.046 mm/day per decade**, **significant**: partial recovery since the 1980s droughts (ERA5 shows a weaker change, see validation) |
+| **Sydney, Australia** | Rainfall | **Not significant yet:** −0.14 mm/day per decade (−0.30 to +0.048), p = 0.14 and 0.20 |
+| **Central Amazon, Brazil** | Root-zone soil wetness | **Not significant yet:** −2.1 % per decade (−4.2 to +0.04). Soils "remember" from year to year, so 45 years count as only about 19 independent years; the uncorrected tests would wrongly call it significant |
+
+## Verification and validation (full report: [docs/VALIDATION_SPACEAPPS.md](docs/VALIDATION_SPACEAPPS.md))
+- **Same answers as independent software:** on 200 random series (with ties), every statistic matches the open-source
+  **pymannkendall** package and **SciPy** exactly (largest difference 0).
+- **Few false alarms (Monte Carlo, 2,000 trend-free records):** simple tests are fooled by year-to-year memory (28 %
+  false alarms at correlation 0.6). Our corrected verdict stays near 5 % (3.3 %, 4.6 %, 5.9 %).
+- **Many tests on the map** are controlled by the false discovery rate (Benjamini–Hochberg).
+- **Data checks on every series:** missing values, physically impossible values, completeness. **Satellite-product
+  joins** in sunshine and cloud records are tested on both sides of the shift.
+- **An independent dataset:** every analysis is repeated on **ERA5** (ECMWF) at the demo places and 20 land points
+  on every continent.
+- **Published science:** each demo compared with peer-reviewed or agency values over the same periods; all directions
+  agree, and size differences are reported.
 
 ## Methods
 
@@ -43,9 +56,11 @@ Built for high-school and college students, with no account and no installation 
    because neighbouring months are strongly correlated (up to 0.84 for soil) and many monthly values repeat (rainless
    months, rounded soil wetness), which makes monthly tests over-confident. The monthly-basis results are shown for
    comparison in the scientists' view.
-3. **Least squares:** `scipy.stats.linregress` on the yearly averages, giving the slope, its standard error, a two-sided
+3. **Least squares:** `scipy.stats.linregress` on the yearly averages, with the t-test using an **effective sample size for
+   year-to-year persistence** (Santer et al. 2000, bias-corrected lag-1), giving the slope, its standard error, a two-sided
    t-test and a 95 % CI from the t distribution.
-4. **Mann-Kendall:** the S statistic, the variance with the tie correction, a continuity-corrected z and a two-sided
+4. **Mann-Kendall:** the **modified test of Yue & Wang (2004)**, whose variance is inflated for persistence: the S statistic, the
+   variance with the tie correction, a continuity-corrected z and a two-sided
    p-value. Sen's slope is the median of all pairwise slopes, with its CI from the Mann-Kendall variance. If most
    yearly values repeat, Sen's slope is exactly 0, so the least-squares rate is reported instead, with a note.
    **Seasons:** a least-squares trend for each calendar month across the years. **Map:** the same yearly test for every

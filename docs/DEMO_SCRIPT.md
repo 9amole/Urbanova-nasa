@@ -7,7 +7,7 @@ live, by how much, and is the change real or just noise? Our Trend Detective ans
 1. Click **New Cairo, Egypt** under *Watch a demo*.
 2. Narrate the captions as they appear: the question (heat), the place type (city), the pin on the map ("one NASA
    cell, about 55 km"), and the suggested variables with their simple definitions.
-3. The result appears: "**+1.5 °C since 1981**: +0.33 °C per decade, 95 % range +0.16 to +0.52. Both tests agree it is
+3. The result appears: "**+1.5 °C since 1981**: +0.33 °C per decade, 95 % range +0.15 to +0.55. Both corrected tests agree it is
    significant."
 
 **0:40 — Reading the chart, and "where" (20 s).** "The pale line is each month with the normal seasonal cycle removed,
@@ -19,7 +19,7 @@ significantly."
 1. Click **Same planet, opposite rain**: "the Sahel is getting **wetter**, south-west Australia **drier**, both
    significant. The same climate change moves rain belts." Open *Where is it changing?* near Perth: the coast dries and a
    strip inland gets wetter.
-2. Click **Sydney**: "**Not significant yet**: a drying hint, p = 0.07. The range includes zero, so we need a longer
+2. Click **Sydney**: "**Not significant yet**: a drying hint, p = 0.14. The range includes zero, so we need a longer
    record."
 
 **1:25 — Your own question (20 s).** Choose *Heat and temperature*, then *Farmland or river delta*, then click the Nile
@@ -33,3 +33,8 @@ becomes design advice for a real street."
 
 **2:00 — Close.** "Pick a question, a place, NASA data and two statistical tests. Anyone can be an Earth system trend
 detective."
+
+**If a judge asks "how do you know it's right?" (20 s, optional).** Scroll to **How do we know it's right? → Show
+the checks**: "Our statistics match independent software exactly; in 2,000 simulated records with no trend, our
+corrected test raises a false alarm about 5 % of the time, while simple tests reach 28 %; and every demo is compared
+with a second dataset, ERA5, and with published studies."
