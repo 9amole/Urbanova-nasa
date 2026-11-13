@@ -1,0 +1,849 @@
+{
+ "id": "perth",
+ "region": "opposite",
+ "name": "Perth city centre",
+ "lat": -31.952,
+ "lon": 115.857,
+ "boundary": {
+  "type": "Polygon",
+  "coordinates": [
+   [
+    [
+     115.85064770830506,
+     -31.957389867049947
+    ],
+    [
+     115.86335229169494,
+     -31.957389867049947
+    ],
+    [
+     115.86335229169494,
+     -31.946610132950056
+    ],
+    [
+     115.85064770830506,
+     -31.946610132950056
+    ],
+    [
+     115.85064770830506,
+     -31.957389867049947
+    ]
+   ]
+  ]
+ },
+ "generated_at": "2026-11-13T14:07:34+00:00",
+ "analysis_mode": "site",
+ "status": "succeeded",
+ "metrics": {
+  "lst_site_median_c": {
+   "label": "Median land surface temperature on the site (clear-sky, hot season)",
+   "value": 36.72,
+   "unit": "°C",
+   "state": "available",
+   "reason": null,
+   "output_kind": "observed"
+  },
+  "lst_surroundings_median_c": {
+   "label": "Median land surface temperature in the surrounding ring (up to 1000 m)",
+   "value": 36.67,
+   "unit": "°C",
+   "state": "available",
+   "reason": null,
+   "output_kind": "observed"
+  },
+  "lst_site_minus_surroundings_k": {
+   "label": "Site minus surroundings median surface temperature",
+   "value": 0.05,
+   "unit": "K",
+   "state": "available",
+   "reason": null,
+   "output_kind": "calculated"
+  },
+  "lst_site_hot_cluster_share_pct": {
+   "label": "Share of the site's 90 m blocks inside a significant surface hot cluster (Gi*, today's land)",
+   "value": 50.0,
+   "unit": "%",
+   "state": "available",
+   "reason": null,
+   "output_kind": "classified"
+  },
+  "lst_scenes_used": {
+   "label": "Clear-sky Landsat scenes used",
+   "value": 6.0,
+   "unit": "count",
+   "state": "available",
+   "reason": null,
+   "output_kind": "observed"
+  },
+  "ndvi_site_mean": {
+   "label": "Mean NDVI on the site",
+   "value": 0.111,
+   "unit": "NDVI",
+   "state": "available",
+   "reason": null,
+   "output_kind": "observed"
+  },
+  "ndvi_surroundings_mean": {
+   "label": "Mean NDVI in surroundings (up to 500 m)",
+   "value": 0.16,
+   "unit": "NDVI",
+   "state": "available",
+   "reason": null,
+   "output_kind": "observed"
+  },
+  "ndvi_site_vegetated_share_pct": {
+   "label": "Share of site with vegetation indicator (NDVI ≥ 0.2)",
+   "value": 19.4,
+   "unit": "%",
+   "state": "available",
+   "reason": null,
+   "output_kind": "classified"
+  },
+  "utci_sun_peak_c": {
+   "label": "Highest UTCI in full sun on the hot day (very strong heat stress)",
+   "value": 40.1,
+   "unit": "°C",
+   "state": "available",
+   "reason": null,
+   "output_kind": "calculated"
+  },
+  "utci_shade_peak_c": {
+   "label": "Highest UTCI in shade on the hot day (strong heat stress)",
+   "value": 36.3,
+   "unit": "°C",
+   "state": "available",
+   "reason": null,
+   "output_kind": "calculated"
+  },
+  "utci_sun_very_strong_hours": {
+   "label": "Hours (07–17 solar) with very strong or extreme heat stress in full sun (UTCI ≥ 38 °C)",
+   "value": 5.0,
+   "unit": "h",
+   "state": "available",
+   "reason": null,
+   "output_kind": "calculated"
+  },
+  "climate_hot_season_mean_tmax_c": {
+   "label": "Mean daily maximum air temperature, hottest 3 months (Jan, Feb, Dec)",
+   "value": 29.07,
+   "unit": "°C",
+   "state": "available",
+   "reason": null,
+   "output_kind": "calculated"
+  },
+  "climate_mean_annual_TX35_days": {
+   "label": "Very hot days (Tmax ≥ 35 °C) — mean per year",
+   "value": 10.2,
+   "unit": "days/year",
+   "state": "available",
+   "reason": null,
+   "output_kind": "calculated"
+  },
+  "climate_mean_annual_TR_days": {
+   "label": "Tropical nights (Tmin > 20 °C) — mean per year",
+   "value": 50.0,
+   "unit": "days/year",
+   "state": "available",
+   "reason": null,
+   "output_kind": "calculated"
+  },
+  "climate_tmax_record_c": {
+   "label": "Highest daily maximum air temperature in period",
+   "value": 39.6,
+   "unit": "°C",
+   "state": "available",
+   "reason": null,
+   "output_kind": "calculated"
+  },
+  "context_mapped_buildings_count": {
+   "label": "Mapped buildings in study area",
+   "value": 2380.0,
+   "unit": "count",
+   "state": "available",
+   "reason": null,
+   "output_kind": "observed"
+  },
+  "context_mapped_green_pct": {
+   "label": "Mapped green space share of study area",
+   "value": 10.37,
+   "unit": "%",
+   "state": "available",
+   "reason": null,
+   "output_kind": "calculated"
+  }
+ },
+ "land_cover": [
+  {
+   "label": "Site: Built-up (2021 land cover)",
+   "value": 89.13
+  },
+  {
+   "label": "Site: Tree cover (2021 land cover)",
+   "value": 8.01
+  },
+  {
+   "label": "Site: Bare / sparse vegetation (2021 land cover)",
+   "value": 1.22
+  },
+  {
+   "label": "Site: Grassland (2021 land cover)",
+   "value": 1.11
+  },
+  {
+   "label": "Site: Permanent water bodies (2021 land cover)",
+   "value": 0.43
+  },
+  {
+   "label": "Site: Cropland (2021 land cover)",
+   "value": 0.1
+  }
+ ],
+ "site_context": [
+  {
+   "type": "H2",
+   "condition": "existing",
+   "metric": "lst_site_hot_cluster_share_pct",
+   "in_cluster": true,
+   "site_share_pct": 50.0,
+   "cluster_geometry": {
+    "type": "MultiPolygon",
+    "coordinates": [
+     [
+      [
+       [
+        115.85221788031907,
+        -31.955244784008386
+       ],
+       [
+        115.85220778341169,
+        -31.9560565894533
+       ],
+       [
+        115.85315996911856,
+        -31.956065194384227
+       ],
+       [
+        115.85314988017628,
+        -31.95687699999238
+       ],
+       [
+        115.85029329916067,
+        -31.956851162973557
+       ],
+       [
+        115.85030341321908,
+        -31.956039358176163
+       ],
+       [
+        115.8493512287341,
+        -31.956030731829976
+       ],
+       [
+        115.84936135075654,
+        -31.955218927196498
+       ],
+       [
+        115.85221788031907,
+        -31.955244784008386
+       ]
+      ]
+     ],
+     [
+      [
+       [
+        115.85318014578331,
+        -31.95444158284757
+       ],
+       [
+        115.85032364011305,
+        -31.95441574826102
+       ],
+       [
+        115.85033375294857,
+        -31.953603943143264
+       ],
+       [
+        115.85319023350579,
+        -31.953629776919076
+       ],
+       [
+        115.85318014578331,
+        -31.95444158284757
+       ]
+      ]
+     ],
+     [
+      [
+       [
+        115.85717978694517,
+        -31.939051577656702
+       ],
+       [
+        115.85813179894504,
+        -31.939060141249154
+       ],
+       [
+        115.85811172137811,
+        -31.9406837595355
+       ],
+       [
+        115.86001578005234,
+        -31.940700866392948
+       ],
+       [
+        115.86000575739337,
+        -31.941512675913017
+       ],
+       [
+        115.8619098344151,
+        -31.941529754769512
+       ],
+       [
+        115.86189982808435,
+        -31.942341564718944
+       ],
+       [
+        115.86380392345168,
+        -31.942358615572616
+       ],
+       [
+        115.86379393345054,
+        -31.943170425950562
+       ],
+       [
+        115.86474599010486,
+        -31.94317894094253
+       ],
+       [
+        115.8647559717395,
+        -31.94236713029732
+       ],
+       [
+        115.86570802042966,
+        -31.94237563788727
+       ],
+       [
+        115.8657179932958,
+        -31.941563826868325
+       ],
+       [
+        115.86857411667827,
+        -31.941589306029712
+       ],
+       [
+        115.86858406404484,
+        -31.940777494104314
+       ],
+       [
+        115.86953609760882,
+        -31.940785972622816
+       ],
+       [
+        115.86952615860815,
+        -31.941597784814363
+       ],
+       [
+        115.87238228680023,
+        -31.941623178360732
+       ],
+       [
+        115.87236245779563,
+        -31.943246804017992
+       ],
+       [
+        115.87331451805892,
+        -31.943255254794725
+       ],
+       [
+        115.87319561088253,
+        -31.952997002961595
+       ],
+       [
+        115.87224345019338,
+        -31.95298854900148
+       ],
+       [
+        115.87220376819955,
+        -31.95623579391562
+       ],
+       [
+        115.87315596237478,
+        -31.95624424893704
+       ],
+       [
+        115.87313613572371,
+        -31.957867871284677
+       ],
+       [
+        115.87218392480342,
+        -31.957859415732596
+       ],
+       [
+        115.8721740025055,
+        -31.958671226481037
+       ],
+       [
+        115.86931734702644,
+        -31.95864581619287
+       ],
+       [
+        115.8693272944434,
+        -31.95783400624179
+       ],
+       [
+        115.86647066769163,
+        -31.957808532499367
+       ],
+       [
+        115.86648063982554,
+        -31.956996723240948
+       ],
+       [
+        115.86552844008429,
+        -31.95698821798229
+       ],
+       [
+        115.86553842018853,
+        -31.956176408884055
+       ],
+       [
+        115.8645862292218,
+        -31.95616789675371
+       ],
+       [
+        115.86459621729573,
+        -31.955356087815872
+       ],
+       [
+        115.86364403510345,
+        -31.955347568814307
+       ],
+       [
+        115.86365403114635,
+        -31.9545357600371
+       ],
+       [
+        115.86270185772854,
+        -31.954527234164754
+       ],
+       [
+        115.86271186173977,
+        -31.953715425548367
+       ],
+       [
+        115.86175969709635,
+        -31.95370689280571
+       ],
+       [
+        115.86176970907522,
+        -31.95289508435036
+       ],
+       [
+        115.85986539774103,
+        -31.95287799798769
+       ],
+       [
+        115.85987542605737,
+        -31.952066189961833
+       ],
+       [
+        115.85797113308094,
+        -31.952049075585776
+       ],
+       [
+        115.85799122198085,
+        -31.950425460288052
+       ],
+       [
+        115.8551348357731,
+        -31.95039973680834
+       ],
+       [
+        115.85512476641631,
+        -31.95121154370327
+       ],
+       [
+        115.85131622367727,
+        -31.95117714473424
+       ],
+       [
+        115.85130612043447,
+        -31.951988950442804
+       ],
+       [
+        115.8503539773969,
+        -31.95198033258738
+       ],
+       [
+        115.85034386537654,
+        -31.95279213791871
+       ],
+       [
+        115.84748741359962,
+        -31.95276624071598
+       ],
+       [
+        115.84749755073092,
+        -31.951954436197358
+       ],
+       [
+        115.84559326832928,
+        -31.951937136251036
+       ],
+       [
+        115.84560342179186,
+        -31.951125332168555
+       ],
+       [
+        115.84465128957466,
+        -31.951116671761316
+       ],
+       [
+        115.84470209259389,
+        -31.94705765110572
+       ],
+       [
+        115.84375000263071,
+        -31.947048984921533
+       ],
+       [
+        115.84376017037387,
+        -31.94623718074198
+       ],
+       [
+        115.84280808918835,
+        -31.946228507694137
+       ],
+       [
+        115.84281826488923,
+        -31.945416703680003
+       ],
+       [
+        115.84186619248139,
+        -31.94540802376894
+       ],
+       [
+        115.8418763761393,
+        -31.944596219920435
+       ],
+       [
+        115.8409243125091,
+        -31.944587533146635
+       ],
+       [
+        115.84094469532683,
+        -31.94296392567446
+       ],
+       [
+        115.84189674222371,
+        -31.94297261190296
+       ],
+       [
+        115.84191710666639,
+        -31.941349003458242
+       ],
+       [
+        115.84286913724173,
+        -31.941357682007176
+       ],
+       [
+        115.84287931048196,
+        -31.940545877352196
+       ],
+       [
+        115.84383133310189,
+        -31.94055454849464
+       ],
+       [
+        115.84384149756691,
+        -31.939742743460688
+       ],
+       [
+        115.84479351223138,
+        -31.93975140719709
+       ],
+       [
+        115.84480366792184,
+        -31.93893960178438
+       ],
+       [
+        115.8467076817488,
+        -31.938956907312342
+       ],
+       [
+        115.84671782030087,
+        -31.938145101249628
+       ],
+       [
+        115.85718983348639,
+        -31.938239768622264
+       ],
+       [
+        115.85717978694517,
+        -31.939051577656702
+       ]
+      ],
+      [
+       [
+        115.85707929925724,
+        -31.947169662130825
+       ],
+       [
+        115.85706924826054,
+        -31.94798146999118
+       ],
+       [
+        115.85897345673321,
+        -31.947998595954324
+       ],
+       [
+        115.85899352484843,
+        -31.946374979051882
+       ],
+       [
+        115.85804143714623,
+        -31.946366420175703
+       ],
+       [
+        115.85805147896497,
+        -31.945554611833025
+       ],
+       [
+        115.85709940003528,
+        -31.945546046089895
+       ],
+       [
+        115.85710944981668,
+        -31.944734237909326
+       ],
+       [
+        115.85615737965946,
+        -31.9447256652997
+       ],
+       [
+        115.85612720399686,
+        -31.94716108871396
+       ],
+       [
+        115.85707929925724,
+        -31.947169662130825
+       ]
+      ]
+     ]
+    ]
+   },
+   "method": "Getis–Ord Gi* on 90 m block means of the composite, distance band 3 blocks (cell included), 999 conditional permutations, Benjamini–Hochberg FDR q = 0.05; hot clusters only",
+   "statement": "The site lies in a statistically significant surface hot cluster of today's land (50 % of its 90 m blocks).",
+   "note": "Site context only: it describes today's land, not the proposed design, and produces no design recommendations."
+  },
+  {
+   "type": "land_cover",
+   "condition": "existing",
+   "metric": "landcover_surroundings_built-up_pct",
+   "statement": "The surroundings are mainly built-up (71 % of the ring, WorldCover 2021).",
+   "method": "ESA WorldCover 2021 (v2.0.0) 10 m classes reprojected to local UTM 10 m (nearest); share of valid pixels",
+   "note": "Site context only: land cover describes today's land, not the design, and is never a cause."
+  }
+ ],
+ "modules": {
+  "climate_baseline": {
+   "label": "Regional climate & heat baseline (air temperature)",
+   "status": "completed",
+   "reason": null
+  },
+  "site_context": {
+   "label": "Surrounding land context (OpenStreetMap)",
+   "status": "completed",
+   "reason": null
+  },
+  "land_cover": {
+   "label": "Land cover around the site (ESA WorldCover)",
+   "status": "completed",
+   "reason": null
+  },
+  "vegetation": {
+   "label": "Vegetation indicator (Sentinel-2 NDVI)",
+   "status": "completed",
+   "reason": null
+  },
+  "surface_heat": {
+   "label": "Land surface temperature (Landsat) — heat analysis",
+   "status": "completed",
+   "reason": null
+  },
+  "solar_shade": {
+   "label": "Solar position & geometric shade",
+   "status": "completed",
+   "reason": null
+  },
+  "heat_stress": {
+   "label": "Heat stress in sun and shade (UTCI, hot day)",
+   "status": "completed",
+   "reason": null
+  }
+ },
+ "layers": [
+  {
+   "name": "Land cover (ESA WorldCover 2021)",
+   "module": "land_cover",
+   "output_kind": "classified",
+   "file": "00_land_cover.png",
+   "bounds": {
+    "south": -31.96208018472527,
+    "west": 115.84515172303018,
+    "north": -31.94192199345306,
+    "east": 115.86890939877784
+   },
+   "legend": {
+    "type": "categorical",
+    "classes": [
+     {
+      "color": "#006400",
+      "label": "Tree cover"
+     },
+     {
+      "color": "#ffbb22",
+      "label": "Shrubland"
+     },
+     {
+      "color": "#ffff4c",
+      "label": "Grassland"
+     },
+     {
+      "color": "#f096ff",
+      "label": "Cropland"
+     },
+     {
+      "color": "#fa0000",
+      "label": "Built-up"
+     },
+     {
+      "color": "#b4b4b4",
+      "label": "Bare / sparse vegetation"
+     },
+     {
+      "color": "#0064c8",
+      "label": "Permanent water bodies"
+     }
+    ]
+   }
+  },
+  {
+   "name": "Vegetation indicator (NDVI, median)",
+   "module": "vegetation",
+   "output_kind": "observed",
+   "file": "01_vegetation.png",
+   "bounds": {
+    "south": -31.96208018472527,
+    "west": 115.84515172303018,
+    "north": -31.94192199345306,
+    "east": 115.86890939877784
+   },
+   "legend": {
+    "type": "continuous",
+    "cmap": "RdYlGn",
+    "min": -0.1,
+    "max": 0.7,
+    "unit": "NDVI"
+   }
+  },
+  {
+   "name": "Land surface temperature (°C, clear-sky median)",
+   "module": "surface_heat",
+   "output_kind": "observed",
+   "file": "02_surface_heat.png",
+   "bounds": {
+    "south": -31.966700304434934,
+    "west": 115.83969669434138,
+    "north": -31.937272604704003,
+    "east": 115.8743790542139
+   },
+   "legend": {
+    "type": "continuous",
+    "cmap": "inferno",
+    "min": 24.8,
+    "max": 41.7,
+    "unit": "°C"
+   }
+  },
+  {
+   "name": "Relative surface-heat classes",
+   "module": "surface_heat",
+   "output_kind": "classified",
+   "file": "03_surface_heat.png",
+   "bounds": {
+    "south": -31.966700304434934,
+    "west": 115.83969669434138,
+    "north": -31.937272604704003,
+    "east": 115.8743790542139
+   },
+   "legend": {
+    "type": "categorical",
+    "classes": [
+     {
+      "color": "#2c7bb6",
+      "label": "Cooler than study-area P25"
+     },
+     {
+      "color": "#ffffbf",
+      "label": "Typical (P25–P75)"
+     },
+     {
+      "color": "#fdae61",
+      "label": "Warmer (P75–P90)"
+     },
+     {
+      "color": "#d7191c",
+      "label": "Hottest decile (≥ P90)"
+     }
+    ],
+    "breaks_c": {
+     "p25": 34.27,
+     "p75": 38.41,
+     "p90": 39.99
+    }
+   }
+  }
+ ],
+ "datasets": [
+  {
+   "name": "open_meteo_archive",
+   "attribution": "Weather data by Open-Meteo.com (CC BY 4.0), based on Copernicus ERA5 reanalysis",
+   "license": "CC BY 4.0 (data: Copernicus ERA5)"
+  },
+  {
+   "name": "osm_overpass",
+   "attribution": "© OpenStreetMap contributors (ODbL)",
+   "license": "ODbL 1.0"
+  },
+  {
+   "name": "pc_esa_worldcover",
+   "attribution": "ESA WorldCover project / Contains modified Copernicus Sentinel data (2021) processed by ESA WorldCover consortium; accessed via Microsoft Planetary Computer",
+   "license": "CC BY 4.0"
+  },
+  {
+   "name": "pc_sentinel2_l2a",
+   "attribution": "Contains modified Copernicus Sentinel data; accessed via Microsoft Planetary Computer",
+   "license": "Copernicus Sentinel data terms (free, full and open)"
+  },
+  {
+   "name": "pc_landsat_c2_l2",
+   "attribution": "Landsat Collection 2 courtesy of the U.S. Geological Survey; accessed via Microsoft Planetary Computer",
+   "license": "Landsat data: public domain (USGS). Planetary Computer terms of use apply to the access service."
+  }
+ ],
+ "limitations": [
+  "Air temperature is not land surface temperature and neither alone measures pedestrian thermal comfort.",
+  "Checked against two Egyptian weather stations, ERA5 daily maximum temperature was within about 0.7 °C on average, but daily minimum temperature was 1.5–2.2 °C warmer; counts of tropical nights (TR) can therefore be overstated by tens of nights per year, and threshold counts such as TX35 shift noticeably with small biases.",
+  "Land SURFACE temperature at ~10:30 local solar time on clear days; not air temperature or pedestrian thermal comfort.",
+  "Land-cover classes have about 77 % overall accuracy (product validation); they describe the surroundings for context, not the design.",
+  "NDVI indicates vegetation-related spectral characteristics; it does not measure tree health, shade quality, irrigation or cooling.",
+  "OSM tagging and coverage vary by place; mapped land use is not verified ground truth.",
+  "Observed conditions describe the existing site, not the proposed design.",
+  "Observed vegetation describes current conditions at the image dates, not the proposed design.",
+  "Relative classes compare pixels within this study area only; they do not establish a causal link between any building and heating.",
+  "Retrieved on Open-Meteo's free tier, which permits non-commercial use only. Commercial use of URBANOVA requires an Open-Meteo subscription or another source.",
+  "SolarCal (ASHRAE 55) estimates diffuse and reflected short-wave radiation from the direct beam; the sky-view fraction is 1 (open sky) everywhere.",
+  "Surfaces are assumed to be at air temperature: long-wave radiation from hot paving and walls is not modelled, so heat stress over paving is underestimated."
+ ]
+}

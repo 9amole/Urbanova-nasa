@@ -139,3 +139,39 @@ def test_the_opposite_rain_demo_has_two_places():
 
     pair = next(r for r in detective.REGIONS if r.get("pair"))
     assert pair["variable"] == "precip" and pair["pair"]["lat"] < 0 < pair["lat"]
+
+
+def test_case_file_builder_writes_a_public_summary_and_layers(tmp_path, monkeypatch):
+    """Street-level case files: the engine's site analysis of a 1.2 km plot, summarised for the public page."""
+    import importlib.util
+    from pathlib import Path
+
+    spec = importlib.util.spec_from_file_location("make_case_files", Path(__file__).resolve().parent.parent / "scripts" / "make_case_files.py")
+    mcf = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mcf)
+    sq = mcf.square(30.0, 31.0, 600)["coordinates"][0]
+    assert abs((sq[2][1] - sq[0][1]) * 111_320 - 1200) < 1  # 1.2 km tall
+
+    def fake_analyse(req, out):
+        assert req["designs"] if "designs" in req else True
+        out = Path(out)
+        (out / "lst.png").write_bytes(b"\x89PNG fake")
+        return {"designs": [{"analysis_mode": "site", "status": "succeeded", "site_context": [{"statement": "Hot cluster."}],
+                             "modules": {"surface_heat": {"label": "LST", "status": "completed", "limitations": ["Clear sky only."]},
+                                         "hotspots": {"label": "Hotspots", "status": "skipped"}},
+                             "layers": [{"name": "Surface temperature", "module": "surface_heat", "output_kind": "observed", "file": "lst.png",
+                                         "bounds": {"south": 29.99, "west": 30.99, "north": 30.01, "east": 31.01}}],
+                             "metrics": [{"metric_name": "lst_site_median_c", "label": "LST", "value": 53.1, "unit": "°C", "state": "available", "output_kind": "observed"},
+                                         {"metric_name": "landcover_site_built-up_pct", "label": "Site: Built-up", "value": 80.0, "unit": "%", "state": "available", "output_kind": "classified"}]}],
+                "datasets": [{"source_id": "pc_landsat_c2_l2", "attribution": "Landsat courtesy of NASA/USGS", "license": "public domain"}]}
+
+    import urbanova.engine as eng
+
+    monkeypatch.setattr(eng, "analyse", fake_analyse, raising=False)
+    monkeypatch.setattr(mcf, "OUT", tmp_path)
+    mcf.main(["new_cairo"])
+    s = __import__("json").loads((tmp_path / "new_cairo" / "summary.json").read_text(encoding="utf-8"))
+    assert s["metrics"]["lst_site_median_c"]["value"] == 53.1 and s["layers"][0]["file"] == "00_surface_heat.png" and (tmp_path / "new_cairo" / "00_surface_heat.png").exists()
+    assert s["land_cover"][0]["value"] == 80.0 and "hotspots" not in s["modules"] and s["region"] == "new_cairo"
+    idx = __import__("json").loads((tmp_path / "index.json").read_text(encoding="utf-8"))
+    assert idx["new_cairo"]["name"] == "Fifth Settlement, New Cairo"

@@ -4,7 +4,7 @@
 "use strict";
 
 const det = { cat: null, interest: "heat", place: "city", lat: 30.03, lon: 31.47, where: "New Cairo, Egypt", results: [], map: null, marker: null,
-  demo: false, previews: {}, trendMap: null };
+  demo: false, previews: {}, trendMap: null, cases: null, caseMap: null };
 const LEVEL = { significant: ["Significant", "b-ok", "🟢"], borderline: ["Likely — the tests disagree", "b-warn", "🟡"], not_significant: ["Not significant yet", "b-mute", "⚪"] };
 const sig2 = (x) => { // two significant figures, signed, without trailing noise
   if (x === null || x === undefined || Number.isNaN(x)) return "—";
@@ -15,6 +15,7 @@ const sig2 = (x) => { // two significant figures, signed, without trailing noise
 
 async function viewDetective(parts = []) {
   if (!det.cat) det.cat = await api("/detective/catalog");
+  if (!det.cases) det.cases = await fetch("casefiles/index.json").then((r) => (r.ok ? r.json() : {})).catch(() => ({}));
   const C = det.cat;
   clearMaps();
   det.marker = null;
@@ -25,6 +26,9 @@ async function viewDetective(parts = []) {
   <section class="panel"><h2>Watch a demo</h2><p class="hint">Each card is a real question answered with NASA data. Click one to watch the detective work step by step.</p>
     <div class="det-demos">${C.regions.map((r) => `<button class="det-demo" data-r="${esc(r.id)}"><strong>${esc(r.name)}</strong><span>${esc(r.story)}</span>
       <em class="det-preview" id="pv-${esc(r.id)}">checking the data…</em></button>`).join("")}</div></section>
+  ${Object.keys(det.cases).length ? `<section class="panel"><h2>Street-level case files <span class="hint">regional trend → what it looks like on the ground</span></h2>
+    <p class="hint">For some demo places, URBANOVA analysed one 1.2 km plot with satellites: Landsat surface temperature (NASA/USGS), Sentinel-2 vegetation, ESA land cover, and how hot it feels in sun and shade.</p>
+    <div class="det-chips">${Object.entries(det.cases).map(([id, c]) => `<button class="chip-btn det-case" data-c="${esc(id)}">🔎 ${esc(c.name)}</button>`).join("")}</div></section>` : ""}
   <section class="panel" id="det-q"><h2>1 · Your question</h2>
     <div class="det-steps">
       <div><h3>What are you curious about?</h3><div class="det-chips" id="det-int">${Object.entries(C.interests).map(([k, v]) => `<button data-v="${esc(k)}" class="chip-btn ${k === det.interest ? "on" : ""}">${esc(v)}</button>`).join("")}</div></div>
@@ -36,6 +40,7 @@ async function viewDetective(parts = []) {
     <p><button class="primary" id="det-find">Find variables to investigate</button></p></section>
   <section class="panel" id="det-vars" hidden><h2>2 · Variables to investigate</h2><p class="hint" id="det-by"></p><div class="det-cards" id="det-cards"></div></section>
   <section id="det-results"></section>
+  <section class="panel" id="det-case" hidden></section>
   <section class="panel" id="det-mapsec" hidden></section>
   <section class="panel"><h2>How the detective decides</h2>
     <details><summary>What is a trend, and what does "significant" mean?</summary>
@@ -56,8 +61,10 @@ async function viewDetective(parts = []) {
   pick("det-int", "interest"); pick("det-place", "place");
   document.getElementById("det-find").onclick = (e) => guarded(() => findVariables(), e.target);
   document.querySelectorAll(".det-demo").forEach((b) => (b.onclick = () => guarded(() => runDemo(b.dataset.r), b)));
+  document.querySelectorAll(".det-case").forEach((b) => (b.onclick = () => guarded(() => openCase(b.dataset.c), b)));
   renderResults();
   loadPreviews();
+  if (parts[1] === "case" && parts[2]) return guarded(() => openCase(parts[2]));
   // Shareable link: #/detective/<variable>/<lat>/<lon>
   const [, v, la, lo] = parts;
   if (v && la !== undefined && lo !== undefined && C.variables.some((x) => x.id === v)) {
@@ -134,6 +141,7 @@ function renderResults() {
     el.querySelector(".det-link").onclick = (e) => copyLink(r, e.target);
     el.querySelector(".det-where-btn").onclick = (e) => guarded(() => showTrendMap(r), e.target);
     const zoom = el.querySelector(".det-zoom"); if (zoom) zoom.onclick = () => guarded(() => zoomToPlot(r), zoom);
+    const cf = el.querySelector(".det-street"); if (cf) cf.onclick = () => guarded(() => openCase(cf.dataset.c, r), cf);
   });
 }
 
@@ -189,6 +197,7 @@ function controls(r) {
   return `<div class="det-controls"><label class="check"><input type="checkbox" class="det-raw" ${r.request.deseasonalised ? "" : "checked"}> Show months with the seasonal cycle</label>
     <form class="det-period row"><label>From <input name="start" type="number" min="1981" max="${det.cat.last_year - 10}" value="${r.request.start_year}"></label>
       <label>to <input name="end" type="number" min="1991" max="${det.cat.last_year}" value="${r.request.end_year}"></label><button class="small" type="submit">Re-test</button></form>
+    ${nearCase(r) ? `<button class="small primary det-street" data-c="${esc(nearCase(r))}">🔎 See it at street level</button>` : ""}
     <button class="small det-where-btn">🗺 Where is it changing?</button><button class="small det-csv">Download CSV</button><button class="small det-link">Copy link</button>
     ${state.token ? `<button class="small det-zoom">Zoom into a plot here with URBANOVA →</button>` : ""}</div>`;
 }
@@ -341,4 +350,69 @@ function caption(text, final = false) {
   c.innerHTML = `<p>${esc(text)}</p><button class="small" aria-label="Close the demo caption">✕</button>`;
   c.querySelector("button").onclick = () => c.remove();
   c.classList.toggle("final", final);
+}
+
+
+// ------------------------------------------------------------------ street-level case files (URBANOVA site analysis, pre-run)
+function nearCase(r) {
+  const cases = det.cases || {};
+  let best = null, bestD = 1.3;  // within about one NASA region (°)
+  Object.entries(cases).forEach(([id, c]) => { const d = Math.hypot(c.lat - r.point.lat, c.lon - r.point.lon); if (d < bestD) { best = id; bestD = d; } });
+  return best;
+}
+
+async function openCase(id, fromResult) {
+  const s = await fetch(`casefiles/${encodeURIComponent(id)}/summary.json`).then((x) => { if (!x.ok) throw new Error("This case file is not available."); return x.json(); });
+  const sec = document.getElementById("det-case");
+  sec.hidden = false;
+  const M = s.metrics || {};
+  const val = (k, d = 1) => (M[k] && M[k].state === "available" ? `<strong>${esc(fmt(M[k].value, d))}</strong> ${esc(M[k].unit || "")}` : `<span class="muted">not available${M[k] && M[k].reason ? ": " + esc(M[k].reason) : ""}</span>`);
+  const T = (title, body, foot) => `<div class="tile"><h3>${esc(title)}</h3><div class="tile-v">${body}</div>${foot ? `<p class="hint">${foot}</p>` : ""}</div>`;
+  const trend = fromResult && fromResult.result.ok ? fromResult.result.verdict : null;
+  const lst = M.lst_site_median_c, diff = M.lst_site_minus_surroundings_k, sun = M.utci_sun_peak_c, shade = M.utci_shade_peak_c;
+  const story = [
+    trend ? `The region around ${esc(fromResult.where)}: <strong>${esc(fromResult.variable.name.toLowerCase())} ${esc(trend.rate)}</strong> (${esc(LEVEL[trend.level][0].toLowerCase())}).` : "",
+    lst && lst.state === "available" ? `On this plot today, the ground reaches <strong>${esc(fmt(lst.value, 1))} °C</strong> in the hot season${diff && diff.state === "available" ? `, ${esc(fmt(Math.abs(diff.value), 1))} °C ${diff.value >= 0 ? "hotter" : "cooler"} than its surroundings` : ""}.` : "",
+    sun && sun.state === "available" && shade && shade.state === "available" ? `On a hot day it feels like <strong>${esc(fmt(sun.value, 1))} °C in the sun</strong> but ${esc(fmt(shade.value, 1))} °C in the shade: shade alone takes off ${esc(fmt(sun.value - shade.value, 1))} °C.` : "",
+  ].filter(Boolean).join(" ");
+  sec.innerHTML = `<div class="row det-head"><h2>🔎 Case file: ${esc(s.name)}</h2><button class="small" id="det-case-close" aria-label="Close the case file">✕</button></div>
+    <p class="hint">Street level, today: a 1.2 km plot analysed by URBANOVA (site analysis) with satellite data. ${esc(s.generated_at.slice(0, 10))}.</p>
+    ${story ? `<p class="det-story">${story}</p>` : ""}
+    <div class="det-case-grid"><div><div id="det-case-map" class="map det-case-map" aria-label="Map of the plot with satellite layers"></div><div id="det-case-layers" class="det-chips"></div></div>
+    <div class="tiles det-case-tiles">
+      ${T("Ground temperature (Landsat)", val("lst_site_median_c"), "Satellite land surface temperature, hot season median")}
+      ${T("Compared with surroundings", val("lst_site_minus_surroundings_k"), "Positive = the plot is hotter")}
+      ${T("Share in an observed hot cluster", val("lst_site_hot_cluster_share_pct", 0), "Hot-spot analysis of the surrounding area")}
+      ${T("Vegetation (Sentinel-2 NDVI)", val("ndvi_site_mean", 2), "0 = bare, above 0.3 = green")}
+      ${T("Feels like in full sun", val("utci_sun_peak_c"), "UTCI on a typical hot day")}
+      ${T("Feels like in shade", val("utci_shade_peak_c"), "UTCI on a typical hot day")}
+      ${T("Hot days above 35 °C", val("climate_mean_annual_TX35_days", 0), "Per year, regional climate (ERA5)")}
+      ${T("Tropical nights", val("climate_mean_annual_TR_days", 0), "Nights above 20 °C, per year")}
+    </div></div>
+    ${s.land_cover.length ? `<h3>Land cover on the plot (ESA WorldCover)</h3>${barsSvg(s.land_cover.slice(0, 6).map((x) => ({ label: x.label.replace(/^Site: /, "").replace(/ \(\d{4} land cover\)$/, ""), value: x.value })), "%", { labelW: 220 })}` : ""}
+    ${(s.site_context || []).map((c) => `<p>${esc(c.statement)}</p>`).join("")}
+    <details><summary>Analyses and their status</summary><ul>${Object.values(s.modules).map((m) => `<li>${badge(MOD_STATUS[m.status] || [m.status, "b-mute"])} ${esc(m.label)}${m.reason ? ` — <span class="muted">${esc(m.reason)}</span>` : ""}</li>`).join("")}</ul></details>
+    <details><summary>Limitations</summary><ul>${(s.limitations || []).map((x) => `<li>${esc(x)}</li>`).join("")}</ul></details>
+    <p class="hint">Data: ${(s.datasets || []).map((d) => esc(d.attribution || d.name)).filter(Boolean).join(" · ")}</p>
+    <p class="hint">Want this for your own plot, with a design? Sign in and use URBANOVA's site analysis and design check (Projects).</p>`;
+  document.getElementById("det-case-close").onclick = () => { sec.hidden = true; };
+  if (det.caseMap) { det.caseMap.remove(); state.maps = state.maps.filter((x) => x !== det.caseMap); }
+  const cm = makeMap("det-case-map", s.lat, s.lon, 14);
+  det.caseMap = cm;
+  const outline = L.geoJSON(s.boundary, { style: { color: "#c62828", weight: 3, fillOpacity: 0 } }).addTo(cm);
+  const box = document.getElementById("det-case-layers");
+  // Open on the satellite surface temperature (the street-level heat story), else the first layer.
+  const first = Math.max(0, s.layers.findIndex((lay) => lay.module === "surface_heat"));
+  const overlays = s.layers.map((lay, i) => {
+    const o = L.imageOverlay(`casefiles/${encodeURIComponent(s.id)}/${encodeURIComponent(lay.file)}`, [[lay.bounds.south, lay.bounds.west], [lay.bounds.north, lay.bounds.east]], { opacity: 0.7 });
+    if (i === first) o.addTo(cm);
+    return o;
+  });
+  box.innerHTML = s.layers.map((lay, i) => `<button class="chip-btn ${i === first ? "on" : ""}" data-i="${i}">${esc(lay.name)}</button>`).join("");
+  box.querySelectorAll("button").forEach((b) => (b.onclick = () => {
+    const o = overlays[+b.dataset.i];
+    if (cm.hasLayer(o)) { cm.removeLayer(o); b.classList.remove("on"); } else { o.addTo(cm); b.classList.add("on"); }
+  }));
+  cm.fitBounds(outline.getBounds().pad(1.5), { animate: false });
+  sec.scrollIntoView({ behavior: "smooth", block: "start" });
 }

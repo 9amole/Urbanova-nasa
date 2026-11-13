@@ -213,3 +213,11 @@ svg.det-chart .annual { fill: none; stroke: #1f4e8c; stroke-width: 1.8; }
 .det-maplegend .sw { display: inline-block; width: 14px; height: 14px; border: 1px solid #222; vertical-align: middle; }
 .det-maplegend .sw.up { background: rgb(200,40,40); } .det-maplegend .sw.down { background: rgb(30,90,200); }
 @media (max-width: 600px) { .det-big-num { font-size: 22px; } .det-tmap { height: 320px; } }
+
+/* Trend Detective: street-level case files */
+.det-story { font-size: 16px; background: var(--bg); border-left: 4px solid var(--accent); padding: 8px 12px; border-radius: 6px; }
+.det-case-grid { display: grid; grid-template-columns: 1.2fr 1fr; gap: 14px; align-items: start; }
+.det-case-map { height: 380px; }
+.det-case-tiles { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); margin: 0; }
+#det-case-layers { margin-top: 6px; }
+@media (max-width: 800px) { .det-case-grid { grid-template-columns: 1fr; } .det-case-map { height: 300px; } }

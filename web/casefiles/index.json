@@ -1,0 +1,42 @@
+{
+ "new_cairo": {
+  "region": "new_cairo",
+  "name": "Fifth Settlement, New Cairo",
+  "lat": 30.03,
+  "lon": 31.47,
+  "status": "succeeded",
+  "generated_at": "2026-11-13T13:50:54+00:00"
+ },
+ "delhi": {
+  "region": "delhi",
+  "name": "Central Delhi (Connaught Place)",
+  "lat": 28.632,
+  "lon": 77.219,
+  "status": "succeeded",
+  "generated_at": "2026-11-13T13:54:18+00:00"
+ },
+ "perth": {
+  "region": "opposite",
+  "name": "Perth city centre",
+  "lat": -31.952,
+  "lon": 115.857,
+  "status": "succeeded",
+  "generated_at": "2026-11-13T14:07:34+00:00"
+ },
+ "sydney": {
+  "region": "sydney",
+  "name": "Sydney CBD",
+  "lat": -33.87,
+  "lon": 151.21,
+  "status": "succeeded",
+  "generated_at": "2026-11-13T14:08:45+00:00"
+ },
+ "niamey": {
+  "region": "sahel",
+  "name": "Niamey, Niger (Sahel)",
+  "lat": 13.512,
+  "lon": 2.112,
+  "status": "succeeded",
+  "generated_at": "2026-11-13T13:34:38+00:00"
+ }
+}
