@@ -27,6 +27,7 @@ PROVISIONAL_SEVERITY_CAP = "moderate"
 # Modules whose metrics describe a regional grid cell, not the site (remediation B5).
 REGIONAL_MODULES = {"climate_baseline": "Regional (~25 km ERA5 grid cell around the site, not the site itself)",
                     "climate_trends": "Regional (~55 km NASA POWER / MERRA-2 grid cell around the site, not the site itself)"}
+SITE_TREND_AREA = "Inside the site boundary (Landsat, 30 m)"
 
 
 def sort_key(f: dict) -> tuple:
@@ -260,7 +261,48 @@ def generate(run: dict, project: dict, module_results: dict[str, dict], metric_r
     warming = trend_finding(module_results.get("climate_trends"), by_name)
     if warming:
         add(warming, [])
+    for f in site_trend_findings(module_results.get("site_trends"), by_name):
+        add(f, [])
     return findings, recs
+
+
+SITE_TREND_RULES = [  # (rule id, metric, direction that is reported, title)
+    ("TREND-SITE-01", "site_trend_lst_minus_surroundings_per_decade", 1, "The site has been heating faster than its surroundings: {v:+.2f} K per decade since {y}"),
+    ("TREND-SITE-02", "site_trend_ndvi_per_decade", -1, "Green cover on the site has declined: NDVI {v:+.3f} per decade since {y}"),
+]
+
+
+def site_trend_findings(res: dict | None, by_name: dict) -> list[dict]:
+    """Space Apps A1c: significant changes of the plot itself since 1984 (Landsat), reported as environmental indicators of the
+    existing land. Only a 'significant' verdict counts (both persistence-corrected tests at p < 0.05)."""
+    if not res or res.get("status") not in ("completed", "partial"):
+        return []
+    out = []
+    rows = {r["metric_name"]: r for r in (res.get("details") or {}).get("rows") or []}
+    for rule_id, name, sign, title in SITE_TREND_RULES:
+        m, row = by_name.get(name), rows.get(name)
+        if not m or not row or m["state"] != V.AVAILABLE or (m.get("extra") or {}).get("verdict") != "significant" or m["value"] * sign <= 0:
+            continue
+        u, per = m["uncertainty"], row["period"]
+        sensor = (row.get("sensor_check") or {}).get("note", "")
+        out.append({
+            "category": "trend", "classification": "environmental_indicator", "title": title.format(v=m["value"], y=per["first_year"]),
+            "summary": (f"{row['name']}: {m['value']:+.3g} {m['unit']} (95 % range {u['ci95_low']:+.3g} to {u['ci95_high']:+.3g}) over "
+                        f"{per['first_year']}–{per['last_year']}, {per['years']} years of clear hot-season Landsat scenes. {row['verdict']['tests']} "
+                        f"(both corrected for year-to-year persistence). {sensor}"),
+            "geometry": None, "metric_ids": [m["id"]], "severity": "info", "affected_area": SITE_TREND_AREA,
+            "severity_rule": "Informational: reported when the verdict is 'significant' (Mann-Kendall, Yue & Wang 2004, and t-test with effective "
+                             "sample size, Santer et al. 2000, both p < 0.05) in the stated direction.",
+            "rule_id": rule_id, "threshold": {"status": "standard", "justification": "Two-sided tests at the 5 % level, both required; false-alarm "
+                                                "rate checked by Monte Carlo (docs/VALIDATION_SPACEAPPS.md)."},
+            "evidence": [{"metric_id": m["id"], "metric": name, "label": m["label"], "value": m["value"], "unit": m["unit"], "method": m["method"],
+                          "output_kind": m["output_kind"]}],
+            "sources": _sources(m, res), "confidence": "adequate",
+            "limitations": ["Land surface temperature and greenness from one or two clear-sky overpasses per year, not air temperature.",
+                            "This describes the land as it was and is, not the proposed design: it is site context (decision S-8).",
+                            "A trend describes the past; it is not a forecast."],
+        })
+    return out
 
 
 def trend_finding(res: dict | None, by_name: dict) -> dict | None:

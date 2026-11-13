@@ -15,6 +15,7 @@ ANALYSES = {
     "land_cover": "Land cover around the site (ESA WorldCover)",
     "urban_form": "Site & urban-form indicators (coverage, green space)",
     "surface_heat": "Land surface temperature (Landsat) — heat analysis",
+    "site_trends": "Site trends inside the boundary since 1984 (Landsat)",
     "vegetation": "Vegetation indicator (Sentinel-2 NDVI)",
     "solar_shade": "Solar position & geometric shade",
     "heat_stress": "Heat stress in sun and shade (UTCI, hot day)",
@@ -26,7 +27,7 @@ ANALYSES = {
     "population_context": "Population context",
     "air_quality": "Regional air-quality context",
 }
-RUNNABLE = ["climate_baseline", "climate_trends", "site_context", "land_cover", "urban_form", "vegetation", "surface_heat", "solar_shade", "heat_stress", "planning_compliance", "hotspots", "interventions"]
+RUNNABLE = ["climate_baseline", "climate_trends", "site_context", "land_cover", "urban_form", "vegetation", "surface_heat", "site_trends", "solar_shade", "heat_stress", "planning_compliance", "hotspots", "interventions"]
 # Existing land or proposed design, per runnable module (urbanova/config/analyses.json, decision S-8).
 CONDITION = {a["id"]: a["condition"] for a in load_config("analyses.json")["analyses"] if a["id"] in RUNNABLE}
 
@@ -85,6 +86,9 @@ def assess(project: dict, scenario: dict | None = None) -> dict:
     out.append(_entry("surface_heat", BLOCKED if lst_block else (READY if has_boundary else LIMITED), lst_block + ([] if has_boundary else ["Site boundary"]),
                       "Satellite land surface temperature (the observed-heat part of Heat Analysis)." if lst_block else ("Site-specific surface statistics." if not has_boundary else ""),
                       lst_step or "Run the analysis.", pt_limit + ["Clear-sky land surface temperature only; cloud-covered scenes are excluded."]))
+    out.append(_entry("site_trends", BLOCKED if lst_block else (READY if has_boundary else LIMITED), lst_block + ([] if has_boundary else ["Site boundary"]),
+                      "Trends of surface temperature and greenness inside the site since 1984." if lst_block else ("Trends of the plot itself (a point buffer is used)." if not has_boundary else ""),
+                      lst_step or "Run the analysis.", pt_limit + ["Clear-sky hot-season Landsat scenes, one or two per year; the first run reads about 40 years of scenes (several minutes)."]))
     lc_block, lc_step = source_block(["pc_esa_worldcover"])
     out.append(_entry("land_cover", BLOCKED if lc_block else (READY if has_boundary else LIMITED), lc_block + ([] if has_boundary else ["Site boundary"]),
                       "Land-cover shares around the site (context)." if lc_block else ("Site-specific land-cover shares." if not has_boundary else ""),

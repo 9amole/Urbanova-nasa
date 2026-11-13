@@ -9,7 +9,8 @@ from test_stage_s2 import hot_day
 
 SITE_METRICS = {"climate_baseline": ("climate_mean_annual_TX35_days", 67.0, "days/year"), "site_context": ("context_mapped_road_length_km", 2.0, "km"),
                 "land_cover": ("landcover_site_bare_sparse_vegetation_pct", 100.0, "%"), "surface_heat": ("lst_site_median_c", 53.1, "°C"),
-                "vegetation": ("ndvi_site_mean", 0.08, "NDVI"), "climate_trends": ("trend_t2m_max_per_decade", 0.33, "°C/decade")}
+                "vegetation": ("ndvi_site_mean", 0.08, "NDVI"), "climate_trends": ("trend_t2m_max_per_decade", 0.33, "°C/decade"),
+                "site_trends": ("site_trend_lst_minus_surroundings_per_decade", 0.4, "K/decade")}
 
 
 @pytest.fixture()
@@ -91,7 +92,7 @@ def test_engine_without_designs_is_a_site_analysis(env, tmp_path, site_data):
     res = analyse({"contract_version": "1.2", "site": {"latitude": 30.12, "longitude": 31.85}}, tmp_path)
     AnalysisResult.model_validate(res)
     [d] = res["designs"]
-    assert res["contract_version"] == "1.3" and d["analysis_mode"] == "site" and d["status"] == "succeeded"
+    assert res["contract_version"] == "1.4" and d["analysis_mode"] == "site" and d["status"] == "succeeded"
     assert d["modules"]["hotspots"]["status"] == "skipped" and d["modules"]["hotspots"]["site_mode"]
     assert any(m["metric_name"] == "utci_sun_peak_c" and m["state"] == "available" for m in d["metrics"])
 

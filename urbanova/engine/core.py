@@ -12,7 +12,7 @@ import traceback
 from typing import Callable
 
 from .. import findings, interventions, recording
-from ..analysis import climate, climate_trends, compliance, context, heat_stress, hotspots, landcover, solar, surface_heat, urban_form, vegetation
+from ..analysis import climate, climate_trends, compliance, site_trends, context, heat_stress, hotspots, landcover, solar, surface_heat, urban_form, vegetation
 from ..analysis.common import FAILED, SKIPPED, Context
 from ..readiness import ANALYSES, CONDITION, RUNNABLE
 
@@ -20,13 +20,13 @@ log = logging.getLogger("urbanova.engine")
 
 MODULES = {
     "climate_baseline": climate.run, "climate_trends": climate_trends.run, "site_context": context.run, "land_cover": landcover.run, "urban_form": urban_form.run, "vegetation": vegetation.run,
-    "surface_heat": surface_heat.run, "solar_shade": solar.run, "heat_stress": heat_stress.run, "planning_compliance": compliance.run,
+    "surface_heat": surface_heat.run, "site_trends": site_trends.run, "solar_shade": solar.run, "heat_stress": heat_stress.run, "planning_compliance": compliance.run,
     "hotspots": hotspots.run, "interventions": interventions.run,
 }
 # Modules whose result depends only on the site and settings, never on the design. In a request
 # with several designs they run once and every design receives the same result (remediation D4),
 # together with the values they leave in ctx.shared for later modules.
-SITE_LEVEL = {"climate_baseline", "climate_trends", "site_context", "land_cover", "surface_heat"}
+SITE_LEVEL = {"climate_baseline", "climate_trends", "site_trends", "site_context", "land_cover", "surface_heat"}
 # Existing-land context records (H2 hot cluster first, then land cover): each lives in its module's details.
 CONTEXT_MODULES = ("surface_heat", "land_cover")
 # Site analysis (no design, stage S11): these need a design plan, so they are not part of the run rather than "blocked".

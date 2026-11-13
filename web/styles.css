@@ -226,3 +226,8 @@ svg.det-chart .annual { fill: none; stroke: #1f4e8c; stroke-width: 1.8; }
 .trend-row { border-top: 1px solid var(--line, #ddd); padding: 6px 0; }
 .trend-row > summary { cursor: pointer; padding: 4px 0; }
 .trend-row svg.det-chart { max-width: 100%; height: auto; }
+
+/* A1c site-trend coverage strip: one cell per year, coloured by Landsat sensor */
+.cov-strip { display: inline-flex; flex-wrap: wrap; gap: 1px; vertical-align: middle; margin: 0 6px; }
+.cov { display: inline-block; width: 7px; height: 12px; border-radius: 1px; vertical-align: middle; background: var(--line); }
+.cov.gap { background: repeating-linear-gradient(45deg, var(--line), var(--line) 2px, transparent 2px, transparent 4px); }

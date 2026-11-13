@@ -31,6 +31,17 @@ the challenge's question for the plot: **is the climate here changing since 1981
 | 4. Rate and significance | Sen's slope per decade with a 95 % range, the corrected Mann-Kendall test and the corrected t-test (both must agree). A significant warming becomes a **finding** ("The site's climate is warming: +0.33 °C per decade"). The **results chat** answers "Is it getting hotter here?" from the stored numbers. |
 | Students | Each row links to the **Trend Detective** (`#/detective`), which gives the same numbers from the same code, plus seasons, the regional trend map, demos and data download. |
 
+**Down to the plot itself: A1c · Site trends inside the boundary.** NASA POWER describes a ~55 km region. With the
+project's site boundary, URBANOVA also reads the **Landsat archive (Landsat 5, 7, 8, 9; NASA/USGS; 30 m) from 1984**:
+- **per year:** the clearest hot-season scenes, measured inside the boundary and in the ring around it;
+- **three trends:** site surface temperature; **site minus surroundings** (is the plot heating faster than its
+  neighbourhood? weather and sensor differences cancel); and site greenness (NDVI);
+- **checks:** each trend is checked before and after the 2013 change of thermal sensor;
+- **change maps:** every pixel is tested, with a false-discovery-rate correction, so the map shows *where* on the plot
+  it changed;
+- **findings:** "The site has been heating faster than its surroundings" or "Green cover on the site has declined",
+  when significant.
+
 **One code path:** the module and the Detective both call `urbanova/detective.py: analyse_variable`, so their numbers are
 identical (tested). All the verification and validation below applies to both.
 

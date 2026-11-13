@@ -1,6 +1,6 @@
 # URBANOVA integration contract (for the backend team)
 
-**Contract version 1.3, as of 13 Nov 2026.** This document lists what the backend can call, what goes in and what
+**Contract version 1.4, as of 13 Nov 2026.** This document lists what the backend can call, what goes in and what
 comes back. For the reasons behind it, ownership and operations, see [HANDOFF.md](HANDOFF.md). For the methods, see
 [METHODOLOGY.md](METHODOLOGY.md).
 
@@ -307,6 +307,28 @@ shared by every design.
   change point and the notes.
 - **Finding:** a significant warming adds an informational finding (`rule_id: "TREND-WARM-01"`, category `trend`).
 - **Version change:** additive, so requests marked 1.0–1.2 are still accepted.
+
+### Site trends inside the boundary (contract 1.4)
+
+Module **`site_trends`** (A1c) is new. It is an existing-land, site-scale module that runs once per request and is
+shared by every design. It uses Landsat 5/7/8/9 since 1984: per year, the clearest hot-season scenes, measured inside
+the boundary and in the ring around it.
+- **Metrics:**
+  - `site_trend_lst_per_decade` (°C);
+  - `site_trend_lst_minus_surroundings_per_decade` (K, the most robust);
+  - `site_trend_ndvi_per_decade`.
+  - Each has the same fields as the climate trends: `uncertainty.ci95_*` and `extra.verdict`.
+- **Layers:** a per-pixel change map for surface temperature and for NDVI (raster + GeoTIFF), each with a vector layer
+  outlining the pixels that pass the Benjamini–Hochberg FDR test (q = 0.10).
+- **`details`:**
+  - `rows[]` (yearly series, trend line, p-values, `sensor_check` at 2013);
+  - `coverage[]` (scenes and sensors per year);
+  - `maps`, the scene list, and `cached_scenes`.
+- **Findings:** informational `TREND-SITE-01` (the site heats faster than its surroundings) and `TREND-SITE-02` (the
+  site loses green cover).
+- **Setting:** `settings.site_trend_scenes_per_year` (1–3, default 2).
+- **Run time:** the first run of a site reads about 40 years of scenes (several minutes). Scenes are cached per site
+  grid, so reruns are fast.
 
 ## 7. Versioning
 

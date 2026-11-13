@@ -130,13 +130,15 @@
         "Switch map layers and read the legend.",
         "Open a hotspot card to see its causes and measured options with costs.",
         "Ask detailed questions about the numbers in the results chat at the bottom of the page.",
-        "Open a row of 'Long-term climate trends' to see whether the site's climate is changing, how fast, and whether the change is significant."
+        "Open a row of 'Long-term climate trends' to see whether the site's climate is changing, how fast, and whether the change is significant.",
+        "Open 'Site trends inside the boundary' to see whether the plot itself has heated up or lost green cover since 1984, and switch on the change maps."
       ],
       "questions": [
         "What is a hotspot?",
         "Why is a severity capped at moderate?",
         "What do the AI labels mean?",
-        "Is it getting hotter here?"
+        "Is it getting hotter here?",
+        "Is the site heating faster than its surroundings?"
       ]
     },
     "compare": {

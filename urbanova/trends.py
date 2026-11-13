@@ -179,36 +179,17 @@ def analyse(series: list[tuple[date, float | None]], unit: str, *, deseason: boo
     dropped = years - len(ann)
     if len(ann) < MIN_YEARS:
         return {"ok": False, "reason": f"A trend needs at least {MIN_YEARS} complete years; this record has {len(ann)}."}
-    t = np.array([yr + 0.5 for yr, _ in ann])
-    y = np.array([v for _, v in ann])
-    lin = ols(t, y)
-    mk = mann_kendall(y)
-    # Year-to-year persistence makes plain tests over-confident: the verdict uses the corrected versions.
-    mk_mod = mann_kendall_corrected(t, y)
-    ols_eff = ols_effective_n(t, y, lin)
-    sen = sens_slope(t, y, mk_mod["var_S"])
+    Y = analyse_yearly(ann, unit, up_word=up_word, down_word=down_word)
+    lin, ols_eff, mk, mk_mod, sen = Y["_lin"], Y["_ols_eff"], Y["_mk"], Y["_mk_mod"], Y["_sen"]
+    t, y = Y["_t"], Y["_y"]
+    sig_mk, sig_t, ols_decade = Y["mann_kendall"]["significant"], Y["ols"]["significant"], Y["ols"]["per_decade"]
+    rate_method, per_decade, verdict, change = Y["rate"]["method"], Y["rate"]["per_decade"], Y["verdict"], Y["change_point"]
     span = float(ann[-1][0] - ann[0][0])
-    ols_decade = {"slope": lin["slope"] * 10, "ci_low": ols_eff["ci_low"] * 10, "ci_high": ols_eff["ci_high"] * 10}
-    # Sen's slope is the headline rate (robust to outliers). If most yearly values repeat, the median pairwise slope can be
-    # exactly 0 even though a trend exists, so the least-squares rate is reported instead.
-    rate_method = "sen"
-    per_decade = {k: sen[k] * 10 for k in ("slope", "ci_low", "ci_high")}
-    if sen["slope"] == 0 and lin["slope"] != 0:
-        rate_method, per_decade = "ols", dict(ols_decade)
-    sig_mk, sig_t = mk_mod["p_value"] < ALPHA, ols_eff["p_value"] < ALPHA
-    verdict = _verdict(per_decade, per_decade["slope"] / 10 * span, unit, mk_mod["p_value"], ols_eff["p_value"], sig_mk, sig_t, up_word, down_word, ann[0][0])
-    cp = pettitt(y)
-    change = {"year": int(ann[cp["index"]][0]) + 1, "p_value": cp["p_value"], "significant": cp["p_value"] < ALPHA}
     # Monthly tests, for comparison only (scientists' view).
     tm = np.array([decimal_year(d) for d, _ in anomalies])
     ym = np.array([v for _, v in anomalies])
     mon_lin, mon_mk = ols(tm, ym), mann_kendall(ym)
-    notes = []
-    if rate_method == "ols":
-        notes.append("Many years share the same value, so the robust Sen's slope is 0; the least-squares rate is shown instead.")
-    if lin["lag1_autocorrelation"] > 0.3:
-        notes.append(f"Neighbouring years are correlated (lag-1 autocorrelation {lin['lag1_autocorrelation']:.2f}); the tests were corrected for this "
-                     f"(the record counts as about {ols_eff['n_eff']:.0f} independent years instead of {len(ann)}).")
+    notes = list(Y["notes"])
     missing = sum(1 for _, v in series if v is None)
     if missing:
         notes.append(f"{missing} month(s) had no data and were skipped (never counted as 0).")
@@ -241,6 +222,71 @@ def analyse(series: list[tuple[date, float | None]], unit: str, *, deseason: boo
 
 
 MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+
+
+def analyse_yearly(ann: list[tuple[int, float]], unit: str, *, up_word: str = "increasing", down_word: str = "decreasing") -> dict:
+    """The tests on one value per year, shared by monthly records (after deseasonalising and yearly averaging, in
+    analyse()) and by records that are yearly by nature (one satellite composite per year, analysis/site_trends.py).
+    Least squares with the Santer et al. (2000) effective sample size, Yue & Wang (2004) modified Mann-Kendall,
+    Sen's slope with its range, the verdict (both corrected tests at p < ALPHA) and the Pettitt change point."""
+    ann = sorted((int(yr), float(v)) for yr, v in ann)
+    t = np.array([yr + 0.5 for yr, _ in ann])
+    y = np.array([v for _, v in ann])
+    lin = ols(t, y)
+    mk = mann_kendall(y)
+    # Year-to-year persistence makes plain tests over-confident: the verdict uses the corrected versions.
+    mk_mod = mann_kendall_corrected(t, y)
+    ols_eff = ols_effective_n(t, y, lin)
+    sen = sens_slope(t, y, mk_mod["var_S"])
+    span = float(ann[-1][0] - ann[0][0])
+    ols_decade = {"slope": lin["slope"] * 10, "ci_low": ols_eff["ci_low"] * 10, "ci_high": ols_eff["ci_high"] * 10}
+    # Sen's slope is the headline rate (robust to outliers). If most yearly values repeat, the median pairwise slope can be
+    # exactly 0 even though a trend exists, so the least-squares rate is reported instead.
+    rate_method = "sen"
+    per_decade = {k: sen[k] * 10 for k in ("slope", "ci_low", "ci_high")}
+    if sen["slope"] == 0 and lin["slope"] != 0:
+        rate_method, per_decade = "ols", dict(ols_decade)
+    sig_mk, sig_t = mk_mod["p_value"] < ALPHA, ols_eff["p_value"] < ALPHA
+    verdict = _verdict(per_decade, per_decade["slope"] / 10 * span, unit, mk_mod["p_value"], ols_eff["p_value"], sig_mk, sig_t, up_word, down_word, ann[0][0])
+    cp = pettitt(y)
+    change = {"year": int(ann[cp["index"]][0]) + 1, "p_value": cp["p_value"], "significant": cp["p_value"] < ALPHA}
+    notes = []
+    if rate_method == "ols":
+        notes.append("Many years share the same value, so the robust Sen's slope is 0; the least-squares rate is shown instead.")
+    if lin["lag1_autocorrelation"] > 0.3:
+        notes.append(f"Neighbouring years are correlated (lag-1 autocorrelation {lin['lag1_autocorrelation']:.2f}); the tests were corrected for this "
+                     f"(the record counts as about {ols_eff['n_eff']:.0f} independent years instead of {len(ann)}).")
+    return {
+        "ok": True, "unit": unit, "basis": "annual",
+        "annual": [{"year": yr, "value": round(v, 4)} for yr, v in ann],
+        "ols": {**lin, "per_decade": ols_decade, "significant": sig_t, "p_value_plain": lin["p_value"], "p_value": ols_eff["p_value"],
+                "n_eff": ols_eff["n_eff"], "stderr_adjusted": ols_eff["stderr"], "method": "least squares, t-test with AR(1) effective sample size (Santer et al. 2000), bias-corrected lag-1"},
+        "mann_kendall": {**mk, "significant": sig_mk, "p_value_plain": mk["p_value"], "p_value": mk_mod["p_value"], "z": mk_mod["z"],
+                         "variance_factor": mk_mod["variance_factor"], "method": "modified Mann-Kendall (Yue & Wang 2004, AR(1) with bias-corrected lag-1)"},
+        "change_point": change,
+        "sen": {**sen, "per_decade": {k: sen[k] * 10 for k in ("slope", "ci_low", "ci_high")}, "total_change": sen["slope"] * span},
+        "rate": {"method": rate_method, "per_decade": per_decade, "total_change": per_decade["slope"] / 10 * span},
+        "trend_line": {"t0": float(t[0]), "t1": float(t[-1]), "y0": lin["intercept"] + lin["slope"] * t[0], "y1": lin["intercept"] + lin["slope"] * t[-1],
+                       "ci_low_slope": lin["ci_low"], "ci_high_slope": lin["ci_high"], "t_mean": float(np.mean(t)), "y_mean": float(np.mean(y)), "offset": 0.0},
+        "verdict": verdict, "notes": notes, "alpha": ALPHA,
+        "_t": t, "_y": y, "_lin": lin, "_ols_eff": ols_eff, "_mk": mk, "_mk_mod": mk_mod, "_sen": sen,
+    }
+
+
+def yearly_result(ann: list[tuple[int, float]], points: list[tuple[str, float]], unit: str, *, up_word: str = "increasing",
+                  down_word: str = "decreasing") -> dict:
+    """analyse_yearly for a yearly record, in the shape the UI and report read (period, series for the faint line).
+    `points` are the individual observations ("YYYY-MM-DD", value) behind the yearly values (e.g. satellite scenes)."""
+    ann = sorted((int(a), float(b)) for a, b in ann)
+    if len(ann) < MIN_YEARS:
+        return {"ok": False, "reason": f"A trend needs at least {MIN_YEARS} years with data; this record has {len(ann)}."}
+    Y = {k: v for k, v in analyse_yearly(ann, unit, up_word=up_word, down_word=down_word).items() if not k.startswith("_")}
+    pts = sorted(points)
+    Y.update(deseasonalised=False, annual_raw=Y["annual"],
+             period={"start": pts[0][0][:7] if pts else str(ann[0][0]), "end": pts[-1][0][:7] if pts else str(ann[-1][0]),
+                     "first_year": ann[0][0], "last_year": ann[-1][0], "years": len(ann), "missing_years": ann[-1][0] - ann[0][0] + 1 - len(ann)},
+             series=[{"date": d[:7], "value": round(float(v), 4)} for d, v in pts])
+    return Y
 
 
 def seasonal_trends(clean: list[tuple[date, float]]) -> list[dict]:

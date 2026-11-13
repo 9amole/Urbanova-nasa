@@ -245,6 +245,7 @@ def build(project: dict, run: dict, bundle: dict, scenario: dict | None, compari
         lines.append(f"{ds['label']}: {ds['value']:g} °C ({q.get('label', 'ML-downscaled, modelled')}{scale})." + _ids(ds["id"]))
     blocks.append(("ul", lines or ["No existing-land analysis produced values in this run (see Appendix L)."]))
     blocks.extend(trend_blocks(bundle, out))
+    blocks.extend(site_trend_blocks(bundle, out))
     sections.append((MAIN_SECTIONS[2], blocks))
 
     # ---------------------------------------------------------------- 4. comparison
@@ -339,6 +340,56 @@ def _trends_png(rows: list, out: Path) -> str | None:
     ax.grid(alpha=0.3)
     fig.tight_layout()
     path = out / "report_trends.png"
+    fig.savefig(path)
+    plt.close(fig)
+    return str(path)
+
+
+# ---------------------------------------------------------------- A1c site trends inside the boundary (Landsat)
+def site_trend_blocks(bundle: dict, out: Path) -> list:
+    ms = (bundle["run"].get("module_status") or {}).get("site_trends") or {}
+    d = ms.get("details") or {}
+    rows = d.get("rows") or []
+    if not rows:
+        return [("h3", "Site trends inside the boundary"), ("p", ms["reason"])] if ms.get("status") in ("unavailable", "failed", "blocked") and ms.get("reason") else []
+    table = [[r["name"], f"{r['verdict']['rate']} ({r['verdict']['range'].replace('95 % range ', '')})", r["verdict"]["total_text"],
+              LEVEL_WORDS[r["verdict"]["level"]], f"{r['p_mann_kendall']:.3f} / {r['p_t_test']:.3f}",
+              "passed" if (r.get("sensor_check") or {}).get("consistent") else "caution"] for r in rows]
+    blocks = [("h3", f"Site trends inside the boundary, {d['first_year']}–{d['last_year']} (Landsat)"),
+              ("p", f"Is the plot itself heating up, heating faster than its surroundings, or losing green cover? Every year the clearest hot-season "
+                    f"Landsat 5/7/8/9 scenes (months {', '.join(map(str, d['months']))}) were measured inside the site and in the ring around it: "
+                    f"{d['years_used']} of {d['years_possible']} years had a clear view ({d['scenes']} scenes). The same tests as the climate trends; "
+                    "each trend is also checked before and after the 2013 change of thermal sensor. Surface temperature, not air temperature; not a forecast."),
+              ("table", ["Variable", "Rate per decade (95 % range)", "Change", "Verdict", "p (Mann-Kendall / t-test)", "Sensor check"], table)]
+    png = _site_trends_png(rows, out)
+    if png:
+        blocks.append(("img", png, "Yearly site values with trend lines"))
+    for key, label in (("lst", "surface temperature"), ("ndvi", "greenness")):
+        m = (d.get("maps") or {}).get(key)
+        if m:
+            blocks.append(("p", f"Change map of {label}: {m['significant_pixels']} of {m['tested_pixels']} pixels change significantly "
+                                f"(Benjamini–Hochberg false discovery rate, q = 0.10), {m['site_significant_share_pct']:g} % of the site."))
+    return blocks
+
+
+def _site_trends_png(rows: list, out: Path) -> str | None:
+    import matplotlib
+
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    fig, axes = plt.subplots(1, len(rows), figsize=(6.5, 2.4), dpi=130)
+    axes = [axes] if len(rows) == 1 else list(axes)
+    for ax, r in zip(axes, rows):
+        ax.plot([a["year"] for a in r["annual"]], [a["value"] for a in r["annual"]], "o-", ms=2.5, lw=0.8, color="#555")
+        tl = r["trend_line"]
+        colour = {"significant": "#1a9850", "borderline": "#fdae61"}.get(r["verdict"]["level"], "#999")
+        ax.plot([tl["t0"] - 0.5, tl["t1"] - 0.5], [tl["y0"], tl["y1"]], color=colour, lw=2)
+        ax.set_title(r["name"] + "\n" + r["verdict"]["rate"], fontsize=6.5)
+        ax.tick_params(labelsize=6)
+        ax.grid(alpha=0.3)
+    fig.tight_layout()
+    path = out / "report_site_trends.png"
     fig.savefig(path)
     plt.close(fig)
     return str(path)

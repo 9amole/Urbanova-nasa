@@ -16,8 +16,8 @@ from .settings import settings
 log = logging.getLogger("urbanova.orchestrator")
 OBJECTIVE_MODULES = {
     "main_concerns": set(RUNNABLE),
-    "surface_heat": {"climate_baseline", "climate_trends", "surface_heat", "urban_form", "vegetation", "solar_shade", "heat_stress", "hotspots"},
-    "vegetation": {"vegetation", "urban_form"},
+    "surface_heat": {"climate_baseline", "climate_trends", "site_trends", "surface_heat", "urban_form", "vegetation", "solar_shade", "heat_stress", "hotspots"},
+    "vegetation": {"vegetation", "urban_form", "site_trends"},
     "shade": {"climate_baseline", "solar_shade", "urban_form", "heat_stress", "hotspots", "interventions"},
     "compare_alternatives": {"urban_form", "solar_shade", "planning_compliance", "climate_baseline"},
     "planning_compliance": {"urban_form", "planning_compliance"},
@@ -32,6 +32,7 @@ DEPENDS = {
     "urban_form": {"design", "boundary", "site_area_basis"},
     "vegetation": {"location", "boundary", "design"},
     "surface_heat": {"location", "boundary"},
+    "site_trends": {"location", "boundary", "period"},
     "solar_shade": {"design", "boundary", "period"},
     "heat_stress": {"location", "design", "boundary", "period"},
     "planning_compliance": {"design", "boundary", "rules", "site_area_basis"},
@@ -49,7 +50,7 @@ NEEDS = {
 DOWNSCALE_NEEDS = ("vegetation", "land_cover")
 DEFAULT_CONFIG = {
     "context_buffer_m": 500, "lst_buffer_m": 1000, "ndvi_buffer_m": 500, "satellite_years": 3, "lst_max_scenes": 6,
-    "ndvi_max_scenes": 4, "ndvi_lookback_days": 365, "max_scene_cloud_pct": 40, "min_valid_site_fraction": 0.6,
+    "ndvi_max_scenes": 4, "ndvi_lookback_days": 365, "max_scene_cloud_pct": 40, "min_valid_site_fraction": 0.6, "site_trend_scenes_per_year": 2,
 }
 ALLOWED_CONFIG = set(DEFAULT_CONFIG) | {"modules", "hot_months", "solar_date", "climate_period", "budget_amount", "budget_currency", "lst_downscale"}
 
@@ -102,7 +103,8 @@ def resolve_config(project: dict, payload: dict) -> dict:
         raise RunError(f"Unknown analysis settings: {', '.join(sorted(unknown))}.")
     cfg = {**DEFAULT_CONFIG, **{k: v for k, v in payload.items() if k != "modules"}}
     limits = {"context_buffer_m": (100, 3000), "lst_buffer_m": (100, 3000), "ndvi_buffer_m": (100, 3000), "max_scene_cloud_pct": (1, 80),
-              "satellite_years": (1, 10), "lst_max_scenes": (1, 12), "ndvi_max_scenes": (1, 8), "ndvi_lookback_days": (30, 1095), "min_valid_site_fraction": (0.3, 1)}
+              "satellite_years": (1, 10), "lst_max_scenes": (1, 12), "ndvi_max_scenes": (1, 8), "ndvi_lookback_days": (30, 1095), "min_valid_site_fraction": (0.3, 1),
+              "site_trend_scenes_per_year": (1, 3)}
     for key, (lo, hi) in limits.items():
         try:
             val = float(cfg[key])
@@ -110,7 +112,7 @@ def resolve_config(project: dict, payload: dict) -> dict:
             raise RunError(f"{key} must be a number.")
         if not lo <= val <= hi:
             raise RunError(f"{key} must be between {lo} and {hi}.")
-        cfg[key] = int(val) if key in ("satellite_years", "lst_max_scenes", "ndvi_max_scenes", "ndvi_lookback_days") else val
+        cfg[key] = int(val) if key in ("satellite_years", "lst_max_scenes", "ndvi_max_scenes", "ndvi_lookback_days", "site_trend_scenes_per_year") else val
     if cfg.get("solar_date"):
         try:
             from datetime import date as _d

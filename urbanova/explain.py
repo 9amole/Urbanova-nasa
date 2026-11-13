@@ -26,7 +26,7 @@ PREDICTION = re.compile(r"(how many degrees|by how many|reduce .*temperature by|
                         r"how much (cooler|warmer|hotter|colder|lower|higher)|how much will .*(cool|temperature|warm|heat|utci)|will .*\b(be|get)\b.*(cooler|warmer|°c))", re.I)
 HOTSPOT_Q = re.compile(r"\bhot ?spots?\b|\b(first|priorit|worst|most severe)", re.I)
 TOPICS = [
-    (re.compile(r"\b(trends?|warming|getting (hotter|warmer|colder|wetter|drier)|chang(ing|ed) (since|over)|per decade|since 19\d\d|significan)", re.I), ("climate_trends",), "trend"),
+    (re.compile(r"\b(trends?|warming|getting (hotter|warmer|colder|wetter|drier)|chang(ing|ed) (since|over)|per decade|since 19\d\d|significan|greener|green cover|losing green|heating faster|than (its|the) surround)", re.I), ("climate_trends", "site_trends"), "trend"),
     (re.compile(r"\b(lst|surface temp|hot ?spot|heat)", re.I), ("surface_heat", "climate_baseline"), "heat"),
     (re.compile(r"\b(ndvi|vegetat|green|tree|plant)", re.I), ("vegetation", "urban_form"), "vegetation"),
     (re.compile(r"\b(shade|shadow|sun|solar)", re.I), ("solar_shade",), "solar"),

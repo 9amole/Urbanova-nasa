@@ -437,6 +437,19 @@
    "approval_note": "Approved as proposed (reason recorded in the basis record)."
   },
   {
+   "id": "config.site_trend_scenes_per_year",
+   "value": 2,
+   "unit": "scenes per year",
+   "used_in": "site_trends",
+   "basis_type": "project_choice",
+   "references": [],
+   "applicability": "Clear hot-season Landsat scenes used per year for the site trends (A1c), 1-3",
+   "reason": "Two scenes per year halve the single-day weather noise of one overpass while keeping the first run of about 40 years to a few minutes; the user can change it per run",
+   "approved_by": "Claude (AI assistant) as decision maker, delegated by the project owner; supervisor review pending",
+   "approved_on": "2026-11-13",
+   "approval_note": "Approved as proposed (reason recorded in the basis record)."
+  },
+  {
    "id": "config.ndvi_max_scenes",
    "value": 4,
    "unit": "scenes",

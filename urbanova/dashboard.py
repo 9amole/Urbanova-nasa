@@ -192,6 +192,8 @@ def _common(run: dict, b: dict, metrics: dict, names: dict) -> dict:
                      "climate_limitations": (ms.get("climate_baseline") or {}).get("limitations") or [],
                      "trends": [{"id": r["id"], "name": r["name"], "rate": r["verdict"]["rate"], "level": r["verdict"]["level"], "total_text": r["verdict"]["total_text"]}
                                 for r in (((ms.get("climate_trends") or {}).get("details") or {}).get("rows") or [])],
+                     "site_trends": [{"id": r["id"], "name": r["name"], "rate": r["verdict"]["rate"], "level": r["verdict"]["level"], "total_text": r["verdict"]["total_text"]}
+                                     for r in (((ms.get("site_trends") or {}).get("details") or {}).get("rows") or [])],
                      "surface": [_metric(metrics.get(k), k) for k in SURFACE_METRICS]},
         "insights": ({"generated_by": ins["generated_by"], "label": ins.get("label"), "model": ins.get("model"),
                       "site_status": blocks.get("site_status") or [], "attention_first": blocks.get("attention_first") or []} if ins else None),
