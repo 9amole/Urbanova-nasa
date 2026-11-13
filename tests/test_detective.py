@@ -98,3 +98,14 @@ def test_demo_regions_point_at_catalog_variables():
 
     for r in detective.REGIONS:
         assert pm.variable(r["variable"]) and -90 <= r["lat"] <= 90 and r["story"]
+
+
+def test_detective_is_the_public_landing_page_and_the_help_assistant_knows_it(client):
+    js = client.get("/app.js").text
+    assert '(state.token ? "#/projects" : "#/detective")' in js and 'parts[0] === "detective") return await viewDetective()' in js
+    assert '<script src="detective.js' in client.get("/").text and 'href="#/detective"' in client.get("/").text
+    assert client.get("/api/v1/support/pages/detective").json()["title"] == "Trend Detective"
+    assert client.get("/api/v1/support/faq?q=what does a significant trend mean").json()[0]["id"] == "faq_trend_significant"
+    from urbanova.ai.support import LINK
+
+    assert LINK.match("#/detective")

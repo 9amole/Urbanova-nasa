@@ -1325,7 +1325,7 @@ function commonSections(d) {
 let loadingTimer = null;
 
 async function route() {
-  const parts = (location.hash || "#/projects").slice(2).split("/");
+  const parts = (location.hash || (state.token ? "#/projects" : "#/detective")).slice(2).split("/");
   try {
     if (!state.meta) state.meta = await api("/meta");
     if (parts[0] === "detective") return await viewDetective();  // public: the NASA Space Apps Trend Detective
