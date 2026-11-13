@@ -1328,6 +1328,7 @@ async function route() {
   const parts = (location.hash || "#/projects").slice(2).split("/");
   try {
     if (!state.meta) state.meta = await api("/meta");
+    if (parts[0] === "detective") return await viewDetective();  // public: the NASA Space Apps Trend Detective
     if (!state.token) return viewLogin();
     if (!state.user) { state.user = await api("/auth/me"); renderSession(); }
     clearMaps();

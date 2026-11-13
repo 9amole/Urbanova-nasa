@@ -159,18 +159,18 @@ def _verdict(per_decade, total, unit, p_mk, p_t, sig_mk, sig_t, label, up_word, 
     rate = f"{_fmt(per_decade['slope'])} {unit} per decade (95 % confidence interval {_fmt(per_decade['ci_low'])} to {_fmt(per_decade['ci_high'])})"
     if sig_mk and sig_t:
         level, headline = "significant", f"Yes — {label}: {direction}, by {rate}."
-        why = f"Both tests agree the trend is significant (Mann-Kendall p = {_p(p_mk)}, t-test p = {_p(p_t)}): a change this steady is very unlikely to be chance."
+        why = f"Both tests agree the trend is significant (Mann-Kendall {_p(p_mk)}, t-test {_p(p_t)}): a change this steady is very unlikely to be chance."
     elif sig_mk or sig_t:
         level, headline = "borderline", f"Probably — {label}: likely {direction}, by {rate}."
-        why = (f"One test finds it significant and the other does not (Mann-Kendall p = {_p(p_mk)}, t-test p = {_p(p_t)}). "
+        why = (f"One test finds it significant and the other does not (Mann-Kendall {_p(p_mk)}, t-test {_p(p_t)}). "
                "Treat it as a likely trend that more years of data would confirm or rule out.")
     else:
         level, headline = "not_significant", f"Not yet — {label}: a tendency towards {direction} of {rate}, but it is not significant."
-        why = (f"Neither test finds it significant (Mann-Kendall p = {_p(p_mk)}, t-test p = {_p(p_t)}): the year-to-year ups and downs are "
+        why = (f"Neither test finds it significant (Mann-Kendall {_p(p_mk)}, t-test {_p(p_t)}): the year-to-year ups and downs are "
                "large compared with the trend. A longer record might make it significant.")
     return {"level": level, "direction": direction, "headline": headline, "why": why,
             "total": f"Over {y0}–{y1} that adds up to about {_fmt(total)} {unit}."}
 
 
 def _p(p: float) -> str:
-    return "< 0.001" if p < 0.001 else f"{p:.3f}"
+    return "p < 0.001" if p < 0.001 else f"p = {p:.3f}"

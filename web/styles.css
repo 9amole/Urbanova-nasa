@@ -144,3 +144,46 @@ svg.bars .bar.sev-high { fill: var(--bad); }
 svg.bars .bar.sev-moderate { fill: var(--warn); }
 svg.bars .bar.sev-low { fill: var(--ok); }
 .scroll-x { overflow-x: auto; max-width: 100%; }
+
+/* Trend Detective (NASA Space Apps 2026) */
+.top-nav { display: flex; gap: 14px; margin-left: auto; margin-right: 14px; }
+.top-nav a { color: inherit; text-decoration: none; font-weight: 600; padding: 4px 8px; border-radius: 6px; }
+.top-nav a:hover, .top-nav a:focus-visible { background: rgba(255,255,255,.15); }
+.det-hero h1 { margin: 0 0 6px; } .det-hero .lead { font-size: 17px; margin: 0 0 6px; }
+.det-demos { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+.det-demo { text-align: left; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); padding: 10px 12px; cursor: pointer; display: flex; flex-direction: column; gap: 4px; color: var(--ink); }
+.det-demo:hover, .det-demo:focus-visible { border-color: var(--accent); }
+.det-demo span { font-size: 13px; color: var(--muted); }
+.det-steps { display: grid; grid-template-columns: 1fr 1fr 1.4fr; gap: 16px; }
+.det-steps h3 { margin: 0 0 8px; font-size: 15px; }
+.det-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip-btn { border: 1px solid var(--line); background: var(--panel); border-radius: 16px; padding: 5px 12px; cursor: pointer; color: var(--ink); }
+.chip-btn.on { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.det-map { height: 240px; }
+.det-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
+.det-card { border: 1px solid var(--line); border-radius: 10px; padding: 12px; background: var(--panel); }
+.det-card h3 { margin: 0 0 6px; }
+.det-more { margin-top: 10px; }
+.det-h { margin: 18px 0 8px; }
+.det-results.multi { display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 12px; }
+.det-head { justify-content: space-between; align-items: center; }
+.det-head h3 { margin: 0; }
+.det-verdict { border-left: 5px solid var(--muted); padding: 8px 12px; margin: 10px 0; background: var(--bg); border-radius: 6px; }
+.det-verdict.significant { border-left-color: var(--ok); } .det-verdict.borderline { border-left-color: var(--warn); }
+.det-verdict p { margin: 4px 0; } .det-headline { font-size: 17px; font-weight: 600; }
+svg.det-chart { width: 100%; height: auto; display: block; background: var(--panel); }
+svg.det-chart .grid { stroke: var(--line); stroke-width: 1; } svg.det-chart .zero { stroke: var(--muted); stroke-dasharray: 4 3; }
+svg.det-chart .ax { font-size: 11px; fill: var(--muted); }
+svg.det-chart .series { fill: none; stroke: #7fa7d9; stroke-width: 1; }
+svg.det-chart .ann { fill: #1f4e8c; }
+svg.det-chart .band { fill: rgba(11,110,79,.15); stroke: none; }
+svg.det-chart .trend { stroke: var(--muted); stroke-width: 2.5; } svg.det-chart .trend.significant { stroke: var(--ok); } svg.det-chart .trend.borderline { stroke: var(--warn); }
+.det-stats { width: 100%; margin: 8px 0; font-size: 13px; }
+.det-notes { font-size: 13px; color: var(--muted); }
+.det-controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 8px 0; }
+.det-controls input[type=number] { width: 80px; }
+.det-period { gap: 6px; align-items: center; }
+#det-caption { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); z-index: 1100; max-width: min(720px, calc(100vw - 32px));
+  background: #1c2430; color: #fff; padding: 12px 16px; border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,.25); display: flex; gap: 10px; align-items: flex-start; }
+#det-caption p { margin: 0; } #det-caption.final { background: #0b6e4f; } #det-caption button { flex: none; }
+@media (max-width: 800px) { .det-steps { grid-template-columns: 1fr; } .det-results.multi { grid-template-columns: 1fr; } .top-nav { gap: 6px; margin-right: 6px; } }
