@@ -716,6 +716,13 @@ async def detective_trend(request: Request):
                                    b.get("end_year"), b.get("deseasonalise", True) is not False)
 
 
+@app.post(f"{API}/detective/map")
+async def detective_map(request: Request):
+    """Where is it changing? The trend of every NASA POWER cell in a 5° × 5° window around the point."""
+    b = await _json(request)
+    return await run_in_threadpool(detective.trend_map, b.get("lat"), b.get("lon"), str(b.get("variable") or ""), b.get("start_year") or 1981, b.get("end_year"))
+
+
 @app.post(f"{API}/detective/suggest")
 async def detective_suggest(request: Request):
     b = await _json(request)

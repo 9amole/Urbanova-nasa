@@ -187,3 +187,29 @@ svg.det-chart .trend { stroke: var(--muted); stroke-width: 2.5; } svg.det-chart 
   background: #1c2430; color: #fff; padding: 12px 16px; border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,.25); display: flex; gap: 10px; align-items: flex-start; }
 #det-caption p { margin: 0; } #det-caption.final { background: #0b6e4f; } #det-caption button { flex: none; }
 @media (max-width: 800px) { .det-steps { grid-template-columns: 1fr; } .det-results.multi { grid-template-columns: 1fr; } .top-nav { gap: 6px; margin-right: 6px; } }
+
+/* Trend Detective: readability pass */
+.det-badge { font-size: 12px; font-weight: 600; vertical-align: middle; background: #0b3d91; color: #fff; padding: 2px 8px; border-radius: 10px; margin-left: 6px; }
+.det-preview { font-style: normal; font-size: 13px; font-weight: 600; color: var(--ink); margin-top: 4px; }
+.det-verdict { display: flex; gap: 16px; align-items: flex-start; flex-wrap: wrap; }
+.det-big { display: flex; flex-direction: column; align-items: center; min-width: 120px; padding: 6px 10px; background: var(--panel); border-radius: 8px; }
+.det-big-num { font-size: 28px; font-weight: 700; line-height: 1.1; }
+.det-verdict > div:last-child { flex: 1; min-width: 220px; }
+svg.det-chart { width: 100%; height: auto; max-width: 100%; }
+svg.det-chart .ax { font-size: 12px; } svg.det-chart .unit { font-weight: 600; }
+svg.det-chart .series { stroke: #b9cde6; stroke-width: 1; }
+svg.det-chart .annual { fill: none; stroke: #1f4e8c; stroke-width: 1.8; }
+.det-legend { font-size: 13px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; margin: 4px 0 8px; }
+.det-legend span { display: inline-block; width: 18px; height: 0; border-top: 3px solid; vertical-align: middle; margin-right: -6px; }
+.det-legend .lg-month { border-color: #b9cde6; border-top-width: 1px; } .det-legend .lg-year { border-color: #1f4e8c; }
+.det-legend .lg-trend { border-color: var(--muted); } .det-legend .lg-trend.significant { border-color: var(--ok); } .det-legend .lg-trend.borderline { border-color: var(--warn); }
+.det-legend .lg-band { height: 10px; border: none; background: rgba(11,110,79,.15); }
+.det-season-chart { width: 100%; max-width: 420px; height: auto; display: block; }
+.det-season-chart .sbar.up { fill: rgba(200,40,40,.35); } .det-season-chart .sbar.down { fill: rgba(30,90,200,.35); }
+.det-season-chart .sbar.up.sig { fill: rgb(200,40,40); } .det-season-chart .sbar.down.sig { fill: rgb(30,90,200); }
+.det-season-chart .ax { font-size: 11px; fill: var(--muted); } .det-season-chart .grid { stroke: var(--line); }
+.det-tmap { height: 420px; }
+.det-maplegend { font-size: 13px; margin-top: 6px; display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; }
+.det-maplegend .sw { display: inline-block; width: 14px; height: 14px; border: 1px solid #222; vertical-align: middle; }
+.det-maplegend .sw.up { background: rgb(200,40,40); } .det-maplegend .sw.down { background: rgb(30,90,200); }
+@media (max-width: 600px) { .det-big-num { font-size: 22px; } .det-tmap { height: 320px; } }

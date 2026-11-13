@@ -77,6 +77,7 @@ def test_suggestions_use_only_catalog_variables(client, env, monkeypatch):
     assert rules["by"] == "rules" and [s["id"] for s in rules["suggestions"]][:3] == ["t2m", "t2m_max", "t2m_min"]
     assert client.post("/api/v1/detective/suggest", json={"place": "moon", "interest": "heat"}).status_code == 422
     # AI answer: unknown ids are dropped, duplicates removed
+    real_ai = detective._ai_suggest
     monkeypatch.setattr(detective, "_ai_suggest", lambda *a: None)
     assert detective.suggest("desert", "water", "Sahara")["by"] == "rules"
 
@@ -85,10 +86,7 @@ def test_suggestions_use_only_catalog_variables(client, env, monkeypatch):
     monkeypatch.setattr(llm, "available", lambda **k: [{"name": "groq", "id": "groq:x", "model": "x"}])
     monkeypatch.setattr(llm, "chat_json", lambda *a, **k: '{"suggestions": [{"id": "precip", "reason": "Look for drying."}, {"id": "made_up", "reason": "x"}, '
                                                           '{"id": "precip", "reason": "dup"}, {"id": "soil_root", "reason": "Check soils."}]}')
-    import importlib
-
-    importlib.reload(detective)
-    got = detective._ai_suggest("desert", "water", "Sahara", {v["id"]: v for v in detective.pm.catalog()["variables"]})
+    got = real_ai("desert", "water", "Sahara", {v["id"]: v for v in detective.pm.catalog()["variables"]})
     assert [g["id"] for g in got] == ["precip", "soil_root"]
 
 
@@ -102,10 +100,42 @@ def test_demo_regions_point_at_catalog_variables():
 
 def test_detective_is_the_public_landing_page_and_the_help_assistant_knows_it(client):
     js = client.get("/app.js").text
-    assert '(state.token ? "#/projects" : "#/detective")' in js and 'parts[0] === "detective") return await viewDetective()' in js
+    assert '(state.token ? "#/projects" : "#/detective")' in js and 'parts[0] === "detective") return await viewDetective(parts)' in js
     assert '<script src="detective.js' in client.get("/").text and 'href="#/detective"' in client.get("/").text
     assert client.get("/api/v1/support/pages/detective").json()["title"] == "Trend Detective"
     assert client.get("/api/v1/support/faq?q=what does a significant trend mean").json()[0]["id"] == "faq_trend_significant"
     from urbanova.ai.support import LINK
 
     assert LINK.match("#/detective")
+
+
+def test_trend_map_counts_where_it_changes(client, monkeypatch):
+    """Where is it changing? Two cells warm, one cools, one is flat: the summary counts them by significant direction."""
+    from urbanova.providers import power_monthly as pm
+
+    def fake_region(lat, lon, parameter, half=2.5):
+        cells = []
+        for k, (dlat, slope) in enumerate([(0.0, 0.05), (0.5, 0.04), (1.0, -0.05), (1.5, 0.0)]):
+            rng = np.random.default_rng(k)
+            rows = [(date(1981 + i // 12, i % 12 + 1, 1), 10 + slope * (i // 12) + rng.normal(0, 0.1)) for i in range(45 * 12)]
+            cells.append({"lat": lat + dlat, "lon": lon, "series": rows})
+        return cells, {}
+
+    monkeypatch.setattr(pm, "fetch_region", fake_region)
+    m = client.post("/api/v1/detective/map", json={"lat": 10, "lon": 20, "variable": "t2m"}).json()
+    assert len(m["cells"]) == 4 and m["counts"] == {"up": 2, "down": 1, "unclear": 1}
+    assert "2 show a significant trend towards warming, 1 towards cooling" in m["summary"] and m["cell_size"]["lat"] == 0.5
+    assert client.post("/api/v1/detective/map", json={"lat": 10, "lon": 20, "variable": "nope"}).status_code == 422
+
+
+def test_soil_wetness_is_shown_in_percent(client, power):
+    j = client.post("/api/v1/detective/trend", json={"lat": 30.03, "lon": 31.47, "variable": "soil_root"}).json()
+    assert j["variable"]["unit"] == "%" and "scale" not in j["variable"]
+    assert 1000 < abs(j["result"]["raw"][0]["value"]) < 3000  # the fake 0–1-style value of about 20, scaled ×100
+
+
+def test_the_opposite_rain_demo_has_two_places():
+    from urbanova import detective
+
+    pair = next(r for r in detective.REGIONS if r.get("pair"))
+    assert pair["variable"] == "precip" and pair["pair"]["lat"] < 0 < pair["lat"]

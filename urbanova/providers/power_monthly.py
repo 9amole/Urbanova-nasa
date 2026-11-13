@@ -45,3 +45,27 @@ def fetch(lat: float, lon: float, start_year: int = 1981, end_year: int | None =
             rows.append((date(y, m, 1), None if v is None or v <= FILL + 1 else float(v)))
         out[name] = rows
     return out, meta
+
+
+REGION_URL = "https://power.larc.nasa.gov/api/temporal/monthly/regional"
+REGION_HALF_DEG = 2.5  # a 5° × 5° window: about 10 × 8 NASA POWER cells (the API allows up to 10°)
+
+
+def fetch_region(lat: float, lon: float, parameter: str, half: float = REGION_HALF_DEG) -> tuple[list[dict], dict]:
+    """Every POWER cell in a window around (lat, lon) for one parameter: [{"lat", "lon", "series": [(date, value | None)]}]."""
+    lat0, lat1 = max(-90.0, lat - half), min(90.0, lat + half)
+    lon0, lon1 = max(-180.0, lon - half), min(180.0, lon + half)
+    params = {"parameters": parameter, "community": "AG", "latitude-min": round(lat0, 2), "latitude-max": round(lat1, 2),
+              "longitude-min": round(lon0, 2), "longitude-max": round(lon1, 2), "start": 1981, "end": last_complete_year(), "format": "JSON"}
+    body, meta = http_json("nasa_power_monthly", "GET", REGION_URL, params=params, cache=True, cache_params=params)
+    cells = []
+    for f in body.get("features") or []:
+        lon_c, lat_c = f["geometry"]["coordinates"][:2]
+        rows = []
+        for key, v in sorted(((f.get("properties") or {}).get("parameter") or {}).get(parameter, {}).items()):
+            y, m = int(key[:4]), int(key[4:])
+            if m == 13:
+                continue
+            rows.append((date(y, m, 1), None if v is None or v <= FILL + 1 else float(v)))
+        cells.append({"lat": float(lat_c), "lon": float(lon_c), "series": rows})
+    return cells, meta

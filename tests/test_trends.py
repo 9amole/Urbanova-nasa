@@ -30,7 +30,8 @@ def test_a_known_warming_trend_is_recovered_and_significant():
     assert r["sen"]["per_decade"]["ci_low"] < 0.3 < r["sen"]["per_decade"]["ci_high"]
     assert r["ols"]["per_decade"]["ci_low"] < 0.3 < r["ols"]["per_decade"]["ci_high"]
     assert r["mann_kendall"]["p_value"] < 0.001 and r["ols"]["p_value"] < 0.001
-    assert "0.3" in r["verdict"]["headline"] and "per decade" in r["verdict"]["headline"] and r["rate"]["method"] == "sen"
+    assert r["verdict"]["headline"] == "Yes — warming." and r["verdict"]["rate"].startswith("+0.") and r["rate"]["method"] == "sen"
+    assert r["basis"] == "annual" and r["period"]["years"] == 30 and r["verdict"]["total"].startswith("+")
 
 
 def test_pure_noise_is_not_called_significant():
@@ -40,14 +41,19 @@ def test_pure_noise_is_not_called_significant():
     assert hits <= 2  # both tests at 5 % → rarely both significant by chance
 
 
-def test_the_seasonal_cycle_hides_a_trend_until_it_is_removed():
+def test_the_seasonal_cycle_changes_the_chart_not_the_verdict_and_seasons_are_tested_separately():
     from urbanova import trends
 
     s = _series(slope_per_year=0.01, noise=0.2, seasonal=12.0, years=20)
-    with_cycle = trends.analyse(s, "°C", deseason=False)
-    without = trends.analyse(s, "°C", deseason=True)
-    assert without["ols"]["p_value"] < with_cycle["ols"]["p_value"] and without["verdict"]["level"] == "significant"
-    assert any("seasonal cycle was not removed" in n for n in with_cycle["notes"])
+    raw, anom = trends.analyse(s, "°C", deseason=False), trends.analyse(s, "°C", deseason=True)
+    assert raw["ols"]["p_value"] == pytest.approx(anom["ols"]["p_value"]) and raw["verdict"]["level"] == anom["verdict"]["level"]  # yearly basis
+    assert max(abs(p["value"]) for p in raw["series"]) > 10 > max(abs(p["value"]) for p in anom["series"])  # the chart differs
+    # only July warms: the seasonal view finds July and no other month
+    rng = np.random.default_rng(5)
+    jul = [(date(1990 + i // 12, i % 12 + 1, 1), 20 + (0.1 * (i // 12) if i % 12 == 6 else 0) + rng.normal(0, 0.2)) for i in range(25 * 12)]
+    seas = {m["name"]: m for m in trends.analyse(jul, "°C")["seasons"]}
+    assert seas["Jul"]["significant"] and seas["Jul"]["per_decade"] == pytest.approx(1.0, abs=0.2)
+    assert sum(m["significant"] for m in seas.values()) <= 2
 
 
 def test_missing_months_are_skipped_not_zero_and_short_records_are_refused():
@@ -65,28 +71,30 @@ def test_statistics_match_independent_calculations():
     from urbanova import trends
 
     r = trends.analyse(_series(years=15, seed=7), "°C")
-    t = np.array([int(p["date"][:4]) + (int(p["date"][5:]) - 0.5) / 12 for p in r["series"]])
-    y = np.array([p["value"] for p in r["series"]])
+    t = np.array([a["year"] + 0.5 for a in r["annual"]])  # the tests run on yearly mean anomalies
+    y = np.array([a["value"] for a in r["annual"]])
     ref = stats.linregress(t, y)
     assert r["ols"]["slope"] == pytest.approx(ref.slope, rel=1e-3) and r["ols"]["p_value"] == pytest.approx(ref.pvalue, rel=1e-2, abs=1e-12)
     # Mann-Kendall S by brute force, and Kendall's tau from scipy agree in sign and size
     s = sum(np.sign(y[j] - y[i]) for i in range(len(y)) for j in range(i + 1, len(y)))
     mk = trends.mann_kendall(y)  # the listed values are rounded to 4 decimals, so test on exactly these numbers
-    assert mk["S"] == int(s) and abs(mk["S"] - r["mann_kendall"]["S"]) <= 10
+    assert mk["S"] == int(s) == r["mann_kendall"]["S"]
     tau, p = stats.kendalltau(t, y)
     assert mk["tau"] == pytest.approx(tau, abs=0.01) and mk["p_value"] == pytest.approx(p, abs=0.01)
     # Sen's slope = median of pairwise slopes
     sl = [(y[j] - y[i]) / (t[j] - t[i]) for i in range(len(y)) for j in range(i + 1, len(y))]
     assert trends.sens_slope(t, y, mk["var_S"])["slope"] == pytest.approx(float(np.median(sl)), rel=1e-6)
-    assert r["sen"]["slope"] == pytest.approx(float(np.median(sl)), rel=1e-3)
+    assert r["sen"]["slope"] == pytest.approx(float(np.median(sl)), rel=1e-2)
+    assert r["monthly_tests"]["n"] == 15 * 12 and 0 <= r["monthly_tests"]["mk_p"] <= 1  # the monthly view, for comparison
 
 
 def test_mostly_repeated_values_fall_back_to_the_least_squares_rate():
-    """Found live: desert rainfall has many rainless months, so Sen's slope is exactly 0 although a trend exists."""
+    """Found live: rainless or rounded values repeat, so Sen's slope can be exactly 0 although a trend exists."""
     from urbanova import trends
 
-    rng = np.random.default_rng(3)
-    s = [(date(1990 + i // 12, i % 12 + 1, 1), (0.0 if rng.random() < 0.7 else 0.05 + 0.004 * (i / 12))) for i in range(30 * 12)]
-    r = trends.analyse(s, "mm/day", deseason=False, label="rainfall", up_word="getting wetter", down_word="getting drier")
+    # 30 years: 20 completely dry years and 10 wet years that get wetter, so most yearly means are identical
+    wet = {1992, 1995, 1998, 2001, 2004, 2007, 2010, 2013, 2016, 2019}
+    s = [(date(1990 + i // 12, i % 12 + 1, 1), (0.5 + 0.05 * (i // 12) if 1990 + i // 12 in wet else 0.0)) for i in range(30 * 12)]
+    r = trends.analyse(s, "mm/day", up_word="getting wetter", down_word="getting drier")
     assert r["sen"]["slope"] == 0 and r["rate"]["method"] == "ols" and r["rate"]["per_decade"]["slope"] > 0
-    assert "Sen's slope is 0" in " ".join(r["notes"]) and "0 mm/day" not in r["verdict"]["headline"]
+    assert "Sen's slope is 0" in " ".join(r["notes"]) and r["verdict"]["rate"].startswith("+")

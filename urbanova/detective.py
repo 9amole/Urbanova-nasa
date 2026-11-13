@@ -16,12 +16,15 @@ from .providers.base import ProviderError
 
 # Demo regions: checked live against NASA POWER before their captions were written (SPACEAPPS.md).
 REGIONS = [
+    {"id": "opposite", "name": "Same planet, opposite rain", "lat": 14.5, "lon": 2.0, "place": "farmland", "interest": "water", "variable": "precip",
+     "pair": {"name": "Perth, south-west Australia", "lat": -31.95, "lon": 115.86},
+     "story": "The same variable can trend in opposite directions in different places. Compare rain in the Sahel with rain near Perth."},
     {"id": "new_cairo", "name": "New Cairo, Egypt", "lat": 30.03, "lon": 31.47, "place": "city", "interest": "heat", "variable": "t2m_max",
      "story": "A fast-growing desert city east of Cairo. Are its afternoons getting hotter?"},
     {"id": "svalbard", "name": "Svalbard, Arctic Norway", "lat": 78.22, "lon": 15.65, "place": "polar", "interest": "heat", "variable": "t2m",
      "story": "The Arctic warms several times faster than the rest of the planet (\"Arctic amplification\"). Can we see it?"},
     {"id": "sahel", "name": "Sahel, Niger", "lat": 14.5, "lon": 2.0, "place": "farmland", "interest": "water", "variable": "precip",
-     "story": "After the great droughts of the 1970s and 80s, has the rain come back? Here the two tests disagree: see why."},
+     "story": "After the great droughts of the 1970s and 80s, has the rain come back?"},
     {"id": "sydney", "name": "Sydney, Australia", "lat": -33.87, "lon": 151.21, "place": "coast", "interest": "water", "variable": "precip",
      "story": "Is Sydney getting drier? Watch what happens when a trend is close to, but not quite, significant."},
     {"id": "amazon", "name": "Central Amazon, Brazil", "lat": -3.5, "lon": -60.0, "place": "forest", "interest": "land", "variable": "soil_root",
@@ -43,7 +46,7 @@ class DetectiveError(ValueError):
 
 def public_catalog() -> dict:
     c = pm.catalog()
-    return {**{k: v for k, v in c.items() if k != "variables"}, "variables": [{k: v for k, v in x.items() if k != "power"} for x in c["variables"]],
+    return {**{k: v for k, v in c.items() if k != "variables"}, "variables": [{k: v for k, v in x.items() if k not in ("power", "scale")} for x in c["variables"]],
             "regions": REGIONS, "last_year": pm.last_complete_year()}
 
 
@@ -73,10 +76,11 @@ def trend(lat, lon, var_id: str, start_year: int = 1981, end_year: int | None = 
         data, meta = pm.fetch(lat, lon)  # the whole record once (cached); the period is cut below
     except ProviderError as exc:
         raise DetectiveError(f"NASA POWER could not be reached ({exc.as_dict()['message']}). Try again in a minute.") from None
-    series = [(d, val) for d, val in data.get(v["power"], []) if start_year <= d.year <= end_year]
+    scale = v.get("scale", 1)  # e.g. soil wetness 0–1 shown as 0–100 %
+    series = [(d, None if val is None else val * scale) for d, val in data.get(v["power"], []) if start_year <= d.year <= end_year]
     res = trends.analyse(series, v["unit"], deseason=deseason, label=v["name"].lower(), up_word=v["up"], down_word=v["down"])
     src = pm.catalog()["source"]
-    return {"variable": {k: val for k, val in v.items() if k != "power"}, "point": {"lat": lat, "lon": lon},
+    return {"variable": {k: val for k, val in v.items() if k not in ("power", "scale")}, "point": {"lat": lat, "lon": lon},
             "request": {"start_year": start_year, "end_year": end_year, "deseasonalised": deseason}, "result": res,
             "source": {**src, "parameter": v["power"], "model": v["model"], "cached": bool(meta.get("cache_hit"))}}
 
@@ -128,3 +132,38 @@ def _ai_suggest(place: str, interest: str, where: str, cat: dict) -> list[dict] 
                 uniq.append(o)
         return uniq[:4] if len(uniq) >= 2 else None
     return None
+
+
+def trend_map(lat, lon, var_id: str, start_year: int = 1981, end_year: int | None = None) -> dict:
+    """Where is it changing? The trend of every NASA POWER cell in a 5° × 5° window around the point."""
+    lat, lon = check_point(lat, lon)
+    v = pm.variable(var_id)
+    if not v:
+        raise DetectiveError("Unknown variable.")
+    last = pm.last_complete_year()
+    try:
+        start_year, end_year = int(start_year), int(end_year or last)
+    except (TypeError, ValueError):
+        raise DetectiveError("Years must be whole numbers.") from None
+    if not (1981 <= start_year < end_year <= last):
+        raise DetectiveError(f"Choose years between 1981 and {last}, with the start before the end.")
+    try:
+        cells, _ = pm.fetch_region(lat, lon, v["power"])
+    except ProviderError as exc:
+        raise DetectiveError(f"NASA POWER could not be reached ({exc.as_dict()['message']}). Try again in a minute.") from None
+    scale = v.get("scale", 1)
+    out = []
+    for c in cells:
+        q = trends.quick([(d, None if x is None else x * scale) for d, x in c["series"] if start_year <= d.year <= end_year])
+        if q:
+            out.append({"lat": c["lat"], "lon": c["lon"], **{k: (round(val, 6) if isinstance(val, float) else val) for k, val in q.items()}})
+    lats = sorted({c["lat"] for c in out})
+    lons = sorted({c["lon"] for c in out})
+    step = {"lat": round(lats[1] - lats[0], 4) if len(lats) > 1 else 0.5, "lon": round(lons[1] - lons[0], 4) if len(lons) > 1 else 0.625}
+    count = {k: sum(1 for c in out if c["level"] == "significant" and (c["per_decade"] > 0) == (k == "up")) for k in ("up", "down")}
+    count["unclear"] = len(out) - count["up"] - count["down"]
+    summary = (f"Of {len(out)} NASA cells around this point, {count['up']} show a significant trend towards {v['up']}, "
+               f"{count['down']} towards {v['down']}, and {count['unclear']} no significant trend ({start_year}–{end_year}).")
+    return {"variable": {k: val for k, val in v.items() if k not in ("power", "scale")}, "center": {"lat": lat, "lon": lon}, "cells": out,
+            "cell_size": step, "counts": count, "summary": summary, "request": {"start_year": start_year, "end_year": end_year},
+            "source": {**pm.catalog()["source"], "parameter": v["power"], "model": v["model"]}}

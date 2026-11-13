@@ -1328,7 +1328,7 @@ async function route() {
   const parts = (location.hash || (state.token ? "#/projects" : "#/detective")).slice(2).split("/");
   try {
     if (!state.meta) state.meta = await api("/meta");
-    if (parts[0] === "detective") return await viewDetective();  // public: the NASA Space Apps Trend Detective
+    if (parts[0] === "detective") return await viewDetective(parts);  // public: the NASA Space Apps Trend Detective
     if (!state.token) return viewLogin();
     if (!state.user) { state.user = await api("/auth/me"); renderSession(); }
     clearMaps();
@@ -1343,4 +1343,5 @@ async function route() {
   } finally { clearTimeout(loadingTimer); }
 }
 window.addEventListener("hashchange", route);
-route();
+// Start once every script has run: the Trend Detective (detective.js) loads after this file (found in the competition check).
+if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", route); else route();
