@@ -1,0 +1,15 @@
+{
+ "package": "pymannkendall 1.4.3",
+ "n_series": 200,
+ "max_abs_difference": {
+  "S": 0.0,
+  "var_S": 0.0,
+  "z": 0.0,
+  "p": 0.0,
+  "tau": 0.0,
+  "sen": 0.0,
+  "ols_slope": 0.0,
+  "ols_p": 0.0
+ },
+ "generated": "2026-11-13"
+}

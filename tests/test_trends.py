@@ -131,3 +131,18 @@ def test_pettitt_finds_a_shift_and_bh_controls_false_discoveries():
     assert 17 <= cp["index"] <= 21 and cp["p_value"] < 0.01
     assert trends.benjamini_hochberg([0.001, 0.2, 0.03, 0.04], q=0.10) == [True, False, True, True]
     assert trends.benjamini_hochberg([0.5, 0.6]) == [False, False] and trends.benjamini_hochberg([]) == []
+
+
+def test_statistics_match_the_pymannkendall_reference():
+    """Independent reference implementation (pymannkendall 1.4.3): identical S, Var(S), z, p, tau and Sen's slope, ties included."""
+    pmk = pytest.importorskip("pymannkendall")
+    from urbanova import trends
+
+    rng = np.random.default_rng(8)
+    for _ in range(30):
+        n = int(rng.integers(12, 50))
+        y = np.round(0.02 * np.arange(n) + rng.normal(0, 1, n), 1)
+        ours, ref = trends.mann_kendall(y), pmk.original_test(y)
+        sen = trends.sens_slope(np.arange(n) + 0.5, y, ours["var_S"])
+        assert ours["S"] == ref.s and ours["var_S"] == pytest.approx(ref.var_s) and ours["p_value"] == pytest.approx(ref.p, abs=1e-12)
+        assert ours["tau"] == pytest.approx(ref.Tau) and sen["slope"] == pytest.approx(ref.slope)

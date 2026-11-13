@@ -28,7 +28,7 @@ dependencies = [
 [project.optional-dependencies]
 # The prototype web app (reference demo only; not the integration target).
 app = ["fastapi>=0.135,<0.136", "uvicorn>=0.41,<0.42", "python-multipart>=0.0.22,<0.1", "reportlab>=5.1,<5.2"]
-test = ["pytest>=9.1,<10"]
+test = ["pytest>=9.1,<10", "pymannkendall==1.4.3"]  # pymannkendall: independent reference for the trend tests (MIT, 2023-01-14)
 
 [project.scripts]
 urbanova-engine = "urbanova.engine.__main__:main"

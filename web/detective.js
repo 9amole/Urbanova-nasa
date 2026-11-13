@@ -50,7 +50,10 @@ async function viewDetective(parts = []) {
       <p>The <strong>95 % range</strong> (confidence interval) is where the true rate probably lies. If it doesn't include zero, the trend is significant.</p>
       <p>When the tests <strong>disagree</strong>, the trend is "likely" but not proven. <strong>Not significant yet</strong> doesn't mean "no change": a longer record often makes a real trend significant.</p></details>
     <details><summary>Limits of this data</summary><p>${esc(C.source.resolution)} Values come from NASA models that combine satellite and ground observations (MERRA-2 reanalysis, CERES, GPCP/GPM rainfall): excellent for regional trends, not for a single street or field. Only straight-line trends are tested; sudden jumps and multi-year cycles (El Niño) are not modelled.</p></details>
-    <p class="hint">${esc(C.source.attribution)}.</p></section>`;
+    <p class="hint">${esc(C.source.attribution)}.</p></section>
+  <section class="panel" id="det-valid"><h2>How do we know it's right?</h2>
+    <p>Every number here is checked twice: is the <strong>maths</strong> right, and is the <strong>data</strong> right? <button class="small" id="det-valid-open">Show the checks</button></p>
+    <div id="det-valid-body"></div></section>`;
   det.map = makeMap("det-map", det.lat, det.lon, 4);
   setPoint(det.lat, det.lon);
   det.map.on("click", (e) => { setPoint(e.latlng.lat, e.latlng.lng); document.getElementById("det-name").value = ""; });
@@ -62,6 +65,7 @@ async function viewDetective(parts = []) {
   document.getElementById("det-find").onclick = (e) => guarded(() => findVariables(), e.target);
   document.querySelectorAll(".det-demo").forEach((b) => (b.onclick = () => guarded(() => runDemo(b.dataset.r), b)));
   document.querySelectorAll(".det-case").forEach((b) => (b.onclick = () => guarded(() => openCase(b.dataset.c), b)));
+  document.getElementById("det-valid-open").onclick = (e) => guarded(() => showValidation(), e.target);
   renderResults();
   loadPreviews();
   if (parts[1] === "case" && parts[2]) return guarded(() => openCase(parts[2]));
@@ -169,10 +173,10 @@ function resultHtml(r) {
     <details><summary>What is ${esc(v.name.toLowerCase())}?</summary><p>${esc(v.definition)}</p><p class="hint">${esc(v.why)}</p></details>
     <details><summary>For scientists: the full statistics</summary>
       <table class="det-stats"><thead><tr><th>Test (on ${R.period.years} yearly averages)</th><th>Rate per decade</th><th>95 % range</th><th>p</th><th>Significant</th></tr></thead><tbody>
-        <tr><td>Mann-Kendall + Sen's slope</td><td>${sig2(sen.per_decade.slope)}</td><td>${sig2(sen.per_decade.ci_low)} to ${sig2(sen.per_decade.ci_high)}</td><td>${p(mk.p_value)}</td><td>${mk.significant ? "Yes" : "No"}</td></tr>
-        <tr><td>Least squares + t-test</td><td>${sig2(ols.per_decade.slope)}</td><td>${sig2(ols.per_decade.ci_low)} to ${sig2(ols.per_decade.ci_high)}</td><td>${p(ols.p_value)}</td><td>${ols.significant ? "Yes" : "No"}</td></tr>
+        <tr><td>Mann-Kendall + Sen's slope <span class="hint">(corrected for year-to-year persistence, Yue & Wang 2004)</span></td><td>${sig2(sen.per_decade.slope)}</td><td>${sig2(sen.per_decade.ci_low)} to ${sig2(sen.per_decade.ci_high)}</td><td>${p(mk.p_value)} <span class="hint">(uncorrected ${p(mk.p_value_plain)})</span></td><td>${mk.significant ? "Yes" : "No"}</td></tr>
+        <tr><td>Least squares + t-test <span class="hint">(effective sample size, Santer et al. 2000)</span></td><td>${sig2(ols.per_decade.slope)}</td><td>${sig2(ols.per_decade.ci_low)} to ${sig2(ols.per_decade.ci_high)}</td><td>${p(ols.p_value)} <span class="hint">(uncorrected ${p(ols.p_value_plain)})</span></td><td>${ols.significant ? "Yes" : "No"}</td></tr>
       </tbody></table>
-      <p class="hint">Unit: ${esc(v.unit)} per decade. Mann-Kendall S = ${mk.S}, z = ${fmt(mk.z, 2)}, Kendall's τ = ${fmt(mk.tau, 3)} · R² = ${fmt(ols.r2, 3)} · lag-1 autocorrelation of yearly residuals ${fmt(ols.lag1_autocorrelation, 2)}${R.rate.method === "ols" ? " · headline rate from least squares" : ""}.
+      <p class="hint">Unit: ${esc(v.unit)} per decade. Mann-Kendall S = ${mk.S}, z = ${fmt(mk.z, 2)}, Kendall's τ = ${fmt(mk.tau, 3)} · R² = ${fmt(ols.r2, 3)} · lag-1 autocorrelation of yearly residuals ${fmt(ols.lag1_autocorrelation, 2)} (${fmt(ols.n_eff, 0)} effective independent years of ${R.period.years}) · biggest shift around ${R.change_point.year} (Pettitt p = ${p(R.change_point.p_value)}) · data: ${R.integrity ? `${R.integrity.months_valid} valid months, ${R.integrity.out_of_range} out of range` : ""}${R.rate.method === "ols" ? " · headline rate from least squares" : ""}.
       For comparison, the same tests on ${R.monthly_tests.n} monthly anomalies give p = ${p(R.monthly_tests.ols_p)} (t-test) and ${p(R.monthly_tests.mk_p)} (Mann-Kendall), with a month-to-month autocorrelation of ${fmt(R.monthly_tests.lag1_autocorrelation, 2)} — which is why the verdict uses yearly averages.</p></details>
     ${controls(r)}
     <p class="hint">Data: ${esc(r.source.name)} — parameter ${esc(r.source.parameter)} from ${esc(r.source.model)}, ${esc(R.period.start)} to ${esc(R.period.end)}. ${esc(r.source.attribution)}.</p></article>`;
@@ -415,4 +419,39 @@ async function openCase(id, fromResult) {
   }));
   cm.fitBounds(outline.getBounds().pad(1.5), { animate: false });
   sec.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+
+// ------------------------------------------------------------------ how do we know it's right? (scripts/validate_detective.py results)
+async function showValidation() {
+  const V = await api("/detective/validation");
+  const pct = (x) => `${fmt(100 * x, 1)} %`;
+  const body = document.getElementById("det-valid-body");
+  const cal = V.calibration, pw = V.power, ref = V.reference, e5 = V.era5, lit = V.literature;
+  const calRows = cal ? Object.entries(cal.false_alarm_rate).map(([k, v]) => `<tr><td>${esc(k.replace("ar1_", ""))}</td><td>${pct(v.verdict_plain)}</td><td><strong>${pct(v.verdict_corrected)}</strong></td><td>${pct(v.t_corrected)}</td><td>${pct(v.mk_corrected)}</td></tr>`).join("") : "";
+  const yearsList = pw ? [...new Set(pw.rows.map((r) => r.years))] : [];
+  const sizes = pw ? [...new Set(pw.rows.map((r) => r.trend_per_decade_in_noise_sd))] : [];
+  const powRows = pw ? sizes.map((s) => `<tr><td>${s}</td>${yearsList.map((y) => { const r = pw.rows.find((x) => x.years === y && x.trend_per_decade_in_noise_sd === s); return `<td>${pct(r.detected)}</td>`; }).join("")}</tr>`).join("") : "";
+  const NAMES = { t2m: "Air temperature", t2m_max: "Daytime high", precip: "Rainfall" };
+  const e5Rows = e5 ? Object.entries(e5.summary).map(([k, s]) => `<tr><td>${esc(NAMES[k] || k)}</td><td>${s.points}</td><td>${fmt(s.same_direction_pct, 0)} %</td><td>${s.significant_same_direction_pct == null ? "—" : fmt(s.significant_same_direction_pct, 0) + " %"}</td><td>${fmt(s.ci_overlap_pct, 0)} %</td><td>${fmt(s.rate_correlation, 2)}</td></tr>`).join("") : "";
+  body.innerHTML = `
+    <h3>1 · Is the maths right?</h3>
+    ${ref ? `<p>✅ <strong>Same answers as independent software.</strong> On ${ref.n_series} random test series (with tied values), every statistic — Mann-Kendall S, its variance, z, p, Kendall's τ, Sen's slope, and the least-squares slope and p-value — matches the open-source <em>${esc(ref.package || "pymannkendall")}</em> package and <em>SciPy</em> (largest difference: ${esc(String(Math.max(...Object.values(ref.max_abs_difference))))}).</p>` : ""}
+    ${cal ? `<p>✅ <strong>Few false alarms.</strong> We simulated ${cal.n_simulations.toLocaleString()} records of ${cal.n_years} years with <em>no trend at all</em>. A good test should call about 5 % of them "significant" by chance. Real climate data has "memory" from year to year, which fools simple tests — so we correct for it:</p>
+      <table class="det-stats"><thead><tr><th>Year-to-year memory (correlation)</th><th>False alarms, simple tests</th><th>False alarms, our verdict</th><th>Corrected t-test</th><th>Corrected Mann-Kendall</th></tr></thead><tbody>${calRows}</tbody></table>
+      <p class="hint">Monte-Carlo uncertainty ± ${pct(cal.monte_carlo_standard_error)}. The verdict needs both corrected tests, so it is slightly stricter than 5 %.</p>` : ""}
+    ${pw ? `<p>📏 <strong>Why "not significant yet"?</strong> How often a real trend is detected, by record length (trend size in units of the year-to-year noise per decade):</p>
+      <table class="det-stats"><thead><tr><th>Trend per decade</th>${yearsList.map((y) => `<th>${y} years</th>`).join("")}</tr></thead><tbody>${powRows}</tbody></table>
+      <p class="hint">A small trend is usually missed in 15 years but found in 45: a "not yet" can become "yes" with a longer record.</p>` : ""}
+    <p>✅ <strong>Many tests on the map are corrected</strong> (Benjamini–Hochberg false discovery rate, as recommended for climate maps by Wilks 2016), so random cells don't light up.</p>
+    <h3>2 · Is the data right?</h3>
+    <p>✅ <strong>Every series is checked</strong>: missing months stay missing (never 0), physically impossible values are removed and counted, and the record's completeness is reported.</p>
+    <p>✅ <strong>Satellite joins are tested.</strong> NASA POWER's sunshine and cloud records join two satellite products (GEWEX SRB and CERES). A join can fake a trend, so we test each side of the biggest shift separately. Example: Delhi's dimming is the same before and after (≈ −0.6 MJ/m²/day per decade on both sides), so it is real; cloud cover jumps around 2000, so its trends get a caution.</p>
+    ${e5 ? `<p>🔁 <strong>Checked against a second, independent dataset.</strong> We repeated every analysis on <strong>ERA5</strong> (made by Europe's ECMWF, independently of NASA's MERRA-2) at ${e5.points} places on every continent:</p>
+      <table class="det-stats"><thead><tr><th>Variable</th><th>Places</th><th>Same direction</th><th>…where either is significant</th><th>95 % ranges overlap</th><th>Rate correlation</th></tr></thead><tbody>${e5Rows}</tbody></table>
+      <p class="hint">${esc(e5.note)} Where the datasets disagree (e.g. Sahel rain, Svalbard's daytime highs), we say so on the result: two independent sources agreeing is stronger evidence than one.</p>` : `<p class="hint">ERA5 comparison: run <code>scripts/validate_detective.py era5</code>.</p>`}
+    ${lit ? `<p>📚 <strong>Compared with published science</strong> (same periods as each study):</p>
+      <table class="det-stats"><thead><tr><th>Demo</th><th>Ours</th><th>Published</th><th>Agreement</th></tr></thead><tbody>${lit.rows.map((r) => `<tr><td>${esc(r.demo)}</td><td>${esc(r.ours)}</td><td>${esc(r.published)}<br><a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.source)}</a></td><td>${r.agreement === "agrees" ? "✅ agrees" : "↗ same direction"}<div class="hint">${esc(r.explanation)}</div></td></tr>`).join("")}</tbody></table>` : ""}
+    <p class="hint">Reproduce everything: <code>python scripts/validate_detective.py</code> (results in <code>validation/detective/</code>); method and full results in <code>docs/VALIDATION_SPACEAPPS.md</code>.</p>`;
+  body.scrollIntoView({ behavior: "smooth", block: "start" });
 }

@@ -1,0 +1,22 @@
+{
+  "checked": "2026-11-13",
+  "note": "Our values recomputed over the same period as each study. Sources are peer-reviewed papers or agency publications; directions all agree, sizes are compared honestly.",
+  "rows": [
+    {"demo": "Svalbard air temperature", "ours": "+1.08 °C per decade (95 % range +0.74 to +1.59), 1991–2018, NASA POWER cell",
+     "published": "+1.7 °C per decade since 1991 at the Svalbard Airport station", "source": "Nordli et al. (2020), Polar Research",
+     "url": "https://polarresearch.net/index.php/polar/article/view/3614", "agreement": "same_direction_smaller",
+     "explanation": "Same direction and exceptional size, but about a third lower: the ~55 km grid cell mixes land, sea and glacier, while the study uses one station."},
+    {"demo": "Delhi sunlight at the ground", "ours": "−7.4 W/m² per decade, 1984–2004", "published": "−8.6 (1981–2004) and about −9 W/m² per decade at Indian stations",
+     "source": "Padma Kumari et al. (2007), as cited in Soni et al., ACP preprint acp-2017-429", "url": "https://acp.copernicus.org/preprints/acp-2017-429/acp-2017-429.pdf",
+     "agreement": "agrees", "explanation": "Close agreement with the station-based dimming estimates."},
+    {"demo": "Delhi sunlight at the ground", "ours": "−5.2 W/m² per decade, 2001–2018", "published": "−2.9 ± 1.9 W/m² per decade, CERES average over all of India, 2001–2018",
+     "source": "IIT Delhi study (summary by Saur Energy)", "url": "https://www.saurenergy.com/solar-energy-news/aerosols-key-factor-in-declining-solar-irradiance-in-india-iit-delhi-researchers",
+     "agreement": "same_direction_larger", "explanation": "Same direction; stronger in Delhi than the all-India average, plausible for one of the most aerosol-polluted cities."},
+    {"demo": "Perth (south-west Australia) April–October rain", "ours": "−28 % (1981–1995 against 2011–2025)", "published": "−16 % April–October rainfall since the 1970s",
+     "source": "Government of Western Australia, citing the Bureau of Meteorology", "url": "https://wa.gov.au/service/natural-resources/water-resources/how-the-south-west-tracking-rainfall-and-streamflow",
+     "agreement": "same_direction_larger", "explanation": "Same direction; ours is larger. The periods and baseline differ (two 15-year windows against a long pre-1975 baseline)."},
+    {"demo": "Sahel rainfall", "ours": "Getting wetter since 1981, significant (NASA POWER); ERA5 shows almost no trend", "published": "Partial recovery since the 1980s drought, still below 1950s levels",
+     "source": "Dong & Sutton (2015), Nature Climate Change", "url": "https://www.nature.com/articles/nclimate2664.pdf", "agreement": "agrees",
+     "explanation": "Agrees with the published partial recovery; the two reanalyses disagree on its size (see the ERA5 check)."}
+  ]
+}

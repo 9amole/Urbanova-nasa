@@ -28,7 +28,7 @@ REGIONS = [
     {"id": "sydney", "name": "Sydney, Australia", "lat": -33.87, "lon": 151.21, "place": "coast", "interest": "water", "variable": "precip",
      "story": "Is Sydney getting drier? Watch what happens when a trend is close to, but not quite, significant."},
     {"id": "amazon", "name": "Central Amazon, Brazil", "lat": -3.5, "lon": -60.0, "place": "forest", "interest": "land", "variable": "soil_root",
-     "story": "The rainforest depends on wet soils. Are they drying?"},
+     "story": "The rainforest depends on wet soils. Are they drying? Soils 'remember' from year to year: see what that does to the test."},
     {"id": "delhi", "name": "Delhi, India", "lat": 28.61, "lon": 77.21, "place": "city", "interest": "sky", "variable": "sun",
      "story": "Air pollution can dim the sunlight that reaches the ground. Is Delhi's sky getting darker?"},
 ]
@@ -225,3 +225,19 @@ def trend_map(lat, lon, var_id: str, start_year: int = 1981, end_year: int | Non
     return {"variable": {k: val for k, val in v.items() if k not in ("power", "scale")}, "center": {"lat": lat, "lon": lon}, "cells": out,
             "cell_size": step, "counts": count, "summary": summary, "fdr": {"q": 0.10, "significant_before": before_fdr}, "request": {"start_year": start_year, "end_year": end_year},
             "source": {**pm.catalog()["source"], "parameter": v["power"], "model": v["model"]}}
+
+
+def validation() -> dict:
+    """The verification and validation results (scripts/validate_detective.py), for the "How do we know it's right?" page."""
+    from .settings import ROOT
+
+    folder = ROOT / "validation" / "detective"
+    out = {}
+    for name in ("calibration", "power", "reference", "era5", "literature"):
+        f = folder / f"{name}.json"
+        if f.exists():
+            data = json.loads(f.read_text(encoding="utf-8"))
+            if name == "era5":
+                data = {k: v for k, v in data.items() if k != "rows"} | {"rows": [r for r in data.get("rows", []) if r.get("demo")]}
+            out[name] = data
+    return out

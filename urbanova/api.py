@@ -723,6 +723,12 @@ async def detective_map(request: Request):
     return await run_in_threadpool(detective.trend_map, b.get("lat"), b.get("lon"), str(b.get("variable") or ""), b.get("start_year") or 1981, b.get("end_year"))
 
 
+@app.get(f"{API}/detective/validation")
+def detective_validation():
+    """How do we know it's right? Calibration, reference cross-check, ERA5 and literature comparisons (public)."""
+    return detective.validation()
+
+
 @app.post(f"{API}/detective/suggest")
 async def detective_suggest(request: Request):
     b = await _json(request)
