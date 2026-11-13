@@ -1,0 +1,38 @@
+{
+ "type": "FeatureCollection",
+ "features": [
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       -55.40225,
+       -7.03225
+      ],
+      [
+       -55.39775,
+       -7.03225
+      ],
+      [
+       -55.39775,
+       -7.02775
+      ],
+      [
+       -55.40225,
+       -7.02775
+      ],
+      [
+       -55.40225,
+       -7.03225
+      ]
+     ]
+    ]
+   },
+   "properties": {
+    "name": "Space Apps test C: Novo Progresso, Para, Brazil (500 m), centre -7.0300, -55.4000"
+   }
+  }
+ ]
+}

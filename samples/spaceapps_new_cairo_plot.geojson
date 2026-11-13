@@ -1,0 +1,38 @@
+{
+ "type": "FeatureCollection",
+ "features": [
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       31.49775,
+       30.01775
+      ],
+      [
+       31.50225,
+       30.01775
+      ],
+      [
+       31.50225,
+       30.02225
+      ],
+      [
+       31.49775,
+       30.02225
+      ],
+      [
+       31.49775,
+       30.01775
+      ]
+     ]
+    ]
+   },
+   "properties": {
+    "name": "Space Apps test A: New Cairo plot (500 m), centre 30.0200, 31.5000"
+   }
+  }
+ ]
+}

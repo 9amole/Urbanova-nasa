@@ -235,7 +235,7 @@ async function viewProjects() {
 }
 
 // ------------------------------------------------------------------ project workspace
-const TABS = [["overview", "1 · Site"], ["inputs", "2 · Inputs"], ["rules", "3 · Planning rules"], ["readiness", "4 · Readiness"], ["scenarios", "5 · Scenarios"], ["analysis", "6 · Run analysis"], ["results", "7 · Results"], ["compare", "8 · Compare"], ["report", "9 · Report"], ["dashboard", "10 · Dashboard"]];
+const TABS = [["overview", "1 · Site"], ["inputs", "2 · Inputs"], ["rules", "3 · Planning rules"], ["readiness", "4 · Readiness"], ["scenarios", "5 · Scenarios"], ["analysis", "6 · Run analysis"], ["results", "7 · Results"], ["trends", "🔎 Trend Detective"], ["compare", "8 · Compare"], ["report", "9 · Report"], ["dashboard", "10 · Dashboard"]];
 
 async function viewProject(pid, tab, extra) {
   const data = await api(`/projects/${pid}`);
@@ -246,7 +246,7 @@ async function viewProject(pid, tab, extra) {
     <nav class="tabs" aria-label="Project steps">${TABS.map(([k, l]) => `<a href="#/p/${pid}/${k}" ${k === tab ? 'aria-current="page"' : ""}>${esc(l)}</a>`).join("")}</nav>
     <div id="tab">${LOADING}</div>`;
   const el = document.getElementById("tab");
-  const views = { overview: tabOverview, inputs: tabInputs, rules: tabRules, readiness: tabReadiness, scenarios: tabScenarios, analysis: tabAnalysis, results: tabResults, compare: tabCompare, report: tabReport, dashboard: tabDashboard };
+  const views = { overview: tabOverview, inputs: tabInputs, rules: tabRules, readiness: tabReadiness, scenarios: tabScenarios, analysis: tabAnalysis, results: tabResults, trends: tabTrends, compare: tabCompare, report: tabReport, dashboard: tabDashboard };
   await (views[tab] || tabOverview)(el, data, extra);
   focusPending();
   document.getElementById("main").focus({ preventScroll: true });
@@ -863,8 +863,7 @@ async function tabResults(el, data, runId) {
   ${climate ? `<section class="panel"><h2>Climate baseline (${esc(ms.climate_baseline.details.period.start_year)}–${esc(ms.climate_baseline.details.period.end_year)})</h2>
     <p class="hint">${esc(ms.climate_baseline.details.provider_name)} — grid point ${fmt(ms.climate_baseline.details.grid_point.latitude, 3)}, ${fmt(ms.climate_baseline.details.grid_point.longitude, 3)}. ${esc(ms.climate_baseline.details.attribution)}</p>
     ${climateChart(climate)}</section>` : ""}
-  ${trendsPanel(ms.climate_trends)}
-  ${siteTrendsPanel(ms.site_trends)}
+  ${trendsCard(ms, pid, rid)}
   <section class="panel"><h2>Metrics by analysis</h2><div class="cards">
    ${Object.entries(ms).map(([mod, s]) => `<div class="panel"><h3>${esc(s.label)} ${condBadge(mod)} ${badge(MOD_STATUS[s.status])} ${run.stale_modules[mod] ? badge(["out of date", "b-warn"]) : ""}</h3>
      ${s.reason ? `<p class="state">${esc(s.reason)}</p>` : ""}${(s.warnings || []).map((w) => `<div class="alert warn">${esc(w)}</div>`).join("")}
@@ -1308,6 +1307,7 @@ function commonSections(d) {
      <div class="grid"><div><h3>Surface and vegetation</h3><table>${E.surface.map((m) => `<tr><td>${esc(m.label)}</td><td>${dashValue(m)}</td></tr>`).join("")}</table></div>
      <div><h3>Climate baseline</h3><table>${E.climate.map((m) => `<tr><td>${esc(m.label)}</td><td>${dashValue(m)}</td></tr>`).join("")}</table>
      ${E.climate_limitations.length ? `<details><summary>Limitations</summary><ul>${E.climate_limitations.map((x) => `<li>${esc(x)}</li>`).join("")}</ul></details>` : ""}
+     ${(E.site_trends || []).length || (E.trends || []).length ? `<p><a href="#/p/${pid}/trends">Open this project's 🔎 Trend Detective →</a></p>` : ""}
      ${(E.site_trends || []).length ? `<h3>Site trends inside the boundary (Landsat)</h3><table>${E.site_trends.map((t) => `<tr><td>${esc(t.name)}</td><td>${esc(t.rate)}</td><td>${badge([LEVEL[t.level][2] + " " + LEVEL[t.level][0], LEVEL[t.level][1]])}</td></tr>`).join("")}</table>` : ""}
      ${(E.trends || []).length ? `<h3>Long-term trends since 1981</h3><table>${E.trends.map((t) => `<tr><td>${esc(t.name)}</td><td>${esc(t.rate)}</td><td>${badge([LEVEL[t.level][2] + " " + LEVEL[t.level][0], LEVEL[t.level][1]])}</td></tr>`).join("")}</table>` : ""}</div></div>
      ${E.land_cover.length ? `<h3>Land cover on the site</h3>${barsSvg(E.land_cover.map((m) => ({ label: m.label.replace(/^Site: /, "").replace(/ \(\d{4} land cover\)$/, ""), value: m.value })), "%", { labelW: 220 })}` : ""}</section>`;
@@ -1402,3 +1402,136 @@ function siteTrendsPanel(s) {
     <p class="hint">${esc(d.attribution)}. Surface temperature, not air temperature. A trend describes the past; it is not a forecast.</p></section>`;
 }
 const FIRST_LANDSAT_YEAR = 1984;
+
+
+// ------------------------------------------------------------------ 🔎 Trend Detective tab: the detective for THIS project's site and boundary
+const TREND_MODULES = ["climate_baseline", "climate_trends", "site_trends"];
+const TREND_RULES = ["TREND-WARM-01", "TREND-SITE-01", "TREND-SITE-02"];
+
+// Results page: one compact card, the detail lives in the project's Trend Detective tab.
+function trendsCard(ms, pid, rid) {
+  const rows = [...(ms.site_trends?.details?.rows || []), ...(ms.climate_trends?.details?.rows || []).slice(0, 2)];
+  if (!rows.length) return "";
+  return `<section class="panel"><h2>Trends <span class="hint">is this place changing?</span></h2>
+    ${rows.map((r) => { const L_ = LEVEL[r.verdict.level]; return `<p>${badge([L_[2] + " " + L_[0], L_[1]])} <strong>${esc(r.name)}</strong>: ${esc(r.verdict.rate)} <span class="muted">${esc(r.verdict.total_text)}</span></p>`; }).join("")}
+    <p><a class="button" href="#/p/${pid}/trends/${esc(rid)}">Open this project's 🔎 Trend Detective →</a></p></section>`;
+}
+
+// Map overlays of a run's layers (raster and vector), with a checkbox list and legends. Returns the overlays.
+async function addRunLayers(map, layers, ctlId, legendId, extra = []) {
+  const overlays = [...extra];
+  for (const lay of layers) {
+    if (lay.layer_kind === "raster") {
+      const url = URL.createObjectURL(await (await api(`/layers/${lay.id}/data`, { raw: true })).blob());
+      const bb = lay.bounds;
+      const leg = lay.legend?.type === "categorical" ? lay.legend.classes.map((c) => `<div><i style="background:${c.color}"></i>${esc(c.label)}</div>`).join("")
+        : `<div>${esc(lay.legend?.min)} ${esc(lay.legend?.unit)} → ${esc(lay.legend?.max)} ${esc(lay.legend?.unit)} (${esc(lay.legend?.cmap)}; blue/brown = down, red/green = up)</div>`;
+      overlays.push([`${lay.name}`, L.imageOverlay(url, [[bb.south, bb.west], [bb.north, bb.east]], { opacity: 0.75 }), overlays.filter((o) => o[2]).length < 2, `<strong>${esc(lay.name)}</strong>${leg}`]);
+    } else {
+      const fc = await (await api(`/layers/${lay.id}/data`, { raw: true })).json();
+      overlays.push([lay.name, L.geoJSON(fc, { style: { color: "#111", weight: 1.5, dashArray: "3 3", fillOpacity: 0 } }), false,
+        `<strong>${esc(lay.name)}</strong>${(lay.legend?.classes || []).map((c) => `<div><i style="background:${c.color}"></i>${esc(c.label)}</div>`).join("")}`]);
+    }
+  }
+  if (!state.maps.includes(map)) return overlays;
+  const ctl = document.getElementById(ctlId), legendBox = document.getElementById(legendId);
+  const refresh = () => { legendBox.innerHTML = overlays.filter((o) => map.hasLayer(o[1]) && o[3]).map((o) => `<div class="legend panel">${o[3]}</div>`).join(""); };
+  overlays.forEach(([name, layer, on], i) => {
+    if (on) layer.addTo(map);
+    const opacity = layer.setOpacity ? `<input type="range" min="0" max="1" step="0.05" value="0.75" aria-label="Opacity of ${esc(name)}" data-i="${i}">` : "";
+    ctl.insertAdjacentHTML("beforeend", `<label for="${ctlId}-${i}"><input type="checkbox" id="${ctlId}-${i}" data-i="${i}" ${on ? "checked" : ""}> ${esc(name)} ${opacity}</label>`);
+  });
+  ctl.querySelectorAll("input[type=checkbox]").forEach((cb) => (cb.onchange = () => { const l = overlays[cb.dataset.i][1]; cb.checked ? l.addTo(map) : map.removeLayer(l); refresh(); }));
+  ctl.querySelectorAll("input[type=range]").forEach((r) => (r.oninput = () => overlays[r.dataset.i][1].setOpacity(+r.value)));
+  refresh();
+  return overlays;
+}
+
+async function startTrendRun(pid, btn) {
+  const box = document.getElementById("tr-progress");
+  const r = await api(`/projects/${pid}/analysis-runs`, { body: { scenario_id: null, config: { modules: TREND_MODULES } } });
+  for (;;) {
+    const j = await api(`/jobs/${r.job_id}`);
+    if (box) box.innerHTML = `<p>${badge(RUN_STATUS[j.status] || [j.status, "b-info"])} ${esc(j.stage || "")}</p>
+      <div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round((j.progress || 0) * 100)}"><div style="width:${Math.round((j.progress || 0) * 100)}%"></div></div>`;
+    if (!["queued", "running"].includes(j.status)) break;
+    await new Promise((res) => setTimeout(res, 2000));
+  }
+  notify("The trend detective finished.", "ok");
+  if (location.hash === `#/p/${pid}/trends/${r.id}`) route(); else location.hash = `#/p/${pid}/trends/${r.id}`;
+}
+
+async function tabTrends(el, data, runId) {
+  const p = data.project, pid = p.id, canRun = p.role !== "viewer";
+  if (!det.cat) det.cat = await api("/detective/catalog");
+  enterProjectMode(p);
+  const all = (await api(`/projects/${pid}/analysis-runs`)).filter((r) => !["queued", "running"].includes(r.status));
+  // Runs that contain a trend module, newest first (the list endpoint has no module status, so the newest runs are opened).
+  const recent = all.slice(0, 8);
+  if (runId && !recent.some((r) => r.id === runId)) { const r = all.find((x) => x.id === runId); if (r) recent.push(r); }
+  const opened = await Promise.all(recent.map(async (r) => [r, await api(`/analysis-runs/${r.id}`)]));
+  const hasTrends = (s) => ["climate_trends", "site_trends"].some((m) => s?.[m] && s[m].status !== "skipped");
+  const withTrends = opened.filter(([, b]) => hasTrends(b.run.module_status));
+  const runBtn = canRun ? `<p><button class="primary" id="tr-run" ${p.location_confirmed ? "" : "disabled"}>${withTrends.length ? "Run the trend detective again" : "Run the trend detective"}</button>
+    <span class="hint">${p.location_confirmed ? "Climate baseline, regional climate trends and the site trends only (no design needed). The first run reads about 40 years of Landsat and takes a few minutes; later runs come from the cache." : "Confirm the site location on 1 · Site first."}</span></p><div id="tr-progress" aria-live="polite"></div>` : "";
+  const boundaryNote = p.boundary ? "" : `<div class="alert warn">This project has no site boundary, so the plot trends use a 100 m circle around the point. <a href="#/p/${pid}/overview">Add the boundary on 1 · Site</a> to test the plot itself.</div>`;
+  if (!withTrends.length) {
+    el.innerHTML = `<section class="panel"><h2>🔎 Trend Detective for ${esc(p.name)}</h2>
+      <p>Is this site changing? The detective tests <strong>the plot inside your boundary</strong> (Landsat satellites, 30 m, since 1984) and <strong>the climate of the region around it</strong>
+        (NASA POWER, since 1981): how fast each thing is changing, and whether the change is significant or could be chance.</p>${boundaryNote}${runBtn}
+      <p class="hint">Nothing has been tested for this project yet.</p></section>`;
+    const rb = document.getElementById("tr-run"); if (rb) rb.onclick = () => guarded(() => startTrendRun(pid, rb), rb);
+    return;
+  }
+  const [run, b] = withTrends.find(([r]) => r.id === runId) || withTrends[0];
+  const ms = b.run.module_status || {};
+  const site = ms.site_trends, clim = ms.climate_trends;
+  const finds = b.findings.filter((f) => TREND_RULES.includes(f.rule_id));
+  const dq = b.findings.filter((f) => f.classification === "data_quality_issue" && /trend/i.test(f.title));
+  const layers = b.layers.filter((l) => l.module === "site_trends");
+  const vars = det.cat.variables;
+  el.innerHTML = `
+  <section class="panel det-hero"><h2>🔎 Trend Detective for ${esc(p.name)}</h2>
+    <p class="lead">Is this site changing — how fast, and is it real or chance? <strong>The plot</strong> inside your boundary (Landsat, since 1984) and <strong>the region</strong> around it (NASA POWER, since 1981),
+      tested with the same corrected statistics as the public Trend Detective.</p>
+    <div class="row"><div><label for="tr-runsel">Trend run</label><select id="tr-runsel">${withTrends.map(([r]) => `<option value="${r.id}" ${r.id === run.id ? "selected" : ""}>${esc(r.completed_at)} (${esc(RUN_STATUS[r.status]?.[0] || r.status)})</option>`).join("")}</select></div></div>
+    ${boundaryNote}${runBtn}</section>
+  <section class="panel"><h2>1 · The plot: inside your boundary <span class="hint">Landsat 5/7/8/9, 30 m</span></h2>
+    ${site?.details?.rows ? `<div class="grid"><div id="tr-map" class="map" style="height:440px" aria-label="Map of the site with the change maps"></div><div><div id="tr-layers" class="layerctl"></div><div id="tr-legend"></div>
+      <p class="hint">Change per decade of every 30 m pixel since ${esc(site.details.first_year)}. Dashed outlines: pixels whose change is significant after the false-discovery-rate correction.</p></div></div>
+      ${siteTrendsPanel(site).replace(/<section class="panel" id="site-trends-panel"><h2>[^<]*<\/h2>/, '<div id="site-trends-panel">').replace(/<\/section>$/, "</div>")}`
+      : `<p class="state">${esc(site?.reason || "The site trends were not part of this run. Run the trend detective above.")}</p>`}</section>
+  <section class="panel"><h2>2 · The region around it <span class="hint">NASA POWER, one ~55 km cell</span></h2>
+    ${clim?.details?.rows ? trendsPanel(clim).replace(/<section class="panel" id="trends-panel"><h2>[^<]*<\/h2>/, '<div id="trends-panel">').replace(/<\/section>$/, "</div>") : `<p class="state">${esc(clim?.reason || "The climate trends were not part of this run.")}</p>`}
+    <h3>Investigate another variable here</h3><p class="hint">Test any NASA variable at this site: change the period, see which months change most, compare up to three, map where it is changing, download the data.</p>
+    <div class="det-chips">${vars.map((v) => `<button class="chip-btn tr-var" data-v="${esc(v.id)}" title="${esc(v.definition)}">${esc(v.name)}</button>`).join("")}</div></section>
+  <section id="det-results"></section>
+  <section class="panel" id="det-mapsec" hidden></section>
+  <section class="panel"><h2>3 · What the detective concluded</h2>
+    ${finds.length ? finds.map((f) => `<div class="alert info"><strong>${esc(f.title)}</strong><p>${esc(f.summary)}</p><p class="muted">${esc(f.affected_area || "")} · ${esc(f.severity_rule)}</p></div>`).join("")
+      : `<p>No significant warming of the region, and no significant steady change of the plot against its surroundings or of its green cover. Steps (sudden changes) are described in the rows above.</p>`}
+    ${dq.map((f) => `<p class="state">${esc(f.title)}: ${esc(f.summary)}</p>`).join("")}
+    <h3>Ask about the trends</h3><div id="tr-chat" class="chat" aria-live="polite"></div>
+    ${canRun ? `<form id="tr-ask" class="row"><div style="flex:1"><label for="tr-q">Question</label><input id="tr-q" type="text" maxlength="500" placeholder="e.g. Is it getting hotter here? Is the site losing green cover?"></div><div><button type="submit" id="tr-send">Ask</button></div></form>` : ""}</section>
+  <p class="hint">Same tests as the public <a href="#/detective">Trend Detective</a> (see "How do we know it's right?" there). Surface temperature is the ground and roofs, not the air. A trend describes the past; it is not a forecast.</p>`;
+  document.getElementById("tr-runsel").onchange = (e) => (location.hash = `#/p/${pid}/trends/${e.target.value}`);
+  const rb = document.getElementById("tr-run"); if (rb) rb.onclick = () => guarded(() => startTrendRun(pid, rb), rb);
+  el.querySelectorAll(".tr-var").forEach((btn) => (btn.onclick = () => guarded(() => testTrend(btn.dataset.v), btn)));
+  renderResults();
+  const ask = document.getElementById("tr-ask"), log = document.getElementById("tr-chat");
+  const show = (msgs) => (log.innerHTML = msgs.filter((m) => m.role === "user" || /trend|decade|green|since|surround/i.test(m.text || "")).slice(-6)
+    .map((m) => (m.role === "user" ? `<div class="msg user">${esc(m.text)}</div>` : `<div class="msg bot alert info">${esc(m.text)}</div>`)).join(""));
+  let chat = await api(`/analysis-runs/${run.id}/chat`);
+  show(chat);
+  if (ask) ask.onsubmit = (e) => { e.preventDefault(); const q = document.getElementById("tr-q"), btn = document.getElementById("tr-send"); guarded(async () => {
+    const text = q.value.trim(); if (!text) throw new Error("Type a question first.");
+    const r = await api(`/analysis-runs/${run.id}/chat`, { body: { question: text } });
+    chat = [...chat, { role: "user", text }, { role: "assistant", text: r.answer }]; q.value = ""; show(chat);
+  }, btn); };
+  if (site?.details?.rows) {
+    const map = makeMap("tr-map", p.latitude, p.longitude, 15);
+    const extra = p.boundary ? [["Site boundary", L.geoJSON(p.boundary, { style: { color: "#c62828", weight: 3, fillOpacity: 0 } }), true, null]] : [];
+    await addRunLayers(map, layers, "tr-layers", "tr-legend", extra);
+    if (p.boundary && state.maps.includes(map)) map.fitBounds(L.geoJSON(p.boundary).getBounds().pad(1.5), { animate: false });
+  }
+}

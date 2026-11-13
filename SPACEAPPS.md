@@ -27,7 +27,7 @@ the challenge's question for the plot: **is the climate here changing since 1981
 |---|---|
 | 1. Select variables | Daytime high, mean and night-time air temperature; rainfall; humidity; sunshine at the ground. These are the variables that drive urban heat and comfort. |
 | 2. Acquire data for the region | NASA POWER monthly, January 1981 to the last complete year, at the plot's coordinates, in one keyless request recorded as a dataset with provenance. |
-| 3. Time series and visualisation | The **"Long-term climate trends"** panel on the results page: one row per variable; click a row for the yearly chart with the trend line and its 95 % band. The PDF report has the same table and chart. |
+| 3. Time series and visualisation | Each project's own **🔎 Trend Detective tab**: the plot inside the boundary (Landsat, change maps per pixel) and the region around it (NASA POWER), one row per variable with the yearly chart, trend line and 95 % band, plus the full detective tools fixed to the site. Results shows a summary card; the PDF report has the tables and charts. See [docs/TESTING_TRENDS.md](docs/TESTING_TRENDS.md) for test sites. |
 | 4. Rate and significance | Sen's slope per decade with a 95 % range, the corrected Mann-Kendall test and the corrected t-test (both must agree). A significant warming becomes a **finding** ("The site's climate is warming: +0.33 °C per decade"). The **results chat** answers "Is it getting hotter here?" from the stored numbers. |
 | Students | Each row links to the **Trend Detective** (`#/detective`), which gives the same numbers from the same code, plus seasons, the regional trend map, demos and data download. |
 

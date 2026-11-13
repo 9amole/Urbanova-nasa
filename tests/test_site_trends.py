@@ -151,6 +151,18 @@ def test_too_few_clear_years_is_unavailable_with_a_reason(env, tmp_path, landsat
     assert mod["status"] == "unavailable" and "a trend needs at least 10" in mod["reason"]
 
 
+def test_failed_scene_reads_say_try_again(env, tmp_path, landsat, monkeypatch):
+    from urbanova.analysis import site_trends as st
+    from urbanova.providers.base import ProviderError
+
+    def busy(*a, **k):
+        raise ProviderError("pc_landsat_c2_l2", "network_error", "timeout")
+
+    monkeypatch.setattr(st, "read_to_grid", busy)
+    mod = _run(tmp_path)["modules"]["site_trends"]
+    assert mod["status"] == "unavailable" and "archive was probably busy" in mod["reason"]
+
+
 def test_an_archive_outage_is_unavailable_never_a_crash(env, tmp_path, landsat):
     scen, _ = landsat
     scen["fail"] = True

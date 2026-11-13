@@ -14,6 +14,7 @@ const sig2 = (x) => { // two significant figures, signed, without trailing noise
 };
 
 async function viewDetective(parts = []) {
+  leaveProjectMode();
   if (!det.cat) det.cat = await api("/detective/catalog");
   if (!det.cases) det.cases = await fetch("casefiles/index.json").then((r) => (r.ok ? r.json() : {})).catch(() => ({}));
   const C = det.cat;
@@ -98,7 +99,7 @@ function loadPreviews() {
 
 function setPoint(lat, lon) {
   det.lat = +(+lat).toFixed(2); det.lon = +(+lon).toFixed(2);
-  if (det.marker) det.marker.setLatLng([det.lat, det.lon]); else det.marker = L.marker([det.lat, det.lon]).addTo(det.map);
+  if (det.marker) det.marker.setLatLng([det.lat, det.lon]); else if (det.map) det.marker = L.marker([det.lat, det.lon]).addTo(det.map);
   const el = document.getElementById("det-where");
   if (el) el.textContent = `Point ${det.lat}, ${det.lon} — one NASA POWER cell of about 55 km around it.`;
 }
@@ -133,7 +134,7 @@ async function testTrend(varId, opts = {}) {
 function renderResults() {
   const box = document.getElementById("det-results");
   if (!box) return;
-  box.innerHTML = det.results.length ? `<h2 class="det-h">3 · Results ${det.results.length > 1 ? `<span class="hint">(${det.results.length} side by side — test another variable or place to compare)</span>` : ""}</h2>
+  box.innerHTML = det.results.length ? `<h2 class="det-h">${det.project ? "Your investigation" : "3 · Results"} ${det.results.length > 1 ? `<span class="hint">(${det.results.length} side by side — test another variable or place to compare)</span>` : ""}</h2>
     <div class="det-results ${det.results.length > 1 ? "multi" : ""}">${det.results.map(resultHtml).join("")}</div>` : "";
   det.results.forEach((r) => {
     const el = document.getElementById(`res-${r.key}`);
@@ -201,9 +202,9 @@ function controls(r) {
   return `<div class="det-controls"><label class="check"><input type="checkbox" class="det-raw" ${r.request.deseasonalised ? "" : "checked"}> Show months with the seasonal cycle</label>
     <form class="det-period row"><label>From <input name="start" type="number" min="1981" max="${det.cat.last_year - 10}" value="${r.request.start_year}"></label>
       <label>to <input name="end" type="number" min="1991" max="${det.cat.last_year}" value="${r.request.end_year}"></label><button class="small" type="submit">Re-test</button></form>
-    ${nearCase(r) ? `<button class="small primary det-street" data-c="${esc(nearCase(r))}">🔎 See it at street level</button>` : ""}
+    ${!det.project && nearCase(r) ? `<button class="small primary det-street" data-c="${esc(nearCase(r))}">🔎 See it at street level</button>` : ""}
     <button class="small det-where-btn">🗺 Where is it changing?</button><button class="small det-csv">Download CSV</button><button class="small det-link">Copy link</button>
-    ${state.token ? `<button class="small det-zoom">Zoom into a plot here with URBANOVA →</button>` : ""}</div>`;
+    ${state.token && !det.project ? `<button class="small det-zoom">Zoom into a plot here with URBANOVA →</button>` : ""}</div>`;
 }
 
 function chartSvg(R, v) {
@@ -295,7 +296,8 @@ function downloadCsv(r) {
 }
 
 function copyLink(r, btn) {
-  const url = `${location.origin}${location.pathname}#/detective/${r.variable.id}/${r.point.lat}/${r.point.lon}`;
+  const url = det.project ? `${location.origin}${location.pathname}#/p/${det.project}/trends`
+    : `${location.origin}${location.pathname}#/detective/${r.variable.id}/${r.point.lat}/${r.point.lon}`;
   const done = () => { btn.textContent = "Link copied"; setTimeout(() => (btn.textContent = "Copy link"), 2000); };
   if (navigator.clipboard) navigator.clipboard.writeText(url).then(done, () => prompt("Copy this link:", url)); else prompt("Copy this link:", url);
 }
@@ -454,4 +456,17 @@ async function showValidation() {
       <table class="det-stats"><thead><tr><th>Demo</th><th>Ours</th><th>Published</th><th>Agreement</th></tr></thead><tbody>${lit.rows.map((r) => `<tr><td>${esc(r.demo)}</td><td>${esc(r.ours)}</td><td>${esc(r.published)}<br><a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.source)}</a></td><td>${r.agreement === "agrees" ? "✅ agrees" : "↗ same direction"}<div class="hint">${esc(r.explanation)}</div></td></tr>`).join("")}</tbody></table>` : ""}
     <p class="hint">Reproduce everything: <code>python scripts/validate_detective.py</code> (results in <code>validation/detective/</code>); method and full results in <code>docs/VALIDATION_SPACEAPPS.md</code>.</p>`;
   body.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+
+// ------------------------------------------------------------------ project mode: the same tools inside a project's 🔎 Trend Detective tab
+// The project tab fixes the point to the project's site; its results never mix with the public page's.
+function enterProjectMode(p) {
+  if (det.project !== p.id) det.results = [];
+  Object.assign(det, { project: p.id, lat: +(+p.latitude).toFixed(2), lon: +(+p.longitude).toFixed(2), where: p.name, map: null, marker: null, trendMap: null, demo: false });
+}
+
+function leaveProjectMode() {
+  if (!det.project) return;
+  Object.assign(det, { project: null, results: [], map: null, marker: null, trendMap: null, lat: 30.03, lon: 31.47, where: "New Cairo, Egypt" });
 }

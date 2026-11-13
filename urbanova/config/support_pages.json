@@ -141,6 +141,23 @@
         "Is the site heating faster than its surroundings?"
       ]
     },
+    "trends": {
+      "title": "🔎 Trend Detective (this project)",
+      "purpose": "Is this site changing? The plot inside your boundary (Landsat since 1984: surface temperature, against its surroundings, greenness) and the climate of the region around it (NASA POWER since 1981), with the rate per decade and whether the change is significant.",
+      "steps": [
+        "Click 'Run the trend detective' (no design needed; the first run takes a few minutes).",
+        "Read the plot rows first: 'Site minus surroundings' is the most reliable. Switch on the change maps to see where on the plot it changed.",
+        "Open a row for its chart and notes (step changes, sensor check).",
+        "Click any variable under 'Investigate another variable here' to test it at this site, then use 'Where is it changing?' for the regional map.",
+        "Ask a question about the trends at the bottom."
+      ],
+      "questions": [
+        "Is it getting hotter here?",
+        "Is the site losing green cover?",
+        "What is a step change?",
+        "Why is it not significant?"
+      ]
+    },
     "compare": {
       "title": "8 · Compare",
       "purpose": "Compares the baseline with alternatives analysed in the same joint run.",

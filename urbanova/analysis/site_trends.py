@@ -241,8 +241,11 @@ def run(ctx: Context) -> dict:
     coverage = [{"year": p["year"], "scenes": len(p["accepted"]), "sensors": p.get("sensors", []),
                  "excluded": len(p["excluded"]), "dates": [a["datetime"][:10] for a in p["accepted"]]} for p in per]
     if len(used) < trends.MIN_YEARS:
-        return result(UNAVAILABLE, reason=(f"Only {len(used)} year(s) since {FIRST_YEAR} have a clear hot-season Landsat view of the site; "
-                                           f"a trend needs at least {trends.MIN_YEARS}."), details={"coverage": coverage, "months": months}, failures=failures[:10])
+        read_fail = sum(1 for p in per for x in p["excluded"] if str(x.get("reason", "")).startswith("read failed"))
+        busy = (f" {read_fail} scene read(s) failed, so the satellite archive was probably busy or unreachable: run the trend detective again "
+                "in a few minutes (scenes already read are kept).") if read_fail else ""
+        return result(UNAVAILABLE, reason=(f"Only {len(used)} year(s) since {FIRST_YEAR} have a usable hot-season Landsat view of the site; "
+                                           f"a trend needs at least {trends.MIN_YEARS}.{busy}"), details={"coverage": coverage, "months": months}, failures=failures[:10])
     scenes = [a for p in used for a in p["accepted"]]
     ds_id = catalog.register(
         ctx.project["id"], PROVIDER, "satellite_lst_ndvi_time_series", acquisition_method="catalog_stac",
@@ -264,7 +267,7 @@ def run(ctx: Context) -> dict:
         ann = [(p["year"], p[field]) for p in used if p.get(field) is not None]
         pts = [(a["datetime"][:10], a[field]) for p in used for a in p["accepted"] if a.get(field) is not None]
         res = trends.yearly_result(ann, pts, unit, up_word=up, down_word=down)
-        label = f"Trend in {name.lower()} since {ann[0][0] if ann else FIRST_YEAR}"
+        label = f"Trend in {name[0].lower() + name[1:]} since {ann[0][0] if ann else FIRST_YEAR}"
         if not res.get("ok"):
             metrics.append(V.missing(metric_name, label, f"{unit}/decade", V.UNKNOWN, res["reason"], sources=src))
             warnings.append(f"{name}: {res['reason']}")

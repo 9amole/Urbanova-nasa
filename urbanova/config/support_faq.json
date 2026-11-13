@@ -48,13 +48,13 @@
       "id": "faq_trend_in_analysis",
       "topic": "Results",
       "q": "What is the 'Long-term climate trends' panel in my analysis?",
-      "a": "Every analysis (with or without a design) tests whether the climate at the site has changed since 1981: daytime highs, mean and night temperatures, rainfall, humidity and sunshine, from NASA POWER. Each row gives the rate per decade with its 95 % range and a verdict: significant only when two statistical tests, both corrected for year-to-year persistence, agree. Click a row for the chart, or open it in the Trend Detective for more. It describes one ~55 km grid cell and the past, not a forecast."
+      "a": "Every analysis (with or without a design) tests whether the climate at the site has changed since 1981: daytime highs, mean and night temperatures, rainfall, humidity and sunshine, from NASA POWER. Each row gives the rate per decade with its 95 % range and a verdict: significant only when two statistical tests, both corrected for year-to-year persistence, agree. Click a row for the chart, or open it in the Trend Detective for more. It describes one ~55 km grid cell and the past, not a forecast. The project's 🔎 Trend Detective tab gathers all of it, with the full detective tools fixed to your site."
     },
     {
       "id": "faq_site_trends",
       "topic": "Results",
       "q": "What are the 'Site trends inside the boundary'?",
-      "a": "The plot itself since 1984, from the Landsat satellites (30 m). Every year the clearest hot-season images are measured inside your site boundary and in the ring around it. Three trends are tested like the climate trends: the site's surface temperature, the site minus its surroundings (is the plot heating faster than its neighbourhood? the most reliable row) and the site's greenness (NDVI). The change maps on the map show where it changed; outlined pixels passed the false-discovery-rate test. The first run reads about 40 years of images and can take several minutes. It is surface temperature, not air temperature, and it is not a forecast."
+      "a": "On each project's 🔎 Trend Detective tab: the plot itself since 1984, from the Landsat satellites (30 m). Every year the clearest hot-season images are measured inside your site boundary and in the ring around it. Three trends are tested like the climate trends: the site's surface temperature, the site minus its surroundings (is the plot heating faster than its neighbourhood? the most reliable row) and the site's greenness (NDVI). The change maps on the map show where it changed; outlined pixels passed the false-discovery-rate test. The first run reads about 40 years of images and can take several minutes. It is surface temperature, not air temperature, and it is not a forecast."
     },
     {
       "id": "faq_start",

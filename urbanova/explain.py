@@ -36,6 +36,16 @@ TOPICS = [
 ]
 
 
+RELEVANCE = [(re.compile(r"green|vegetat|tree|ndvi", re.I), "green"), (re.compile(r"hot|warm|heat|temperat|cool", re.I), "temperat"),
+             (re.compile(r"rain|wet|dry|drought", re.I), "rain"), (re.compile(r"surround|neighbou?r|faster", re.I), "surround"),
+             (re.compile(r"\bsite\b|plot|boundary", re.I), "site"), (re.compile(r"humid", re.I), "humid"), (re.compile(r"sun|solar|dimm", re.I), "sun")]
+
+
+def _relevance(question: str, text: str) -> int:
+    """How many of the question's topics a result line mentions (to put the asked-about rows first)."""
+    return sum(1 for pat, word in RELEVANCE if pat.search(question) and word in text.lower())
+
+
 def explain_finding(f: dict, recs: list[dict]) -> dict:
     parts = [f"Finding: {f['title']} (classification: {f['classification'].replace('_', ' ')}; severity: {f['severity']})."]
     for e in f.get("evidence") or []:
@@ -77,7 +87,7 @@ def answer(question: str, bundle: dict) -> dict:
         if not pattern.search(q):
             continue
         status = bundle["run"].get("module_status") or {}
-        lines, ids = [], []
+        lines, ids, found = [], [], []
         for mod in modules:
             st = status.get(mod, {})
             if st.get("status") in (None, "skipped"):
@@ -85,11 +95,18 @@ def answer(question: str, bundle: dict) -> dict:
             if st.get("status") not in ("completed", "partial"):
                 lines.append(f"{st.get('label', mod)} did not produce results ({st.get('status')}): {st.get('reason')}")
                 continue
+            steps = {r["metric_name"]: r["step"] for r in (st.get("details") or {}).get("rows") or [] if r.get("step")}
             for m in bundle["metrics"]:
                 if m["module"] == mod and m["state"] == "available":
                     verdict = (m.get("extra") or {}).get("verdict")
-                    lines.append(f"{m['label']}: {m['value']:g} {m['unit'] or ''}" + (f" ({verdict.replace('_', ' ')})" if verdict else ""))
-                    ids.append(m["id"])
+                    s = steps.get(m["metric_name"])
+                    found.append((m, f"{m['label']}: {m['value']:g} {m['unit'] or ''}" + (f" ({verdict.replace('_', ' ')})" if verdict else "")
+                                  + (f"; step change around {s['year']}: {s['before']:.3g} before, {s['after']:.3g} after" if s else "")))
+        # The rows the question is about come first (e.g. "green" → greenness), so they are never cut off (stable sort).
+        found.sort(key=lambda x: -_relevance(q, x[0]["label"]))
+        for m, line in found:
+            lines.append(line)
+            ids.append(m["id"])
         rel = [f for f in bundle["findings"] if f["category"] == category or (category == "data" and f["classification"] == "data_quality_issue")]
         for f in rel:
             lines.append(f"Finding ({f['severity']}): {f['title']}. {f.get('summary') or ''}")
