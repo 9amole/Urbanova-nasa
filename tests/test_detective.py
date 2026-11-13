@@ -23,7 +23,10 @@ def power(monkeypatch):
             for i in range(45 * 12):
                 y, m = 1981 + i // 12, i % 12 + 1
                 missing = v["id"] in ("sun", "cloud") and y < 1984
-                rows.append((date(y, m, 1), None if missing else 20 + 6 * np.sin(m / 12 * 2 * np.pi) + slope * (y - 1981) + rng.normal(0, 0.4)))
+                val = 20 + 6 * np.sin(m / 12 * 2 * np.pi) + slope * (y - 1981) + rng.normal(0, 0.4)
+                if v.get("valid_range", [0, 100])[1] <= 1:  # soil wetness is a 0–1 fraction in POWER units
+                    val = val / 100
+                rows.append((date(y, m, 1), None if missing else val))
             out[v["power"]] = rows
         return out, {"cache_hit": False}
 
@@ -131,7 +134,8 @@ def test_trend_map_counts_where_it_changes(client, monkeypatch):
 def test_soil_wetness_is_shown_in_percent(client, power):
     j = client.post("/api/v1/detective/trend", json={"lat": 30.03, "lon": 31.47, "variable": "soil_root"}).json()
     assert j["variable"]["unit"] == "%" and "scale" not in j["variable"]
-    assert 1000 < abs(j["result"]["raw"][0]["value"]) < 3000  # the fake 0–1-style value of about 20, scaled ×100
+    assert 10 < abs(j["result"]["raw"][0]["value"]) < 30  # the fake 0.2 fraction, shown as about 20 %
+    assert j["result"]["integrity"]["out_of_range"] == 0 and j["result"]["integrity"]["valid_range"] == [0, 100]
 
 
 def test_the_opposite_rain_demo_has_two_places():
@@ -175,3 +179,49 @@ def test_case_file_builder_writes_a_public_summary_and_layers(tmp_path, monkeypa
     assert s["land_cover"][0]["value"] == 80.0 and "hotspots" not in s["modules"] and s["region"] == "new_cairo"
     idx = __import__("json").loads((tmp_path / "index.json").read_text(encoding="utf-8"))
     assert idx["new_cairo"]["name"] == "Fifth Settlement, New Cairo"
+
+
+
+def test_impossible_values_are_removed_and_satellite_joins_are_checked(client, monkeypatch):
+    """Data checks: a value outside the physical range becomes missing (counted); sunshine is tested on both sides of its
+    biggest shift, because its record joins two satellite products."""
+    from urbanova.providers import power_monthly as pm
+
+    def fake(lat, lon, start_year=1981, end_year=None):
+        rng = np.random.default_rng(1)
+        out = {}
+        for v in pm.catalog()["variables"]:
+            rows = []
+            for i in range(45 * 12):
+                y, m = 1981 + i // 12, i % 12 + 1
+                val = 15 - 0.03 * (y - 1981) + rng.normal(0, 0.3) if v["id"] == "sun" else 20 + rng.normal(0, 0.3)
+                if v.get("valid_range", [0, 100])[1] <= 1:
+                    val = 0.3
+                rows.append((date(y, m, 1), val))
+            out[v["power"]] = rows
+        out["T2M"][5] = (out["T2M"][5][0], 999.0)  # an impossible air temperature
+        return out, {}
+
+    monkeypatch.setattr(pm, "fetch", fake)
+    t = client.post("/api/v1/detective/trend", json={"lat": 1, "lon": 1, "variable": "t2m"}).json()["result"]
+    assert t["integrity"]["out_of_range"] == 1 and any("physically possible" in n for n in t["notes"])
+    s = client.post("/api/v1/detective/trend", json={"lat": 1, "lon": 1, "variable": "sun"}).json()["result"]
+    j = s["source_join"]
+    assert len(j["segments"]) == 2 and j["consistent"] and "Data check passed" in j["note"]
+
+
+def test_the_map_corrects_for_many_tests(client, monkeypatch):
+    """80 cells of pure noise: some pass a single 5 % test by chance; the false-discovery-rate step removes them."""
+    from urbanova.providers import power_monthly as pm
+
+    def noise_region(lat, lon, parameter, half=2.5):
+        cells = []
+        for k in range(80):
+            rng = np.random.default_rng(100 + k)
+            cells.append({"lat": lat + (k // 10) * 0.5, "lon": lon + (k % 10) * 0.625,
+                          "series": [(date(1981 + i // 12, i % 12 + 1, 1), 10 + rng.normal(0, 1)) for i in range(45 * 12)]})
+        return cells, {}
+
+    monkeypatch.setattr(pm, "fetch_region", noise_region)
+    m = client.post("/api/v1/detective/map", json={"lat": 0, "lon": 0, "variable": "t2m"}).json()
+    assert m["counts"]["up"] + m["counts"]["down"] <= 1 and "false discovery rate" in m["summary"]

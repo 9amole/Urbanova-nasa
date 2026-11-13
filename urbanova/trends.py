@@ -64,6 +64,79 @@ def mann_kendall(y: np.ndarray) -> dict:
     return {"S": int(s), "var_S": var_s, "z": float(z), "p_value": float(p), "tau": float(tau)}
 
 
+def acf(x: np.ndarray, nlags: int) -> np.ndarray:
+    """Sample autocorrelation function (biased estimator, as in statsmodels and pymannkendall)."""
+    x = np.asarray(x, float) - np.mean(x)
+    n = len(x)
+    c0 = float(np.dot(x, x)) / n
+    if c0 == 0:
+        return np.zeros(nlags + 1)
+    return np.array([1.0] + [float(np.dot(x[: n - k], x[k:])) / n / c0 for k in range(1, nlags + 1)])
+
+
+def lag1_bias_corrected(r1: float, n: int) -> float:
+    """Lag-1 autocorrelation corrected for its small-sample bias, E[r1] ≈ ρ − (1 + 3ρ)/n (Kendall 1954), capped below 1."""
+    return min(r1 + (1 + 3 * r1) / n, 0.95)
+
+
+def mann_kendall_corrected(t: np.ndarray, y: np.ndarray, alpha: float = ALPHA) -> dict:
+    """Modified Mann-Kendall test (Yue & Wang 2004): Var(S) is inflated by n/n* = 1 + 2 Σ (1 − k/n) ρ^k, with ρ the lag-1
+    autocorrelation of the Sen-detrended series (bias-corrected). The variance is never reduced (conservative).
+    Chosen by Monte-Carlo calibration (scripts/validate_detective.py): it keeps false alarms near 5 %, unlike Hamed–Rao."""
+    base = mann_kendall(y)
+    n = len(y)
+    i, j = np.triu_indices(n, k=1)
+    steps = np.arange(n, dtype=float)
+    slope = float(np.median((y[j] - y[i]) / (steps[j] - steps[i])))
+    r1 = lag1_bias_corrected(float(acf(y - slope * steps, 1)[1]), n)
+    factor = max(1.0, 1 + 2 * sum((1 - k / n) * r1 ** k for k in range(1, n))) if r1 > 0 else 1.0
+    var_s = base["var_S"] * factor
+    s = base["S"]
+    z = (s - 1) / math.sqrt(var_s) if s > 0 else (s + 1) / math.sqrt(var_s) if s < 0 else 0.0
+    return {"S": s, "var_S": var_s, "z": float(z), "p_value": float(2 * (1 - stats.norm.cdf(abs(z)))), "variance_factor": float(factor), "lag1": r1}
+
+
+def ols_effective_n(t: np.ndarray, y: np.ndarray, lin: dict, alpha: float = ALPHA) -> dict:
+    """Least-squares t-test with an effective sample size for AR(1) residuals (Santer et al. 2000, J. Geophys. Res. 105,
+    7337): n_eff = n (1 − r1) / (1 + r1), with r1 bias-corrected; the slope's standard error grows by sqrt((n − 2) / (n_eff − 2))."""
+    n = len(t)
+    r1 = lag1_bias_corrected(lin["lag1_autocorrelation"], n)
+    n_eff = n * (1 - r1) / (1 + r1) if r1 > 0 else float(n)
+    if n_eff <= 3:
+        return {"n_eff": float(n_eff), "p_value": 1.0, "ci_low": float("-inf"), "ci_high": float("inf"), "stderr": float("inf"), "dof": max(n_eff - 2, 0.0)}
+    se = lin["stderr"] * math.sqrt((n - 2) / (n_eff - 2))
+    dof = n_eff - 2
+    tval = lin["slope"] / se if se > 0 else 0.0
+    tcrit = stats.t.ppf(1 - alpha / 2, dof)
+    return {"n_eff": float(n_eff), "p_value": float(2 * (1 - stats.t.cdf(abs(tval), dof))), "stderr": float(se), "dof": float(dof),
+            "ci_low": float(lin["slope"] - tcrit * se), "ci_high": float(lin["slope"] + tcrit * se)}
+
+
+def pettitt(y: np.ndarray) -> dict:
+    """Pettitt (1979) change-point test: the most likely single shift in the series and its approximate p-value."""
+    n = len(y)
+    sgn = np.sign(y[:, None] - y[None, :])
+    u = np.array([float(sgn[: k + 1, k + 1:].sum()) for k in range(n - 1)])
+    k = int(np.argmax(np.abs(u)))
+    K = float(abs(u[k]))
+    p = min(1.0, 2 * math.exp(-6 * K ** 2 / (n ** 3 + n ** 2)))
+    return {"index": k, "K": K, "p_value": p}
+
+
+def benjamini_hochberg(pvals: list[float], q: float = 0.10) -> list[bool]:
+    """False-discovery-rate control (Benjamini & Hochberg 1995) for many tests at once, e.g. map cells (Wilks 2016)."""
+    m = len(pvals)
+    if not m:
+        return []
+    order = sorted(range(m), key=lambda i: pvals[i])
+    cutoff = -1
+    for rank, i in enumerate(order, 1):
+        if pvals[i] <= q * rank / m:
+            cutoff = rank
+    keep = set(order[:cutoff]) if cutoff > 0 else set()
+    return [i in keep for i in range(m)]
+
+
 def sens_slope(t: np.ndarray, y: np.ndarray, var_s: float, alpha: float = ALPHA) -> dict:
     """Theil-Sen slope (median of all pairwise slopes) with its confidence interval from the Mann-Kendall variance."""
     i, j = np.triu_indices(len(t), k=1)
@@ -110,17 +183,22 @@ def analyse(series: list[tuple[date, float | None]], unit: str, *, deseason: boo
     y = np.array([v for _, v in ann])
     lin = ols(t, y)
     mk = mann_kendall(y)
-    sen = sens_slope(t, y, mk["var_S"])
+    # Year-to-year persistence makes plain tests over-confident: the verdict uses the corrected versions.
+    mk_mod = mann_kendall_corrected(t, y)
+    ols_eff = ols_effective_n(t, y, lin)
+    sen = sens_slope(t, y, mk_mod["var_S"])
     span = float(ann[-1][0] - ann[0][0])
-    ols_decade = {k: lin[k] * 10 for k in ("slope", "ci_low", "ci_high")}
+    ols_decade = {"slope": lin["slope"] * 10, "ci_low": ols_eff["ci_low"] * 10, "ci_high": ols_eff["ci_high"] * 10}
     # Sen's slope is the headline rate (robust to outliers). If most yearly values repeat, the median pairwise slope can be
     # exactly 0 even though a trend exists, so the least-squares rate is reported instead.
     rate_method = "sen"
     per_decade = {k: sen[k] * 10 for k in ("slope", "ci_low", "ci_high")}
     if sen["slope"] == 0 and lin["slope"] != 0:
         rate_method, per_decade = "ols", dict(ols_decade)
-    sig_mk, sig_t = mk["p_value"] < ALPHA, lin["p_value"] < ALPHA
-    verdict = _verdict(per_decade, per_decade["slope"] / 10 * span, unit, mk["p_value"], lin["p_value"], sig_mk, sig_t, up_word, down_word, ann[0][0])
+    sig_mk, sig_t = mk_mod["p_value"] < ALPHA, ols_eff["p_value"] < ALPHA
+    verdict = _verdict(per_decade, per_decade["slope"] / 10 * span, unit, mk_mod["p_value"], ols_eff["p_value"], sig_mk, sig_t, up_word, down_word, ann[0][0])
+    cp = pettitt(y)
+    change = {"year": int(ann[cp["index"]][0]) + 1, "p_value": cp["p_value"], "significant": cp["p_value"] < ALPHA}
     # Monthly tests, for comparison only (scientists' view).
     tm = np.array([decimal_year(d) for d, _ in anomalies])
     ym = np.array([v for _, v in anomalies])
@@ -129,8 +207,8 @@ def analyse(series: list[tuple[date, float | None]], unit: str, *, deseason: boo
     if rate_method == "ols":
         notes.append("Many years share the same value, so the robust Sen's slope is 0; the least-squares rate is shown instead.")
     if lin["lag1_autocorrelation"] > 0.3:
-        notes.append(f"Neighbouring years are correlated (lag-1 autocorrelation {lin['lag1_autocorrelation']:.2f}), so the tests are somewhat "
-                     "over-confident; treat a p-value near 0.05 with caution.")
+        notes.append(f"Neighbouring years are correlated (lag-1 autocorrelation {lin['lag1_autocorrelation']:.2f}); the tests were corrected for this "
+                     f"(the record counts as about {ols_eff['n_eff']:.0f} independent years instead of {len(ann)}).")
     missing = sum(1 for _, v in series if v is None)
     if missing:
         notes.append(f"{missing} month(s) had no data and were skipped (never counted as 0).")
@@ -145,8 +223,11 @@ def analyse(series: list[tuple[date, float | None]], unit: str, *, deseason: boo
         "climatology": {str(m): round(v, 4) for m, v in sorted(clim.items())},
         "annual": [{"year": yr, "value": round(v, 4)} for yr, v in ann],
         "annual_raw": [{"year": yr, "value": round(v, 4)} for yr, v in annual_means(clean)],
-        "ols": {**lin, "per_decade": ols_decade, "significant": sig_t},
-        "mann_kendall": {**mk, "significant": sig_mk},
+        "ols": {**lin, "per_decade": ols_decade, "significant": sig_t, "p_value_plain": lin["p_value"], "p_value": ols_eff["p_value"],
+                "n_eff": ols_eff["n_eff"], "stderr_adjusted": ols_eff["stderr"], "method": "least squares, t-test with AR(1) effective sample size (Santer et al. 2000), bias-corrected lag-1"},
+        "mann_kendall": {**mk, "significant": sig_mk, "p_value_plain": mk["p_value"], "p_value": mk_mod["p_value"], "z": mk_mod["z"],
+                         "variance_factor": mk_mod["variance_factor"], "method": "modified Mann-Kendall (Yue & Wang 2004, AR(1) with bias-corrected lag-1)"},
+        "change_point": change,
         "sen": {**sen, "per_decade": {k: sen[k] * 10 for k in ("slope", "ci_low", "ci_high")}, "total_change": sen["slope"] * span},
         "rate": {"method": rate_method, "per_decade": per_decade, "total_change": per_decade["slope"] / 10 * span},
         "monthly_tests": {"ols_p": mon_lin["p_value"], "mk_p": mon_mk["p_value"], "lag1_autocorrelation": mon_lin["lag1_autocorrelation"],
@@ -227,9 +308,11 @@ def quick(series: list[tuple[date, float | None]]) -> dict | None:
     y = np.array([v for _, v in ann])
     if np.std(y) == 0:
         return {"per_decade": 0.0, "level": "not_significant", "p_t": 1.0, "p_mk": 1.0}
-    lin, mk = ols(t, y), mann_kendall(y)
+    lin = ols(t, y)
+    mk = mann_kendall_corrected(t, y)
+    eff = ols_effective_n(t, y, lin)
     sen = sens_slope(t, y, mk["var_S"])
     rate = sen["slope"] if sen["slope"] != 0 else lin["slope"]
-    sig_t, sig_mk = lin["p_value"] < ALPHA, mk["p_value"] < ALPHA
+    sig_t, sig_mk = eff["p_value"] < ALPHA, mk["p_value"] < ALPHA
     level = "significant" if sig_t and sig_mk else "borderline" if sig_t or sig_mk else "not_significant"
-    return {"per_decade": float(rate * 10), "level": level, "p_t": lin["p_value"], "p_mk": mk["p_value"]}
+    return {"per_decade": float(rate * 10), "level": level, "p_t": eff["p_value"], "p_mk": mk["p_value"]}

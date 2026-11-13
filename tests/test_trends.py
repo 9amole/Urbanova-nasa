@@ -74,7 +74,7 @@ def test_statistics_match_independent_calculations():
     t = np.array([a["year"] + 0.5 for a in r["annual"]])  # the tests run on yearly mean anomalies
     y = np.array([a["value"] for a in r["annual"]])
     ref = stats.linregress(t, y)
-    assert r["ols"]["slope"] == pytest.approx(ref.slope, rel=1e-3) and r["ols"]["p_value"] == pytest.approx(ref.pvalue, rel=1e-2, abs=1e-12)
+    assert r["ols"]["slope"] == pytest.approx(ref.slope, rel=1e-3) and r["ols"]["p_value_plain"] == pytest.approx(ref.pvalue, rel=1e-2, abs=1e-12)
     # Mann-Kendall S by brute force, and Kendall's tau from scipy agree in sign and size
     s = sum(np.sign(y[j] - y[i]) for i in range(len(y)) for j in range(i + 1, len(y)))
     mk = trends.mann_kendall(y)  # the listed values are rounded to 4 decimals, so test on exactly these numbers
@@ -98,3 +98,36 @@ def test_mostly_repeated_values_fall_back_to_the_least_squares_rate():
     r = trends.analyse(s, "mm/day", up_word="getting wetter", down_word="getting drier")
     assert r["sen"]["slope"] == 0 and r["rate"]["method"] == "ols" and r["rate"]["per_decade"]["slope"] > 0
     assert "Sen's slope is 0" in " ".join(r["notes"]) and r["verdict"]["rate"].startswith("+")
+
+
+def test_corrected_tests_keep_false_alarms_near_five_percent():
+    """Monte-Carlo (small version of scripts/validate_detective.py): no trend, strongly correlated years (AR(1) 0.6)."""
+    import math
+
+    from urbanova import trends
+
+    rng = np.random.default_rng(42)
+    plain = corrected = 0
+    n_sim = 400
+    for _ in range(n_sim):
+        e = rng.normal(0, 1, 95)
+        x = np.zeros(95)
+        for i in range(1, 95):
+            x[i] = 0.6 * x[i - 1] + e[i]
+        y = x[50:]
+        t = np.arange(45) + 0.5
+        lin = trends.ols(t, y)
+        plain += lin["p_value"] < 0.05 and trends.mann_kendall(y)["p_value"] < 0.05
+        corrected += trends.ols_effective_n(t, y, lin)["p_value"] < 0.05 and trends.mann_kendall_corrected(t, y)["p_value"] < 0.05
+    assert plain / n_sim > 0.15 and corrected / n_sim < 0.10 + 2 * math.sqrt(0.1 * 0.9 / n_sim)
+
+
+def test_pettitt_finds_a_shift_and_bh_controls_false_discoveries():
+    from urbanova import trends
+
+    rng = np.random.default_rng(3)
+    y = np.concatenate([rng.normal(0, 1, 20), rng.normal(3, 1, 25)])
+    cp = trends.pettitt(y)
+    assert 17 <= cp["index"] <= 21 and cp["p_value"] < 0.01
+    assert trends.benjamini_hochberg([0.001, 0.2, 0.03, 0.04], q=0.10) == [True, False, True, True]
+    assert trends.benjamini_hochberg([0.5, 0.6]) == [False, False] and trends.benjamini_hochberg([]) == []

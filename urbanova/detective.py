@@ -76,13 +76,61 @@ def trend(lat, lon, var_id: str, start_year: int = 1981, end_year: int | None = 
         data, meta = pm.fetch(lat, lon)  # the whole record once (cached); the period is cut below
     except ProviderError as exc:
         raise DetectiveError(f"NASA POWER could not be reached ({exc.as_dict()['message']}). Try again in a minute.") from None
-    scale = v.get("scale", 1)  # e.g. soil wetness 0–1 shown as 0–100 %
-    series = [(d, None if val is None else val * scale) for d, val in data.get(v["power"], []) if start_year <= d.year <= end_year]
+    raw = [(d, val) for d, val in data.get(v["power"], []) if start_year <= d.year <= end_year]
+    series, integrity = check_integrity(raw, v, start_year, end_year)
     res = trends.analyse(series, v["unit"], deseason=deseason, label=v["name"].lower(), up_word=v["up"], down_word=v["down"])
+    if res.get("ok"):
+        res["integrity"] = integrity
+        if integrity["out_of_range"]:
+            res["notes"].append(f"{integrity['out_of_range']} value(s) outside the physically possible range were removed (kept as missing).")
+        if v.get("joined_sources"):
+            res["source_join"] = segment_check(series, v, res)
+            res["notes"].append(res["source_join"]["note"])
     src = pm.catalog()["source"]
     return {"variable": {k: val for k, val in v.items() if k not in ("power", "scale")}, "point": {"lat": lat, "lon": lon},
             "request": {"start_year": start_year, "end_year": end_year, "deseasonalised": deseason}, "result": res,
             "source": {**src, "parameter": v["power"], "model": v["model"], "cached": bool(meta.get("cache_hit"))}}
+
+
+def check_integrity(raw: list, v: dict, start_year: int, end_year: int) -> tuple[list, dict]:
+    """Integrity checks on a fetched series: fill values (already None), physically impossible values (set to missing,
+    counted), completeness of the requested months. Returns the series in display units and the check results."""
+    lo, hi = v.get("valid_range", [float("-inf"), float("inf")])
+    scale = v.get("scale", 1)
+    out, bad = [], 0
+    for d, val in raw:
+        if val is not None and not (lo <= val <= hi):
+            bad += 1
+            val = None
+        out.append((d, None if val is None else val * scale))
+    expected = (end_year - start_year + 1) * 12
+    present = sum(1 for _, x in out if x is not None)
+    return out, {"months_expected": expected, "months_received": len(raw), "months_valid": present, "missing": expected - present,
+                 "out_of_range": bad, "valid_range": [lo * scale, hi * scale], "complete_pct": round(100 * present / expected, 1) if expected else 0}
+
+
+def segment_check(series: list, v: dict, res: dict) -> dict:
+    """Sunshine and clouds join two satellite products. A join can create a fake trend, so the trend is also tested on
+    each side of the biggest shift (Pettitt change point): if both sides agree, the join does not explain the trend."""
+    cp = res["change_point"]["year"]
+    parts = []
+    for a, b in ((None, cp - 1), (cp, None)):
+        seg = [(d, x) for d, x in series if (a is None or d.year >= a) and (b is None or d.year <= b)]
+        r = trends.analyse(seg, v["unit"], up_word=v["up"], down_word=v["down"])
+        parts.append({"from": seg[0][0].year if seg else None, "to": seg[-1][0].year if seg else None, "ok": r.get("ok", False),
+                      "per_decade": r["rate"]["per_decade"]["slope"] if r.get("ok") else None, "level": r["verdict"]["level"] if r.get("ok") else None})
+    full = res["rate"]["per_decade"]["slope"]
+    both = all(p["ok"] for p in parts)
+    consistent = both and all(p["per_decade"] * full > 0 for p in parts) and all(abs(p["per_decade"]) >= 0.5 * abs(full) for p in parts)
+    if not both:
+        note = f"This record joins two satellite products ({v['joined_sources']}); one side of the biggest shift ({cp}) is too short to test separately."
+    elif consistent:
+        note = (f"Data check passed: this record joins two satellite products, but the trend is similar before and after the biggest shift ({cp}), "
+                "so the join does not explain it.")
+    else:
+        note = (f"Caution: this record joins two satellite products, and the trend is not the same before and after the shift around {cp}. "
+                "Part of the 'trend' may come from the change of satellite product; test each period separately.")
+    return {"change_year": cp, "change_p": res["change_point"]["p_value"], "segments": parts, "consistent": consistent, "note": note}
 
 
 def suggest(place: str, interest: str, where: str = "", ai_allowed: bool = True) -> dict:
@@ -157,13 +205,23 @@ def trend_map(lat, lon, var_id: str, start_year: int = 1981, end_year: int | Non
         q = trends.quick([(d, None if x is None else x * scale) for d, x in c["series"] if start_year <= d.year <= end_year])
         if q:
             out.append({"lat": c["lat"], "lon": c["lon"], **{k: (round(val, 6) if isinstance(val, float) else val) for k, val in q.items()}})
+    # Many tests at once: control the false discovery rate across the cells (Wilks 2016), q = 0.10.
+    keep = trends.benjamini_hochberg([max(c["p_t"], c["p_mk"]) for c in out], q=0.10)
+    for c, k in zip(out, keep):
+        c["fdr_significant"] = bool(k)
+        c["level_before_fdr"] = c["level"]
+        if c["level"] == "significant" and not k:
+            c["level"] = "borderline"
     lats = sorted({c["lat"] for c in out})
     lons = sorted({c["lon"] for c in out})
     step = {"lat": round(lats[1] - lats[0], 4) if len(lats) > 1 else 0.5, "lon": round(lons[1] - lons[0], 4) if len(lons) > 1 else 0.625}
     count = {k: sum(1 for c in out if c["level"] == "significant" and (c["per_decade"] > 0) == (k == "up")) for k in ("up", "down")}
+    before_fdr = sum(1 for c in out if c["level_before_fdr"] == "significant")
     count["unclear"] = len(out) - count["up"] - count["down"]
     summary = (f"Of {len(out)} NASA cells around this point, {count['up']} show a significant trend towards {v['up']}, "
-               f"{count['down']} towards {v['down']}, and {count['unclear']} no significant trend ({start_year}–{end_year}).")
+               f"{count['down']} towards {v['down']}, and {count['unclear']} no significant trend ({start_year}–{end_year}). "
+               f"Corrected for testing {len(out)} cells at once (false discovery rate 10 %): {before_fdr} cells passed the single test, "
+               f"{count['up'] + count['down']} remain significant.")
     return {"variable": {k: val for k, val in v.items() if k not in ("power", "scale")}, "center": {"lat": lat, "lon": lon}, "cells": out,
-            "cell_size": step, "counts": count, "summary": summary, "request": {"start_year": start_year, "end_year": end_year},
+            "cell_size": step, "counts": count, "summary": summary, "fdr": {"q": 0.10, "significant_before": before_fdr}, "request": {"start_year": start_year, "end_year": end_year},
             "source": {**pm.catalog()["source"], "parameter": v["power"], "model": v["model"]}}

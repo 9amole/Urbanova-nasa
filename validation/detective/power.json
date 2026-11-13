@@ -1,0 +1,82 @@
+{
+ "n_simulations_each": 500,
+ "noise": "AR(1) 0.2, unit variance",
+ "rows": [
+  {
+   "years": 15,
+   "trend_per_decade_in_noise_sd": 0.1,
+   "detected": 0.052
+  },
+  {
+   "years": 15,
+   "trend_per_decade_in_noise_sd": 0.2,
+   "detected": 0.054
+  },
+  {
+   "years": 15,
+   "trend_per_decade_in_noise_sd": 0.3,
+   "detected": 0.076
+  },
+  {
+   "years": 15,
+   "trend_per_decade_in_noise_sd": 0.5,
+   "detected": 0.092
+  },
+  {
+   "years": 15,
+   "trend_per_decade_in_noise_sd": 1.0,
+   "detected": 0.242
+  },
+  {
+   "years": 30,
+   "trend_per_decade_in_noise_sd": 0.1,
+   "detected": 0.066
+  },
+  {
+   "years": 30,
+   "trend_per_decade_in_noise_sd": 0.2,
+   "detected": 0.09
+  },
+  {
+   "years": 30,
+   "trend_per_decade_in_noise_sd": 0.3,
+   "detected": 0.216
+  },
+  {
+   "years": 30,
+   "trend_per_decade_in_noise_sd": 0.5,
+   "detected": 0.412
+  },
+  {
+   "years": 30,
+   "trend_per_decade_in_noise_sd": 1.0,
+   "detected": 0.936
+  },
+  {
+   "years": 45,
+   "trend_per_decade_in_noise_sd": 0.1,
+   "detected": 0.084
+  },
+  {
+   "years": 45,
+   "trend_per_decade_in_noise_sd": 0.2,
+   "detected": 0.238
+  },
+  {
+   "years": 45,
+   "trend_per_decade_in_noise_sd": 0.3,
+   "detected": 0.486
+  },
+  {
+   "years": 45,
+   "trend_per_decade_in_noise_sd": 0.5,
+   "detected": 0.892
+  },
+  {
+   "years": 45,
+   "trend_per_decade_in_noise_sd": 1.0,
+   "detected": 1.0
+  }
+ ],
+ "generated": "2026-11-13"
+}
