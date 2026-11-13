@@ -97,6 +97,57 @@
       }
     },
     {
+      "id": "nasa_power_monthly",
+      "name": "NASA POWER Monthly API (MERRA-2 / CERES / GPCP)",
+      "documentation_url": "https://power.larc.nasa.gov/docs/",
+      "implementation_status": "implemented",
+      "enabled": true,
+      "priority": 2,
+      "access_method": "api",
+      "data_type": "weather",
+      "data_nature": "reanalysis",
+      "variables": [
+        "T2M",
+        "T2M_MAX",
+        "T2M_MIN",
+        "PRECTOTCORR",
+        "RH2M",
+        "GWETROOT",
+        "GWETTOP",
+        "EVPTRNS",
+        "ALLSKY_SFC_SW_DWN",
+        "CLOUD_AMT",
+        "WS2M",
+        "PS"
+      ],
+      "geographic_coverage": "Global",
+      "spatial_resolution": "0.5° × 0.625° (meteorology), 1° (solar)",
+      "temporal_resolution": "Monthly",
+      "temporal_coverage": "1981 to near present (meteorology); solar from 1984",
+      "authentication": "none",
+      "usage_limits": "Free; NASA asks users to limit request rates. No API key.",
+      "license": "NASA open data (public domain); attribution requested",
+      "attribution": "Data obtained from the NASA Langley Research Center POWER Project funded through the NASA Earth Science Directorate Applied Science Program",
+      "commercial_use": "permitted",
+      "units": {
+        "temperature": "°C",
+        "relative_humidity": "%",
+        "precipitation": "mm/day",
+        "shortwave_radiation": "kWh/m²/day"
+      },
+      "suitability": "trend_detective",
+      "known_limitations": "About 55 km grid: one value per region. Solar and cloud values start in 1984 (earlier months are missing).",
+      "fallback_ids": [],
+      "approval_status": "fr_recommended",
+      "approval_note": "Space Apps 2026 Trend Detective; listed with GES DISC/Giovanni among NASA Earth science data resources.",
+      "caching_permitted": true,
+      "confirmation": {
+        "by": "Project decision maker (data science lead)",
+        "on": "2026-11-04",
+        "scope": "Phase 1 non-commercial evaluation and handoff"
+      }
+    },
+    {
       "id": "osm_overpass",
       "name": "OpenStreetMap via Overpass API",
       "documentation_url": "https://wiki.openstreetmap.org/wiki/Overpass_API",
