@@ -244,6 +244,7 @@ def build(project: dict, run: dict, bundle: dict, scenario: dict | None, compari
         scale = "" if q.get("scale_check_rmse_c") is None else f"; scale-check error {q['scale_check_rmse_c']:g} °C against a published urban range of {q['published_rmse_range_c'][0]:g}–{q['published_rmse_range_c'][1]:g} °C"
         lines.append(f"{ds['label']}: {ds['value']:g} °C ({q.get('label', 'ML-downscaled, modelled')}{scale})." + _ids(ds["id"]))
     blocks.append(("ul", lines or ["No existing-land analysis produced values in this run (see Appendix L)."]))
+    blocks.extend(trend_blocks(bundle, out))
     sections.append((MAIN_SECTIONS[2], blocks))
 
     # ---------------------------------------------------------------- 4. comparison
@@ -289,3 +290,55 @@ def build(project: dict, run: dict, bundle: dict, scenario: dict | None, compari
         steps.append(f"Commission a detailed microclimate study for hotspot {hs[0]['number']} before final design decisions (this engine uses geometric shade and a composite hot day).")
     sections.append((MAIN_SECTIONS[4], [("ul", rec or ["No option or design can be recommended from this run yet."]), ("h3", "Next steps"), ("ul", steps or ["None."])]))
     return sections
+
+
+# ---------------------------------------------------------------- A1b long-term climate trends (Space Apps 2026)
+LEVEL_WORDS = {"significant": "Significant", "borderline": "Borderline (one test)", "not_significant": "Not significant yet"}
+
+
+def trend_blocks(bundle: dict, out: Path) -> list:
+    d = (((bundle["run"].get("module_status") or {}).get("climate_trends") or {}).get("details") or {})
+    rows = d.get("rows") or []
+    if not rows:
+        return []
+    table = [[r["name"], f"{r['verdict']['rate']} ({r['verdict']['range'].replace('95 % range ', '')})", r["verdict"]["total_text"],
+              LEVEL_WORDS[r["verdict"]["level"]], f"{r['p_mann_kendall']:.3f} / {r['p_t_test']:.3f}"] for r in rows]
+    blocks = [("h3", f"Long-term climate trends, {d['start_year']}–{d['end_year']}"),
+              ("p", "Is the regional climate changing, how fast, and is the change significant? Deseasonalised yearly averages from NASA POWER "
+                    "(one ~55 km grid cell); Sen's slope with its 95 % range; significant only when the Mann-Kendall test (Yue & Wang 2004) and the "
+                    "least-squares t-test with an effective sample size (Santer et al. 2000), both corrected for year-to-year persistence, give p < 0.05. "
+                    "A trend describes the past and is not a forecast. Validation: docs/VALIDATION_SPACEAPPS.md."),
+              ("table", ["Variable", "Rate per decade (95 % range)", "Change", "Verdict", "p (Mann-Kendall / t-test)"], table)]
+    png = _trends_png(rows, out)
+    if png:
+        blocks.append(("img", png, "Yearly temperature differences from normal with trend lines"))
+    return blocks
+
+
+def _trends_png(rows: list, out: Path) -> str | None:
+    temps = [r for r in rows if r["id"] in ("t2m_max", "t2m_min", "t2m")]
+    if not temps:
+        return None
+    import matplotlib
+
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    colours = {"t2m_max": "#d7191c", "t2m": "#555555", "t2m_min": "#2c7bb6"}
+    fig, ax = plt.subplots(figsize=(6.5, 2.8), dpi=130)
+    for r in temps:
+        xs = [a["year"] for a in r["annual"]]
+        ax.plot(xs, [a["value"] for a in r["annual"]], "-o", ms=2.5, lw=1, color=colours[r["id"]], alpha=0.75,
+                label=f"{r['name']} ({r['verdict']['rate']}, {LEVEL_WORDS[r['verdict']['level']].lower()})")
+        tl = r["trend_line"]
+        ax.plot([tl["t0"] - 0.5, tl["t1"] - 0.5], [tl["y0"], tl["y1"]], color=colours[r["id"]], lw=2.2)
+    ax.axhline(0, color="#999", lw=0.6)
+    ax.set_ylabel("Difference from normal (°C)")
+    ax.set_title("Yearly averages and trend lines — NASA POWER", fontsize=8)
+    ax.legend(fontsize=6.5, loc="upper left")
+    ax.grid(alpha=0.3)
+    fig.tight_layout()
+    path = out / "report_trends.png"
+    fig.savefig(path)
+    plt.close(fig)
+    return str(path)

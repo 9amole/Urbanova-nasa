@@ -25,7 +25,8 @@ SEVERITY_ORDER = {"high": 4, "moderate": 3, "low": 2, "info": 1}
 # its band level is kept for transparency but the displayed severity is capped here.
 PROVISIONAL_SEVERITY_CAP = "moderate"
 # Modules whose metrics describe a regional grid cell, not the site (remediation B5).
-REGIONAL_MODULES = {"climate_baseline": "Regional (~25 km ERA5 grid cell around the site, not the site itself)"}
+REGIONAL_MODULES = {"climate_baseline": "Regional (~25 km ERA5 grid cell around the site, not the site itself)",
+                    "climate_trends": "Regional (~55 km NASA POWER / MERRA-2 grid cell around the site, not the site itself)"}
 
 
 def sort_key(f: dict) -> tuple:
@@ -256,7 +257,43 @@ def generate(run: dict, project: dict, module_results: dict[str, dict], metric_r
                 "evidence": [{"module": mod, "status": res["status"], "reason": res.get("reason"), "provider_failures": res.get("provider_failures")}],
                 "sources": [], "confidence": "n/a", "limitations": ["No conclusion is drawn for this analysis."],
             }, ["resolve_data_gap"] if res["status"] == "blocked" else [])
+    warming = trend_finding(module_results.get("climate_trends"), by_name)
+    if warming:
+        add(warming, [])
     return findings, recs
+
+
+def trend_finding(res: dict | None, by_name: dict) -> dict | None:
+    """Space Apps A1b: a significant warming of the site's climate since 1981 is reported as an environmental indicator.
+    Daytime highs first (what people feel at midday), then the mean air temperature. Only a 'significant' verdict (both
+    persistence-corrected tests at p < 0.05) counts; it is context for the design's lifetime, never a forecast."""
+    if not res or res.get("status") not in ("completed", "partial"):
+        return None
+    for name in ("trend_t2m_max_per_decade", "trend_t2m_per_decade"):
+        m = by_name.get(name)
+        if not m or m["state"] != V.AVAILABLE or (m.get("extra") or {}).get("verdict") != "significant" or m["value"] <= 0:
+            continue
+        u = m["uncertainty"]
+        row = next(r for r in res["details"]["rows"] if r["metric_name"] == name)
+        what = row["name"].lower()
+        return {
+            "category": "trend", "classification": "environmental_indicator",
+            "title": f"The site's climate is warming: {what} up {m['value']:+.2f} °C per decade since {row['period']['first_year']}",
+            "summary": (f"{row['name']} rose by {m['value']:+.2f} °C per decade (95 % range {u['ci95_low']:+.2f} to {u['ci95_high']:+.2f}), about "
+                        f"{row['total_change']:+.1f} °C over {row['period']['first_year']}–{row['period']['last_year']}. {row['verdict']['tests']} "
+                        "(both corrected for year-to-year persistence). Heat-mitigation measures matter more over the design's lifetime."),
+            "geometry": None, "metric_ids": [m["id"]], "severity": "info", "affected_area": REGIONAL_MODULES["climate_trends"],
+            "severity_rule": "Informational: reported when the verdict is 'significant' (Mann-Kendall, Yue & Wang 2004, and t-test with "
+                             "effective sample size, Santer et al. 2000, both p < 0.05) and the trend is warming.",
+            "rule_id": "TREND-WARM-01", "threshold": {"status": "standard", "justification": "Two-sided tests at the 5 % level, both required; "
+                                                       "false-alarm rate checked by Monte Carlo (docs/VALIDATION_SPACEAPPS.md)."},
+            "evidence": [{"metric_id": m["id"], "metric": name, "label": m["label"], "value": m["value"], "unit": m["unit"], "method": m["method"],
+                          "output_kind": m["output_kind"]}],
+            "sources": _sources(m, res), "confidence": "adequate",
+            "limitations": ["A regional trend for a ~55 km reanalysis cell; it does not vary within the site.",
+                            "A trend describes 1981 to the last complete year; it is not a forecast."],
+        }
+    return None
 
 
 def _sources(metric: dict, res: dict) -> list[dict]:

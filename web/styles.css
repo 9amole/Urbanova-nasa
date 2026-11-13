@@ -221,3 +221,8 @@ svg.det-chart .annual { fill: none; stroke: #1f4e8c; stroke-width: 1.8; }
 .det-case-tiles { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); margin: 0; }
 #det-case-layers { margin-top: 6px; }
 @media (max-width: 800px) { .det-case-grid { grid-template-columns: 1fr; } .det-case-map { height: 300px; } }
+
+/* A1b long-term trends panel in the results page */
+.trend-row { border-top: 1px solid var(--line, #ddd); padding: 6px 0; }
+.trend-row > summary { cursor: pointer; padding: 4px 0; }
+.trend-row svg.det-chart { max-width: 100%; height: auto; }

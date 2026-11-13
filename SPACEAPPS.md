@@ -11,6 +11,29 @@ changing there. For each one it plots 45 years of monthly data and tells you, in
 
 Built for high-school and college students, with no account and no installation for the user.
 
+## Inside URBANOVA: every site analysis is a trend detective
+URBANOVA is our urban-heat decision-support platform. A planner gives it a plot (coordinates, optionally a boundary and
+a design plan), and it analyses the land as it is today:
+- climate baseline;
+- Landsat surface temperature, Sentinel-2 vegetation and ESA land cover;
+- OpenStreetMap context;
+- heat stress (UTCI) in sun and shade;
+- then design hotspots and measured options, once a design is uploaded.
+
+For this challenge we added module **A1b · Long-term climate trends** to that analysis. Every URBANOVA run now answers
+the challenge's question for the plot: **is the climate here changing since 1981, how fast, and is it significant?**
+
+| Challenge step | Where it happens in a URBANOVA run |
+|---|---|
+| 1. Select variables | Daytime high, mean and night-time air temperature; rainfall; humidity; sunshine at the ground. These are the variables that drive urban heat and comfort. |
+| 2. Acquire data for the region | NASA POWER monthly, January 1981 to the last complete year, at the plot's coordinates, in one keyless request recorded as a dataset with provenance. |
+| 3. Time series and visualisation | The **"Long-term climate trends"** panel on the results page: one row per variable; click a row for the yearly chart with the trend line and its 95 % band. The PDF report has the same table and chart. |
+| 4. Rate and significance | Sen's slope per decade with a 95 % range, the corrected Mann-Kendall test and the corrected t-test (both must agree). A significant warming becomes a **finding** ("The site's climate is warming: +0.33 °C per decade"). The **results chat** answers "Is it getting hotter here?" from the stored numbers. |
+| Students | Each row links to the **Trend Detective** (`#/detective`), which gives the same numbers from the same code, plus seasons, the regional trend map, demos and data download. |
+
+**One code path:** the module and the Detective both call `urbanova/detective.py: analyse_variable`, so their numbers are
+identical (tested). All the verification and validation below applies to both.
+
 ## How it meets the challenge objectives
 
 | Objective | How the Trend Detective does it |

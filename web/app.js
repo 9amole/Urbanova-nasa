@@ -265,7 +265,7 @@ function siteTilesHtml(list) {
 function dashboardHtml(d, pid, p) {
   if (!d) return "";
   if (d.state === "empty") return `<section class="panel dash"><h2>Site dashboard</h2><p>Nothing analysed yet. Next step: ${esc(d.next_step)}</p>
-    ${d.can_analyse_site && p ? `<p class="hint">No design yet? A <strong>site analysis</strong> shows what the land is like today: climate, surface temperature, vegetation, land cover, the surroundings and how hot it feels outdoors in sun and shade. It takes a few minutes.</p>${siteRunButton(p, "Analyse this site now")}` : ""}</section>`;
+    ${d.can_analyse_site && p ? `<p class="hint">No design yet? A <strong>site analysis</strong> shows what the land is like today and how its climate has changed since 1981: climate, long-term trends, surface temperature, vegetation, land cover, the surroundings and how hot it feels outdoors in sun and shade. It takes a few minutes.</p>${siteRunButton(p, "Analyse this site now")}` : ""}</section>`;
   if (d.state === "site") return `<section class="panel dash"><h2>Site dashboard — site analysis</h2>
     <div class="alert info">${esc(d.next_step)}</div>
     <p class="muted">Latest site analysis ${esc(d.run_id)} (${esc(d.run_status.replace(/_/g, " "))}, ${esc(d.completed_at || "")})${d.stale ? " — " + badge(["out of date", "b-warn"]) : ""}
@@ -690,7 +690,7 @@ async function tabAnalysis(el, data) {
   const syncMode = () => {
     const site = !document.getElementById("ru-scen").value;
     document.getElementById("ru-mode").textContent = site
-      ? "Site analysis: climate, surroundings, land cover, surface temperature, vegetation, sun position and heat stress in sun and shade. Upload a design plan for hotspots, options, costs and rule checks."
+      ? "Site analysis: climate, long-term climate trends since 1981, surroundings, land cover, surface temperature, vegetation, sun position and heat stress in sun and shade. Upload a design plan for hotspots, options, costs and rule checks."
       : "Full analysis of this design, including the site analysis.";
     document.querySelectorAll("label[data-mod]").forEach((l) => {
       const off = site && DESIGN_ONLY.includes(l.dataset.mod);
@@ -863,6 +863,7 @@ async function tabResults(el, data, runId) {
   ${climate ? `<section class="panel"><h2>Climate baseline (${esc(ms.climate_baseline.details.period.start_year)}–${esc(ms.climate_baseline.details.period.end_year)})</h2>
     <p class="hint">${esc(ms.climate_baseline.details.provider_name)} — grid point ${fmt(ms.climate_baseline.details.grid_point.latitude, 3)}, ${fmt(ms.climate_baseline.details.grid_point.longitude, 3)}. ${esc(ms.climate_baseline.details.attribution)}</p>
     ${climateChart(climate)}</section>` : ""}
+  ${trendsPanel(ms.climate_trends)}
   <section class="panel"><h2>Metrics by analysis</h2><div class="cards">
    ${Object.entries(ms).map(([mod, s]) => `<div class="panel"><h3>${esc(s.label)} ${condBadge(mod)} ${badge(MOD_STATUS[s.status])} ${run.stale_modules[mod] ? badge(["out of date", "b-warn"]) : ""}</h3>
      ${s.reason ? `<p class="state">${esc(s.reason)}</p>` : ""}${(s.warnings || []).map((w) => `<div class="alert warn">${esc(w)}</div>`).join("")}
@@ -1305,7 +1306,8 @@ function commonSections(d) {
      ${E.context.map((s) => `<p>${esc(s)}</p>`).join("")}
      <div class="grid"><div><h3>Surface and vegetation</h3><table>${E.surface.map((m) => `<tr><td>${esc(m.label)}</td><td>${dashValue(m)}</td></tr>`).join("")}</table></div>
      <div><h3>Climate baseline</h3><table>${E.climate.map((m) => `<tr><td>${esc(m.label)}</td><td>${dashValue(m)}</td></tr>`).join("")}</table>
-     ${E.climate_limitations.length ? `<details><summary>Limitations</summary><ul>${E.climate_limitations.map((x) => `<li>${esc(x)}</li>`).join("")}</ul></details>` : ""}</div></div>
+     ${E.climate_limitations.length ? `<details><summary>Limitations</summary><ul>${E.climate_limitations.map((x) => `<li>${esc(x)}</li>`).join("")}</ul></details>` : ""}
+     ${(E.trends || []).length ? `<h3>Long-term trends since 1981</h3><table>${E.trends.map((t) => `<tr><td>${esc(t.name)}</td><td>${esc(t.rate)}</td><td>${badge([LEVEL[t.level][2] + " " + LEVEL[t.level][0], LEVEL[t.level][1]])}</td></tr>`).join("")}</table>` : ""}</div></div>
      ${E.land_cover.length ? `<h3>Land cover on the site</h3>${barsSvg(E.land_cover.map((m) => ({ label: m.label.replace(/^Site: /, "").replace(/ \(\d{4} land cover\)$/, ""), value: m.value })), "%", { labelW: 220 })}` : ""}</section>`;
 
   const I = d.insights;
@@ -1345,3 +1347,29 @@ async function route() {
 window.addEventListener("hashchange", route);
 // Start once every script has run: the Trend Detective (detective.js) loads after this file (found in the competition check).
 if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", route); else route();
+
+
+// ------------------------------------------------------------------ A1b long-term climate trends (Space Apps 2026)
+// The same validated numbers as the Trend Detective (urbanova/detective.py analyse_variable); the chart is detective.js's chartSvg.
+function trendsPanel(s) {
+  const d = s?.details;
+  if (!d?.rows?.length) return s && s.status !== "skipped" ? `<section class="panel"><h2>Long-term climate trends</h2><p class="state">${esc(s.reason || "No trend could be computed.")}</p></section>` : "";
+  const row = (r) => {
+    const L = LEVEL[r.verdict.level], pd = r.per_decade;
+    return `<details class="trend-row"><summary><span class="badge ${L[1]}">${L[2]} ${esc(L[0])}</span> <strong>${esc(r.name)}</strong>: ${esc(r.verdict.rate)}
+      <span class="muted">(${esc(r.verdict.range)}) · ${esc(r.verdict.total_text)}</span></summary>
+      <div class="det-verdict ${esc(r.verdict.level)}"><div><p class="det-headline">${esc(r.verdict.headline)}</p><p>${esc(r.verdict.why)} <span class="muted">${esc(r.verdict.tests)}</span></p></div></div>
+      ${chartSvg({ ...r, verdict: r.verdict }, { name: r.name, unit: r.unit })}
+      <p class="hint">Dots: yearly averages of the difference from each month's normal; line and band: Sen's slope and its 95 % range.
+        Corrected p-values: Mann-Kendall ${fmt(r.p_mann_kendall, 3)} (uncorrected ${fmt(r.p_mann_kendall_plain, 3)}), t-test ${fmt(r.p_t_test, 3)} (uncorrected ${fmt(r.p_t_test_plain, 3)}),
+        ${fmt(r.effective_years, 0)} effective independent years of ${r.period.years}. Biggest shift around ${esc(r.change_point.year)}. ${fmt(r.integrity.complete_pct, 1)} % of months complete.</p>
+      ${(r.notes || []).map((n) => `<p class="hint">ℹ️ ${esc(n)}</p>`).join("")}
+      <p><a href="#/detective/${esc(r.id)}/${d.point.lat}/${d.point.lon}">Open in Trend Detective</a> — seasons, the regional trend map and the data download.</p></details>`;
+  };
+  return `<section class="panel" id="trends-panel"><h2>Long-term climate trends (${esc(d.start_year)}–${esc(d.end_year)})</h2>
+    <p>Is the climate at this site changing, how fast, and is the change real or chance? Each variable is tested with two statistical tests corrected for year-to-year persistence;
+      it is called <strong>significant</strong> only when both agree (p &lt; 0.05). Click a row for the chart.</p>
+    ${d.rows.map(row).join("")}
+    <p class="hint">${esc(d.provider_name)} — one grid cell of about 55 km at ${fmt(d.point.lat, 2)}, ${fmt(d.point.lon, 2)}: the regional climate, not the microclimate inside the plot.
+      ${esc(d.attribution || "")}. A trend describes the past; it is not a forecast. <a href="#/detective">How the tests were validated</a>.</p></section>`;
+}

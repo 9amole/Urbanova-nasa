@@ -11,15 +11,15 @@ from typing import Any, Literal, get_args
 
 from pydantic import BaseModel, ConfigDict, Field
 
-CONTRACT_VERSION = "1.2"
+CONTRACT_VERSION = "1.3"
 # Requests written for these versions are accepted unchanged (1.1 only added result fields).
-RequestVersion = Literal["1.0", "1.1", "1.2"]
+RequestVersion = Literal["1.0", "1.1", "1.2", "1.3"]
 ACCEPTED_REQUEST_VERSIONS = get_args(RequestVersion)
 
 FeatureType = Literal["site_boundary", "building", "road", "green_space", "tree", "parking", "open_space", "water",
                       "shade_structure", "land_use_zone", "unclassified"]
 Objective = Literal["main_concerns", "surface_heat", "vegetation", "shade", "compare_alternatives", "planning_compliance", "data_gaps"]
-ModuleName = Literal["climate_baseline", "site_context", "land_cover", "urban_form", "vegetation", "surface_heat", "solar_shade", "heat_stress", "planning_compliance", "hotspots", "interventions"]
+ModuleName = Literal["climate_baseline", "climate_trends", "site_context", "land_cover", "urban_form", "vegetation", "surface_heat", "solar_shade", "heat_stress", "planning_compliance", "hotspots", "interventions"]
 RuleType = Literal["max_building_coverage_pct", "max_height_m", "max_floors", "min_setback_m", "min_green_space_pct", "min_open_space_pct",
                    "max_far", "plot_area_m2", "permitted_land_use", "parking_requirement"]
 ValueState = Literal["available", "unknown", "unavailable", "invalid", "blocked", "not_applicable"]

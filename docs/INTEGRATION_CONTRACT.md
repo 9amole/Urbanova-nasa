@@ -1,6 +1,6 @@
 # URBANOVA integration contract (for the backend team)
 
-**Contract version 1.2, as of 12 Nov 2026.** This document lists what the backend can call, what goes in and what
+**Contract version 1.3, as of 13 Nov 2026.** This document lists what the backend can call, what goes in and what
 comes back. For the reasons behind it, ownership and operations, see [HANDOFF.md](HANDOFF.md). For the methods, see
 [METHODOLOGY.md](METHODOLOGY.md).
 
@@ -293,6 +293,20 @@ prototype app (`urbanova/ai/suggest.py`), because they read its database. They a
 - `overpass-api.de` (use your own instance in production);
 - `planetarycomputer.microsoft.com` and `*.blob.core.windows.net`;
 - the AI provider hosts, if AI is used.
+
+### Long-term climate trends (contract 1.3)
+
+Module **`climate_trends`** (A1b) is new. It is an existing-land, regional module that runs once per request and is
+shared by every design.
+- **Metrics:** `trend_<var>_per_decade` for `t2m_max`, `t2m`, `t2m_min`, `precip`, `rh` and `sun`.
+  - Unit: the variable's unit per decade.
+  - `uncertainty.ci95_low` / `ci95_high`.
+  - `extra.verdict`: `significant`, `borderline` or `not_significant`.
+  - `extra.direction` and `extra.total_change`.
+- **`details.rows[]`:** the yearly series, the trend line, the corrected and plain p-values, the effective years, the
+  change point and the notes.
+- **Finding:** a significant warming adds an informational finding (`rule_id: "TREND-WARM-01"`, category `trend`).
+- **Version change:** additive, so requests marked 1.0–1.2 are still accepted.
 
 ## 7. Versioning
 

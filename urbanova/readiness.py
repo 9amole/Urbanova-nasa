@@ -10,6 +10,7 @@ READY, LIMITED, BLOCKED, NOT_IN_BUILD = "ready", "ready_with_limitations", "bloc
 
 ANALYSES = {
     "climate_baseline": "Regional climate & heat baseline (air temperature)",
+    "climate_trends": "Long-term climate trends since 1981 (NASA POWER)",
     "site_context": "Surrounding land context (OpenStreetMap)",
     "land_cover": "Land cover around the site (ESA WorldCover)",
     "urban_form": "Site & urban-form indicators (coverage, green space)",
@@ -25,7 +26,7 @@ ANALYSES = {
     "population_context": "Population context",
     "air_quality": "Regional air-quality context",
 }
-RUNNABLE = ["climate_baseline", "site_context", "land_cover", "urban_form", "vegetation", "surface_heat", "solar_shade", "heat_stress", "planning_compliance", "hotspots", "interventions"]
+RUNNABLE = ["climate_baseline", "climate_trends", "site_context", "land_cover", "urban_form", "vegetation", "surface_heat", "solar_shade", "heat_stress", "planning_compliance", "hotspots", "interventions"]
 # Existing land or proposed design, per runnable module (urbanova/config/analyses.json, decision S-8).
 CONDITION = {a["id"]: a["condition"] for a in load_config("analyses.json")["analyses"] if a["id"] in RUNNABLE}
 
@@ -62,6 +63,9 @@ def assess(project: dict, scenario: dict | None = None) -> dict:
     climate_block, climate_step = source_block(["open_meteo_archive", "nasa_power_daily"])
     out.append(_entry("climate_baseline", BLOCKED if climate_block else READY, climate_block, "Regional climate statistics.",
                       climate_step or "Run the analysis.", ["Regional gridded data (~25 km); not site microclimate."]))
+    trend_block, trend_step = source_block(["nasa_power_monthly"])
+    out.append(_entry("climate_trends", BLOCKED if trend_block else READY, trend_block, "Long-term climate trends (rate per decade and significance).",
+                      trend_step or "Run the analysis.", ["Regional gridded data (~55 km NASA POWER cell); a trend describes the past, not a forecast."]))
     osm_block, osm_step = source_block(["osm_overpass"])
     out.append(_entry("site_context", BLOCKED if osm_block else (READY if has_boundary else LIMITED), osm_block + ([] if has_boundary else ["Site boundary"]),
                       "Precise on-site vs. surrounding separation." if not has_boundary else "", osm_step or ("Add a site boundary for better results." if not has_boundary else "Run the analysis."), pt_limit))

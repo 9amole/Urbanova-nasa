@@ -326,6 +326,7 @@
               "items": {
                 "enum": [
                   "climate_baseline",
+                  "climate_trends",
                   "site_context",
                   "land_cover",
                   "urban_form",
@@ -674,7 +675,8 @@
       "enum": [
         "1.0",
         "1.1",
-        "1.2"
+        "1.2",
+        "1.3"
       ],
       "title": "Contract Version",
       "type": "string"

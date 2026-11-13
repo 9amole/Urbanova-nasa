@@ -76,6 +76,16 @@ def trend(lat, lon, var_id: str, start_year: int = 1981, end_year: int | None = 
         data, meta = pm.fetch(lat, lon)  # the whole record once (cached); the period is cut below
     except ProviderError as exc:
         raise DetectiveError(f"NASA POWER could not be reached ({exc.as_dict()['message']}). Try again in a minute.") from None
+    res = analyse_variable(data, v, start_year, end_year, deseason)
+    src = pm.catalog()["source"]
+    return {"variable": {k: val for k, val in v.items() if k not in ("power", "scale")}, "point": {"lat": lat, "lon": lon},
+            "request": {"start_year": start_year, "end_year": end_year, "deseasonalised": deseason}, "result": res,
+            "source": {**src, "parameter": v["power"], "model": v["model"], "cached": bool(meta.get("cache_hit"))}}
+
+
+def analyse_variable(data: dict, v: dict, start_year: int, end_year: int, deseason: bool = True) -> dict:
+    """The one trend path shared by the Detective and URBANOVA's climate_trends module: cut the period, check integrity,
+    run the corrected tests, test satellite-product joins and add the variable's caution."""
     raw = [(d, val) for d, val in data.get(v["power"], []) if start_year <= d.year <= end_year]
     series, integrity = check_integrity(raw, v, start_year, end_year)
     res = trends.analyse(series, v["unit"], deseason=deseason, label=v["name"].lower(), up_word=v["up"], down_word=v["down"])
@@ -88,10 +98,7 @@ def trend(lat, lon, var_id: str, start_year: int = 1981, end_year: int | None = 
             res["notes"].append(res["source_join"]["note"])
         if v.get("caution"):
             res["notes"].append(v["caution"])
-    src = pm.catalog()["source"]
-    return {"variable": {k: val for k, val in v.items() if k not in ("power", "scale")}, "point": {"lat": lat, "lon": lon},
-            "request": {"start_year": start_year, "end_year": end_year, "deseasonalised": deseason}, "result": res,
-            "source": {**src, "parameter": v["power"], "model": v["model"], "cached": bool(meta.get("cache_hit"))}}
+    return res
 
 
 def check_integrity(raw: list, v: dict, start_year: int, end_year: int) -> tuple[list, dict]:

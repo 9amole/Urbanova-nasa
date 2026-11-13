@@ -16,7 +16,7 @@ from .settings import settings
 log = logging.getLogger("urbanova.orchestrator")
 OBJECTIVE_MODULES = {
     "main_concerns": set(RUNNABLE),
-    "surface_heat": {"climate_baseline", "surface_heat", "urban_form", "vegetation", "solar_shade", "heat_stress", "hotspots"},
+    "surface_heat": {"climate_baseline", "climate_trends", "surface_heat", "urban_form", "vegetation", "solar_shade", "heat_stress", "hotspots"},
     "vegetation": {"vegetation", "urban_form"},
     "shade": {"climate_baseline", "solar_shade", "urban_form", "heat_stress", "hotspots", "interventions"},
     "compare_alternatives": {"urban_form", "solar_shade", "planning_compliance", "climate_baseline"},
@@ -26,6 +26,7 @@ OBJECTIVE_MODULES = {
 # Which inputs each module depends on — drives stale-result detection (B.5).
 DEPENDS = {
     "climate_baseline": {"location", "period"},
+    "climate_trends": {"location"},
     "site_context": {"location", "boundary"},
     "land_cover": {"location", "boundary"},
     "urban_form": {"design", "boundary", "site_area_basis"},
