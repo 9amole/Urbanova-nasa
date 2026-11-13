@@ -20,6 +20,7 @@ from .ai import suggest as ai_suggest
 from .ai import support as ai_support
 from . import __version__, comparison, cost, db, documents, explain, files, geo, orchestrator, plans, projects, readiness, report, scenarios, security, supplementary
 from . import dashboard as project_dash
+from . import detective
 from .catalog import public_dataset
 from .engine.core import DESIGN_ONLY
 from .providers import geocode
@@ -32,7 +33,7 @@ API = "/api/v1"
 
 DOMAIN_ERRORS = (projects.ProjectError, geo.GeometryError, plans.PlanError, documents.DocumentError, scenarios.ScenarioError,
                  orchestrator.RunError, comparison.ComparisonError, cost.CostError, supplementary.SupplementaryError, geocode.GeocodeError,
-                 ai_suggest.SuggestError)
+                 ai_suggest.SuggestError, detective.DetectiveError)
 
 
 class NotFound(Exception):
@@ -699,6 +700,26 @@ async def post_chat(rid: str, request: Request, user: dict = Depends(current_use
 
 # ------------------------------------------------------------------ help assistant (S9): every page, per user
 SUPPORT_KEEP = ("text", "page", "links", "tool_calls", "suggest_plan", "generated_by", "provider", "model", "reason")
+
+
+# ------------------------------------------------------------------ Trend Detective (NASA Space Apps 2026): public, no account
+@app.get(f"{API}/detective/catalog")
+def detective_catalog():
+    return detective.public_catalog()
+
+
+@app.post(f"{API}/detective/trend")
+async def detective_trend(request: Request):
+    """A variable's monthly series at a point (NASA POWER), deseasonalised, with its OLS t-test, Mann-Kendall and Sen's slope."""
+    b = await _json(request)
+    return await run_in_threadpool(detective.trend, b.get("lat"), b.get("lon"), str(b.get("variable") or ""), b.get("start_year") or 1981,
+                                   b.get("end_year"), b.get("deseasonalise", True) is not False)
+
+
+@app.post(f"{API}/detective/suggest")
+async def detective_suggest(request: Request):
+    b = await _json(request)
+    return await run_in_threadpool(detective.suggest, str(b.get("place") or ""), str(b.get("interest") or ""), str(b.get("where") or ""))
 
 
 @app.get(f"{API}/support/faq")
