@@ -1,0 +1,61 @@
+# URBANOVA — deployment image (AI + analysis engine, CPU only)
+#
+# Verified against this repo at commit 5867927 on 2026-11-14:
+#   * python:3.12 matches pyproject.toml `requires-python = ">=3.11,<3.13"`.
+#   * Every pin in requirements.txt installs from a manylinux wheel on cp312 — no compiler and
+#     no system GDAL are needed (rasterio vendors GDAL inside rasterio.libs). Install took ~45 s.
+#   * `import urbanova.api` completes in ~1.7 s at ~140 MB RSS.
+#   * No GPU: the AI layer (urbanova/ai/) is an HTTP client to OpenAI-compatible endpoints and
+#     the only ML here (the LST random forest in analysis/lst_downscale.py) trains at runtime on CPU.
+#
+# Run from this source layout, NOT from `pip install .`:
+# urbanova/settings.py derives ROOT from the package location (`Path(__file__).resolve().parent.parent`)
+# and api.py serves web/ and the default data dir from it. package-data ships config/*.json only, so an
+# installed wheel has no web/ and would silently serve nothing while writing data to ~/.urbanova.
+
+FROM python:3.12-slim
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1 \
+    MPLCONFIGDIR=/tmp/matplotlib \
+    NUMBA_CACHE_DIR=/tmp/numba \
+    URBANOVA_HOST=0.0.0.0 \
+    URBANOVA_PORT=8000 \
+    URBANOVA_DATA_DIR=/data
+
+WORKDIR /app
+
+# Runtime deps only: pytest is in requirements.txt for the test suite, not for production.
+COPY requirements.txt ./
+RUN grep -v '^pytest' requirements.txt > /tmp/runtime-requirements.txt \
+ && pip install --no-cache-dir -r /tmp/runtime-requirements.txt
+
+COPY urbanova/ ./urbanova/
+COPY web/ ./web/
+
+# matplotlib and numba both want a writable cache at first use; NUMBA_CACHE_DIR above keeps JIT
+# artifacts off the (possibly read-only) app layer.
+RUN useradd -r -u 10001 urbanova \
+ && mkdir -p /data /tmp/matplotlib /tmp/numba \
+ && chown -R urbanova:urbanova /data /tmp/matplotlib /tmp/numba
+
+USER urbanova
+EXPOSE 8000
+VOLUME ["/data"]
+
+# Needs 0001-deployment-readiness.patch applied, otherwise point this at /api/v1/meta.
+# Same port resolution as the CMD below, so it still works when the platform sets PORT.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=25s --retries=3 \
+  CMD python -c "import os,sys,urllib.request;p=os.environ.get('PORT') or os.environ.get('URBANOVA_PORT') or '8000';sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:'+p+'/readyz',timeout=4).status==200 else 1)"
+
+# Exactly one process, on purpose. Analysis jobs run on an in-process ThreadPoolExecutor
+# (orchestrator.py:57) and the AI day-budget + provider skip list live in
+# data/cache/llm/state-<UTC day>.json guarded only by a threading.Lock. Scaling to >1 replica or
+# >1 worker without moving that state into a database splits the budget and orphans running jobs.
+# Scale up/down with CPU and RAM instead.
+#
+# Shell form so $PORT wins when the platform injects one (Render always sets PORT, default 10000)
+# and URBANOVA_PORT is used on plain docker/compose. `exec` makes uvicorn PID 1 so SIGTERM from the
+# platform shuts it down cleanly instead of waiting for a kill.
+CMD exec python -m uvicorn urbanova.api:app --host 0.0.0.0 --port "${PORT:-${URBANOVA_PORT:-8000}}" --workers 1 --proxy-headers --forwarded-allow-ips '*'

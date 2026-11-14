@@ -1,0 +1,31 @@
+.git
+.gitignore
+.gitattributes
+.venv
+venv
+__pycache__
+**/__pycache__
+*.pyc
+.pytest_cache
+
+# Never ship local state or secrets into an image.
+.env
+.env.*
+!.env.deploy.example
+data/
+**/*.sqlite3
+**/*.sqlite3-wal
+**/*.sqlite3-shm
+
+# Not needed at runtime; each is a size or exposure win.
+tests/
+docs/
+scripts/
+samples/
+examples/
+schemas/
+case_studies/
+README.md
+SPACEAPPS.md
+SUBMISSION.md
+run.ps1
