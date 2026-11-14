@@ -94,3 +94,13 @@ def test_pages_send_a_content_security_policy(client):
     assert "script-src 'self' https://unpkg.com;" in csp and "frame-ancestors 'none'" in csp and "object-src 'none'" in csp
     assert "https://tile.openstreetmap.org" in csp  # the configured map tiles
     assert "unsafe-eval" not in csp and "script-src 'self' 'unsafe-inline'" not in csp
+
+
+def test_only_the_api_docs_page_may_load_swagger_ui(client):
+    """The /api/docs page needs Swagger UI from cdn.jsdelivr.net and its inline start script; no other page gets that."""
+    docs = client.get("/api/docs")
+    assert docs.status_code == 200 and "cdn.jsdelivr.net" in docs.text
+    csp = docs.headers["content-security-policy"]
+    assert "https://cdn.jsdelivr.net" in csp and "frame-ancestors 'none'" in csp and "unsafe-eval" not in csp
+    for path in ("/", "/api/openapi.json", "/api/v1/detective/catalog"):
+        assert "cdn.jsdelivr.net" not in client.get(path).headers["content-security-policy"]

@@ -72,13 +72,18 @@ def _csp() -> str:
 
 
 CSP = _csp()
+# The interactive API docs page (FastAPI's Swagger UI) loads its script and stylesheet from cdn.jsdelivr.net and starts with an
+# inline script. That page shows no user content, so only it gets this looser policy; every other page keeps CSP.
+DOCS_CSP = ("default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' "
+            "https://cdn.jsdelivr.net; img-src 'self' data: https://fastapi.tiangolo.com; connect-src 'self'; object-src 'none'; "
+            "base-uri 'self'; frame-ancestors 'none'")
 
 
 @app.middleware("http")
 async def _headers(request: Request, call_next):
     resp = await call_next(request)
     resp.headers["X-Content-Type-Options"] = "nosniff"
-    resp.headers["Content-Security-Policy"] = CSP
+    resp.headers["Content-Security-Policy"] = DOCS_CSP if request.url.path == app.docs_url else CSP
     # Send only the origin (never the path) to other sites. OSM's tile servers reject requests
     # without a Referer under their tile usage policy, so "no-referrer" broke the basemap.
     resp.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
