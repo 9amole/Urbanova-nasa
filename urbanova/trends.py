@@ -214,14 +214,24 @@ def analyse(series: list[tuple[date, float | None]], unit: str, *, deseason: boo
         "monthly_tests": {"ols_p": mon_lin["p_value"], "mk_p": mon_mk["p_value"], "lag1_autocorrelation": mon_lin["lag1_autocorrelation"],
                           "n": len(ym), "ols_per_decade": mon_lin["slope"] * 10},
         "seasons": seasonal_trends(clean),
-        "trend_line": {"t0": float(t[0]), "t1": float(t[-1]), "y0": lin["intercept"] + lin["slope"] * t[0], "y1": lin["intercept"] + lin["slope"] * t[-1],
-                       "ci_low_slope": lin["ci_low"], "ci_high_slope": lin["ci_high"], "t_mean": float(np.mean(t)), "y_mean": float(np.mean(y)),
-                       "offset": 0.0 if deseason else float(np.mean([v for _, v in clean]))},
+        "trend_line": {**Y["trend_line"], "offset": 0.0 if deseason else float(np.mean([v for _, v in clean]))},
         "verdict": verdict, "notes": notes, "alpha": ALPHA,
     }
 
 
 MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+
+
+def trend_line(t: np.ndarray, y: np.ndarray, rate_method: str, per_decade: dict, lin: dict) -> dict:
+    """The line and 95 % band every chart draws: the SAME rate and range the verdict states (Sen's slope with its range
+    corrected for year-to-year persistence, or least squares when that is the reported rate), so the picture never says
+    more than the words. Sen's line goes through the median of y - slope * t; the band fans out around it at the mean year."""
+    slope = per_decade["slope"] / 10
+    intercept = float(np.median(y - slope * t)) if rate_method == "sen" else lin["intercept"]
+    t_mean = float(np.mean(t))
+    return {"t0": float(t[0]), "t1": float(t[-1]), "y0": intercept + slope * t[0], "y1": intercept + slope * t[-1],
+            "ci_low_slope": per_decade["ci_low"] / 10, "ci_high_slope": per_decade["ci_high"] / 10,
+            "t_mean": t_mean, "y_mean": intercept + slope * t_mean, "offset": 0.0, "method": rate_method}
 
 
 def analyse_yearly(ann: list[tuple[int, float]], unit: str, *, up_word: str = "increasing", down_word: str = "decreasing") -> dict:
@@ -266,8 +276,7 @@ def analyse_yearly(ann: list[tuple[int, float]], unit: str, *, up_word: str = "i
         "change_point": change,
         "sen": {**sen, "per_decade": {k: sen[k] * 10 for k in ("slope", "ci_low", "ci_high")}, "total_change": sen["slope"] * span},
         "rate": {"method": rate_method, "per_decade": per_decade, "total_change": per_decade["slope"] / 10 * span},
-        "trend_line": {"t0": float(t[0]), "t1": float(t[-1]), "y0": lin["intercept"] + lin["slope"] * t[0], "y1": lin["intercept"] + lin["slope"] * t[-1],
-                       "ci_low_slope": lin["ci_low"], "ci_high_slope": lin["ci_high"], "t_mean": float(np.mean(t)), "y_mean": float(np.mean(y)), "offset": 0.0},
+        "trend_line": trend_line(t, y, rate_method, per_decade, lin),
         "verdict": verdict, "notes": notes, "alpha": ALPHA,
         "_t": t, "_y": y, "_lin": lin, "_ols_eff": ols_eff, "_mk": mk, "_mk_mod": mk_mod, "_sen": sen,
     }

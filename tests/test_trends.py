@@ -34,6 +34,22 @@ def test_a_known_warming_trend_is_recovered_and_significant():
     assert r["basis"] == "annual" and r["period"]["years"] == 30 and r["verdict"]["total"].startswith("+")
 
 
+@pytest.mark.parametrize("slope, noise, seed", [(0.03, 0.3, 1), (0.0, 0.5, 4), (0.01, 0.6, 7), (-0.02, 0.8, 11)])
+def test_the_chart_line_and_band_show_exactly_the_stated_rate_and_range(slope, noise, seed):
+    """The picture never says more than the words: the drawn line has the stated rate, the band the stated 95 % range
+    (so a range that includes 0 is drawn as a band that includes a flat line), and the line runs through the data."""
+    from urbanova import trends
+
+    r = trends.analyse(_series(slope_per_year=slope, noise=noise, seed=seed), "°C")
+    tl, rate = r["trend_line"], r["rate"]["per_decade"]
+    assert (tl["y1"] - tl["y0"]) / (tl["t1"] - tl["t0"]) * 10 == pytest.approx(rate["slope"])
+    assert tl["ci_low_slope"] * 10 == pytest.approx(rate["ci_low"]) and tl["ci_high_slope"] * 10 == pytest.approx(rate["ci_high"])
+    assert (tl["ci_low_slope"] < 0 < tl["ci_high_slope"]) == (rate["ci_low"] < 0 < rate["ci_high"])
+    assert tl["y_mean"] == pytest.approx(tl["y0"] + rate["slope"] / 10 * (tl["t_mean"] - tl["t0"]))  # the band's pivot is on the line
+    ys = np.array([a["value"] for a in r["annual"]])  # rounded to 4 decimals in the result
+    assert abs(np.median(ys - (tl["y0"] + rate["slope"] / 10 * (np.array([a["year"] + 0.5 for a in r["annual"]]) - tl["t0"])))) < 1e-4
+
+
 def test_pure_noise_is_not_called_significant():
     from urbanova import trends
 
