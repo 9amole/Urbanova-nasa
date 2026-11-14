@@ -129,6 +129,7 @@ The full report, with every method and number, is [docs/VALIDATION_SPACEAPPS.md]
 
 - **Code and setup:** this repository. It runs locally with two commands (see the [README](README.md)), and the Trend
   Detective needs no account or key.
+- **Run the full project locally** (website, backend and AI engine): [RUN_LOCALLY.md](RUN_LOCALLY.md)
 - **Test sites with expected results:** [docs/TESTING_TRENDS.md](docs/TESTING_TRENDS.md)
 - **Slides:** link to add.
 - **Video:** link to add.

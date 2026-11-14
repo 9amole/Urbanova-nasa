@@ -18,7 +18,7 @@ Every trend has:
 - the **Mann-Kendall test** and a **least-squares t-test**, both corrected for year-to-year persistence;
 - a plain-language verdict: *significant* only when both tests agree.
 
-**→ Project write-up: [SUBMISSION.md](SUBMISSION.md)** · **Technical write-up: [SPACEAPPS.md](SPACEAPPS.md)** · **Validation report: [docs/VALIDATION_SPACEAPPS.md](docs/VALIDATION_SPACEAPPS.md)** · **2-minute demo script: [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md)**
+**→ Run the full project (website + backend + AI) locally: [RUN_LOCALLY.md](RUN_LOCALLY.md)** · **Project write-up: [SUBMISSION.md](SUBMISSION.md)** · **Technical write-up: [SPACEAPPS.md](SPACEAPPS.md)** · **Validation report: [docs/VALIDATION_SPACEAPPS.md](docs/VALIDATION_SPACEAPPS.md)** · **2-minute demo script: [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md)**
 
 ## Quick start (Windows, Python 3.11)
 
