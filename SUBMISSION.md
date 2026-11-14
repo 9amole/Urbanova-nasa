@@ -129,6 +129,9 @@ The full report, with every method and number, is [docs/VALIDATION_SPACEAPPS.md]
 
 - **Code and setup:** this repository. It runs locally with two commands (see the [README](README.md)), and the Trend
   Detective needs no account or key.
+- **Try it online:**
+  - the full app: https://urbanova-arch.vercel.app/
+  - the Trend Detective only, no account needed: https://56-228-129-51.sslip.io/#/detective
 - **Run the full project locally** (website, backend and AI engine): [RUN_LOCALLY.md](RUN_LOCALLY.md)
 - **Test sites with expected results:** [docs/TESTING_TRENDS.md](docs/TESTING_TRENDS.md)
 - **Slides:** link to add.

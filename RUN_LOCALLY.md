@@ -1,5 +1,11 @@
 # Run the full URBANOVA project locally
 
+> **Just want to try it?** No install needed:
+> - **Full app:** https://urbanova-arch.vercel.app/
+> - **Trend Detective only:** https://56-228-129-51.sslip.io/#/detective
+>
+> This guide is for running your own copy.
+
 URBANOVA has three parts. They run on your computer as three programs, each in its own terminal:
 
 ```mermaid

@@ -2,6 +2,12 @@
 
 **Challenge:** [Be An Earth System Trend Detective!](https://www.spaceappschallenge.org/2026/challenges/earth-system-trend-detective/)
 
+**Try it online, no install:**
+- **Full app** (website + backend + AI): **https://urbanova-arch.vercel.app/**
+- **Trend Detective only** (no account needed): **https://56-228-129-51.sslip.io/#/detective**
+
+Or **run everything on your own computer** with [RUN_LOCALLY.md](RUN_LOCALLY.md).
+
 **URBANOVA** is an urban-heat decision-support platform: give it a plot of land, and it analyses climate, satellite
 surface temperature, vegetation, land cover and heat stress, and checks a design. For Space Apps we built a **Trend
 Detective** into it. It answers the challenge question, *is it changing, how fast, and is the change significant?*, at
