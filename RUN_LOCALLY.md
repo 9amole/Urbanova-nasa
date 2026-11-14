@@ -268,6 +268,7 @@ We checked the steps above without Docker. We haven't tested the Docker route ou
 | Website shows network errors | Is the backend running on 5202? Is `VITE_API_URL` right? Restart `npm run dev` after editing `.env.development`. |
 | No verification code arrives | Locally there is no email: read the newest `.txt` in `backend\src\Urbanova.Api\AppData\mail\` (step 5). |
 | A port is already in use | Close the old terminal, or change the port: engine `$env:URBANOVA_PORT = "8001"` (and update `AiEngine.BaseUrl`); website `npm run dev -- --port 5174`. |
+| `npm run dev` stops with `Cannot find native binding` | A platform package was skipped during `npm ci` (npm skips optional downloads that fail). On Windows run `npm install --no-save @rolldown/binding-win32-x64-msvc@1.2.16`, or delete `node_modules` and run `npm ci` again. |
 | `npm ci` or `dotnet restore` fails with `ECONNRESET` | Your network is blocking the package servers. Try again, or use another network or a phone hotspot. |
 | Trend runs say "the archive was probably busy" | Landsat is read live from the Microsoft Planetary Computer. Run it again; scenes already read are kept. |
 
