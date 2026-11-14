@@ -71,27 +71,21 @@ cd Urbanova-nasa
 ```
 
 ```powershell
-.\run.ps1 setup
+run.cmd
 ```
 
-```powershell
-.\run.ps1
-```
-
-The first setup installs the Python packages (about 3–5 minutes). Leave this terminal open.
+On macOS / Linux run `bash run.sh` instead. The first run finds Python 3.11 or 3.12 and installs the packages into `.venv`
+(about 3–5 minutes, once). Leave this terminal open.
 
 **Check:** open http://127.0.0.1:8000/#/detective. The Trend Detective page loads. It needs no account.
 
-<details><summary>macOS / Linux</summary>
+**Optional help assistant:** it uses a free model when you give it your own key.
+1. In the same terminal, **before** `run.cmd`, run `set URBANOVA_LLM_PROVIDERS=groq` and
+   `set URBANOVA_LLM_GROQ_API_KEY=<your key>`.
+   - PowerShell: `$env:URBANOVA_LLM_PROVIDERS = "groq"` and `$env:URBANOVA_LLM_GROQ_API_KEY = "<your key>"`.
+2. Never commit a key.
 
-```bash
-python3.11 -m venv .venv && .venv/bin/pip install -r requirements.txt && .venv/bin/python -m urbanova.main
-```
-</details>
-
-Optional: the engine's AI help assistant uses a free model when you give it your own key. In the same terminal, **before**
-`.\run.ps1`, run `$env:URBANOVA_LLM_PROVIDERS = "groq"` and `$env:URBANOVA_LLM_GROQ_API_KEY = "<your key>"`. Everything else
-works without a key. Never commit a key.
+Everything else works without one.
 
 ---
 
@@ -236,7 +230,7 @@ Step-by-step checks and every expected value are in [docs/TESTING_TRENDS.md](doc
 ## Stopping and starting again
 
 - **To stop:** press **Ctrl+C** in each of the three terminals.
-- **Next time:** run step 2's `.\run.ps1`, step 3c's `dotnet run …` and step 4's `npm run dev`, in that order.
+- **Next time:** run step 2's `run.cmd`, step 3c's `dotnet run …` and step 4's `npm run dev`, in that order.
 - **What's kept:** your data. Users and projects are in SQL Server; analyses are in `Urbanova-nasa\data\`.
 
 ## Option: run the backend and website with Docker
@@ -249,7 +243,7 @@ The `urbanova` repository also has a `docker-compose.yml` (SQL Server + backend 
 3. Pick the AI engine:
    - Keep `AI_ENGINE_URL` as the deployed engine; or
    - for your local engine, set `AI_ENGINE_URL=http://host.docker.internal:8000`, and start the engine with
-     `$env:URBANOVA_HOST = "0.0.0.0"` before `.\run.ps1` so the container can reach it.
+     `set URBANOVA_HOST=0.0.0.0` before `run.cmd` so the container can reach it.
 4. Run these commands:
    ```powershell
    docker compose up -d sqlserver

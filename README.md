@@ -26,34 +26,52 @@ Every trend has:
 
 **→ Run the full project (website + backend + AI) locally: [RUN_LOCALLY.md](RUN_LOCALLY.md)** · **Project write-up: [SUBMISSION.md](SUBMISSION.md)** · **Technical write-up: [SPACEAPPS.md](SPACEAPPS.md)** · **Validation report: [docs/VALIDATION_SPACEAPPS.md](docs/VALIDATION_SPACEAPPS.md)** · **2-minute demo script: [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md)**
 
-## Quick start (Windows, Python 3.11)
+## Quick start: one command
 
-```powershell
-.\run.ps1 setup
-```
+You need **Python 3.11 or 3.12** ([download](https://www.python.org/downloads/); on Windows tick "Add python.exe to
+PATH"). Download the code, either with **Code → Download ZIP** on GitHub (then unzip it) or with
+`git clone https://github.com/9amole/Urbanova-nasa.git`. Open a terminal in the folder, then:
 
-```powershell
-.\run.ps1
-```
+| Your system | Command |
+|---|---|
+| **Windows** (Command Prompt or PowerShell) | `run.cmd` |
+| **macOS / Linux** | `bash run.sh` |
 
-Then open **http://127.0.0.1:8000/#/detective**. The Trend Detective page needs no account and no API key.
+The first run installs everything into a private `.venv` folder (about 3–5 minutes, once). Then open
+**http://127.0.0.1:8000/#/detective**. The Trend Detective page needs no account and no API key. Press **Ctrl+C** to
+stop. Later starts take a few seconds.
 
-<details><summary>Manual setup (any OS)</summary>
+| Also available | Windows | macOS / Linux |
+|---|---|---|
+| Run the automated tests (offline, about 6 minutes) | `run.cmd test` | `bash run.sh test` |
+| Reinstall the packages | `run.cmd setup` | `bash run.sh setup` |
+| Seed a sample project with live data | `run.cmd demo` | `bash run.sh demo` |
+
+<details><summary>Docker, or a manual setup</summary>
+
+**Docker** (no Python needed). Build the image:
 
 ```bash
-python -m venv .venv
+docker build -t urbanova .
 ```
+
+Run it, keeping its data in a named volume:
 
 ```bash
-.venv/Scripts/pip install -r requirements.txt
+docker run --rm -p 8000:8000 -v urbanova-data:/data urbanova
 ```
 
-```bash
-.venv/Scripts/python -m urbanova.main
-```
+**Manual setup:**
+1. `python -m venv .venv`
+2. `.venv/Scripts/pip install -r requirements.txt`
+3. `.venv/Scripts/python -m urbanova.main`
 
-On macOS/Linux, use `.venv/bin/` instead of `.venv/Scripts/`. Optional settings are listed in `.env.example`. The help
-assistant can use a free AI model if you set your own key as an environment variable; everything else works without one.
+On macOS/Linux, use `.venv/bin/` instead of `.venv/Scripts/`.
+
+**Settings:**
+- Optional settings are listed in `.env.example`, for example `URBANOVA_PORT` to change the port.
+- The help assistant can use a free AI model if you set your own key as an environment variable. Everything else works
+  without one.
 </details>
 
 ## Try it

@@ -44,10 +44,10 @@ USER urbanova
 EXPOSE 8000
 VOLUME ["/data"]
 
-# Needs 0001-deployment-readiness.patch applied, otherwise point this at /api/v1/meta.
+# /api/v1/meta answers 200 once the app is up (no /readyz endpoint exists in this repository).
 # Same port resolution as the CMD below, so it still works when the platform sets PORT.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=25s --retries=3 \
-  CMD python -c "import os,sys,urllib.request;p=os.environ.get('PORT') or os.environ.get('URBANOVA_PORT') or '8000';sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:'+p+'/readyz',timeout=4).status==200 else 1)"
+  CMD python -c "import os,sys,urllib.request;p=os.environ.get('PORT') or os.environ.get('URBANOVA_PORT') or '8000';sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:'+p+'/api/v1/meta',timeout=4).status==200 else 1)"
 
 # Exactly one process, on purpose. Analysis jobs run on an in-process ThreadPoolExecutor
 # (orchestrator.py:57) and the AI day-budget + provider skip list live in

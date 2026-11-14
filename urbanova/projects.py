@@ -51,6 +51,17 @@ def _clean_period(period: Any) -> dict | None:
     return {"start_year": start, "end_year": end}
 
 
+def _clean_project_type(value: Any) -> str | None:
+    """One of PROJECT_TYPES, or None. Accepts the spellings other clients send ("Residential", "Mixed use", "public-space")
+    by lower-casing and joining words with "_"; anything else is refused with the list of accepted values."""
+    if value is None or (isinstance(value, str) and not value.strip()):
+        return None
+    key = "_".join(str(value).strip().lower().replace("-", " ").split())
+    if key not in PROJECT_TYPES:
+        raise ProjectError(f"Project type must be one of: {', '.join(PROJECT_TYPES)}.")
+    return key
+
+
 def create_project(user: dict, payload: dict) -> tuple[dict, list[str]]:
     name = (payload.get("name") or "").strip()
     if not name:
@@ -58,9 +69,7 @@ def create_project(user: dict, payload: dict) -> tuple[dict, list[str]]:
     if len(name) > 160:
         raise ProjectError("The project name must be 160 characters or fewer.")
     lat, lon = geo.validate_coordinates(payload.get("latitude"), payload.get("longitude"))
-    ptype = payload.get("project_type") or None
-    if ptype and ptype not in PROJECT_TYPES:
-        raise ProjectError(f"Project type must be one of: {', '.join(PROJECT_TYPES)}.")
+    ptype = _clean_project_type(payload.get("project_type"))
     warnings: list[str] = []
     boundary = None
     if payload.get("boundary"):
@@ -95,8 +104,8 @@ def update_project(project: dict, user: dict, payload: dict) -> tuple[dict, list
             if not isinstance(val, bool):
                 raise ProjectError(f"{key} must be true or false.")
             val = int(val)
-        elif key == "project_type" and val and val not in PROJECT_TYPES:
-            raise ProjectError(f"Project type must be one of: {', '.join(PROJECT_TYPES)}.")
+        elif key == "project_type":
+            val = _clean_project_type(val)
         elif key == "objectives":
             val = _clean_objectives(val)
         elif key == "analysis_period":
